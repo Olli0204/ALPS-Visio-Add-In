@@ -3,6 +3,7 @@ using alps.net.api.ALPS;
 using alps.net.api.parsing;
 using alps.net.api.StandardPASS;
 using alps.net.api.util;
+using VH = ALPS_Visio_AddIn_rewrite.VisioHelper;
 using Visio = Microsoft.Office.Interop.Visio;
 
 namespace ALPS_Visio_AddIn_rewrite.OWLShapes
@@ -15,8 +16,12 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
 
         public void ExportToVisio(Visio.Page currentPage)
         {
-            VisioLayout.ArrangeBehavior(this.getBehaviorDescribingComponents().Values);
-            // TODO: set page dimensions
+            bool usesFallbackLayout = VisioLayout.ArrangeBehavior(this.getBehaviorDescribingComponents().Values);
+            if (usesFallbackLayout)
+            {
+                VH.SetSizeMM(currentPage.PageSheet, "PageWidth", 420);
+                VH.SetSizeMM(currentPage.PageSheet, "PageHeight", 210);
+            }
 
             int componentIndex = 0;
             foreach (IBehaviorDescribingComponent component in this.getBehaviorDescribingComponents().Values)

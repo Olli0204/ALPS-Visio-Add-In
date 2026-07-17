@@ -13,6 +13,8 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
     internal static class VisioLayout
     {
         private const double Margin = 0.12;
+        private const double SubjectHorizontalMargin = 0.26;
+        private const double StateHorizontalMargin = 0.12;
         private const double SubjectWidth = 0.22;
         private const double SubjectHeight = 0.16;
         private const double StateWidth = 0.18;
@@ -28,11 +30,11 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             return ArrangeSubjects(subjects, ranks);
         }
 
-        public static void ArrangeBehavior(IEnumerable<IBehaviorDescribingComponent> components)
+        public static bool ArrangeBehavior(IEnumerable<IBehaviorDescribingComponent> components)
         {
             List<IState> states = components.OfType<IState>().ToList();
             Dictionary<IState, int> ranks = DetermineStateRanks(states, components.OfType<ITransition>());
-            ArrangeStates(states, ranks);
+            return ArrangeStates(states, ranks);
         }
 
         public static void PrepareOrArrange(IVisioExportableWithShape exportable, int index, bool subjectDiagram)
@@ -54,7 +56,7 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
         {
             bool fallbackApplied = false;
             int maxRank = ranks.Count == 0 ? 0 : ranks.Values.Max();
-            double width = GetNodeWidth(SubjectWidth, maxRank);
+            double width = GetNodeWidth(SubjectWidth, maxRank, SubjectHorizontalMargin);
             foreach (IGrouping<int, ISubject> rankGroup in subjects.GroupBy(subject => ranks[subject]).OrderBy(group => group.Key))
             {
                 List<ISubject> missingSubjects = rankGroup
@@ -65,7 +67,7 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
 
                 for (int row = 0; row < missingSubjects.Count; row++)
                 {
-                    double x = GetRankPosition(rankGroup.Key, maxRank);
+                    double x = GetRankPosition(rankGroup.Key, maxRank, SubjectHorizontalMargin);
                     double y = GetRowPosition(row, missingSubjects.Count);
                     SetBounds((IPASSProcessModelElement)missingSubjects[row], x, y, width,
                         GetNodeHeight(SubjectHeight, missingSubjects.Count));
@@ -76,10 +78,11 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             return fallbackApplied;
         }
 
-        private static void ArrangeStates(IEnumerable<IState> states, IDictionary<IState, int> ranks)
+        private static bool ArrangeStates(IEnumerable<IState> states, IDictionary<IState, int> ranks)
         {
+            bool fallbackApplied = false;
             int maxRank = ranks.Count == 0 ? 0 : ranks.Values.Max();
-            double width = GetNodeWidth(StateWidth, maxRank);
+            double width = GetNodeWidth(StateWidth, maxRank, StateHorizontalMargin);
             foreach (IGrouping<int, IState> rankGroup in states.GroupBy(state => ranks[state]).OrderBy(group => group.Key))
             {
                 List<IState> missingStates = rankGroup
@@ -89,12 +92,15 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
 
                 for (int row = 0; row < missingStates.Count; row++)
                 {
-                    double x = GetRankPosition(rankGroup.Key, maxRank);
+                    double x = GetRankPosition(rankGroup.Key, maxRank, StateHorizontalMargin);
                     double y = GetRowPosition(row, missingStates.Count);
                     SetBounds((IPASSProcessModelElement)missingStates[row], x, y, width,
                         GetNodeHeight(StateHeight, missingStates.Count));
+                    fallbackApplied = true;
                 }
             }
+
+            return fallbackApplied;
         }
 
         private static Dictionary<ISubject, int> DetermineSubjectRanks(IEnumerable<ISubject> subjects)
@@ -165,13 +171,29 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
                 }
             }
 
-            Queue<IState> queue = new Queue<IState>(incomingCounts.Where(pair => pair.Value == 0).Select(pair => pair.Key));
-            while (queue.Count > 0)
+            Queue<IState> queue = new Queue<IState>(incomingCounts
+                .Where(pair => pair.Value == 0)
+                .Select(pair => pair.Key)
+                .OrderBy(candidate => candidate.getModelComponentID()));
+            HashSet<IState> processed = new HashSet<IState>();
+            while (processed.Count < stateList.Count)
             {
-                IState state = queue.Dequeue();
-                foreach (IState target in successors[state])
+                if (queue.Count == 0)
                 {
-                    ranks[target] = Math.Max(ranks[target], ranks[state] + 1);
+                    IState cycleRoot = stateList
+                        .Where(candidate => !processed.Contains(candidate))
+                        .OrderBy(candidate => candidate.getModelComponentID())
+                        .First();
+                    queue.Enqueue(cycleRoot);
+                }
+
+                IState currentState = queue.Dequeue();
+                if (!processed.Add(currentState)) continue;
+                foreach (IState target in successors[currentState])
+                {
+                    if (processed.Contains(target)) continue;
+
+                    ranks[target] = Math.Max(ranks[target], ranks[currentState] + 1);
                     incomingCounts[target]--;
                     if (incomingCounts[target] == 0) queue.Enqueue(target);
                 }
@@ -244,9 +266,9 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             return !double.IsNaN(value) && !double.IsInfinity(value);
         }
 
-        private static double GetRankPosition(int rank, int maxRank)
+        private static double GetRankPosition(int rank, int maxRank, double horizontalMargin)
         {
-            return maxRank == 0 ? 0.5 : Margin + rank * ((1.0 - 2 * Margin) / maxRank);
+            return maxRank == 0 ? 0.5 : horizontalMargin + rank * ((1.0 - 2 * horizontalMargin) / maxRank);
         }
 
         private static double GetRowPosition(int row, int count)
@@ -254,9 +276,9 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             return 1.0 - Margin - (row + 1) * ((1.0 - 2 * Margin) / (count + 1));
         }
 
-        private static double GetNodeWidth(double maximumWidth, int maxRank)
+        private static double GetNodeWidth(double maximumWidth, int maxRank, double horizontalMargin)
         {
-            return Math.Min(maximumWidth, (1.0 - 2 * Margin) / (maxRank + 1) * 0.65);
+            return Math.Min(maximumWidth, (1.0 - 2 * horizontalMargin) / (maxRank + 1) * 0.65);
         }
 
         private static double GetNodeHeight(double maximumHeight, int rows)
