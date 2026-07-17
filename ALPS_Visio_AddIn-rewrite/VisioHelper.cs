@@ -186,11 +186,9 @@ namespace ALPS_Visio_AddIn_rewrite
         {
             if (page == null) throw new ArgumentNullException(nameof(page));
 
-            SetSize(page.PageSheet, "RouteStyle", 1); // visLORouteRightAngle
-            SetSizeMM(page.PageSheet, "LineToLineX", 10);
-            SetSizeMM(page.PageSheet, "LineToLineY", 10);
-            SetSizeMM(page.PageSheet, "ShapeToShapeX", 12);
-            SetSizeMM(page.PageSheet, "ShapeToShapeY", 12);
+            TrySetRoutingCell(page.PageSheet, "RouteStyle", 1, false); // visLORouteRightAngle
+            TrySetRoutingCell(page.PageSheet, "LineToLineX", 10, true);
+            TrySetRoutingCell(page.PageSheet, "LineToLineY", 10, true);
         }
 
         /// <summary>
@@ -201,9 +199,32 @@ namespace ALPS_Visio_AddIn_rewrite
         {
             if (connector == null) throw new ArgumentNullException(nameof(connector));
 
-            SetSize(connector, "ShapeRouteStyle", isFeedback ? 1 : 21);
-            SetSize(connector, "ConFixedCode", 1); // reroute as needed
-            SetSize(connector, "ConLineJumpCode", 0);
+            TrySetRoutingCell(connector, "ShapeRouteStyle", isFeedback ? 1 : 21, false);
+            TrySetRoutingCell(connector, "ConFixedCode", 1, false); // reroute as needed
+            TrySetRoutingCell(connector, "ConLineJumpCode", 0, false);
+        }
+
+        private static bool TrySetRoutingCell(Visio.Shape shape, string cell, double value, bool millimeters)
+        {
+            try
+            {
+                if (shape.CellExistsU[cell, 0] == 0)
+                {
+                    Debug.Print("Visio routing cell is unavailable: " + cell);
+                    return false;
+                }
+
+                if (millimeters) SetSizeMM(shape, cell, value);
+                else SetSize(shape, cell, value);
+                return true;
+            }
+            catch (System.Runtime.InteropServices.COMException exception)
+            {
+                // Routing hints are optional. Older Visio versions and some
+                // custom masters do not expose every ShapeSheet routing cell.
+                Debug.Print("Could not set Visio routing cell " + cell + ": " + exception.Message);
+                return false;
+            }
         }
 
         private enum CellFormulaMode
