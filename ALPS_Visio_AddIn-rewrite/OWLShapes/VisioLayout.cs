@@ -21,6 +21,8 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
         private const double StateHeight = 0.12;
         private static readonly IDictionary<IPASSProcessModelElement, LayoutBounds> GeneratedBounds =
             new Dictionary<IPASSProcessModelElement, LayoutBounds>();
+        private static readonly IDictionary<string, TransitionPorts> PortsByTransitionId =
+            new Dictionary<string, TransitionPorts>();
 
         public static bool ArrangeModelLayer(IEnumerable<IPASSProcessModelElement> elements)
         {
@@ -33,8 +35,24 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
         public static bool ArrangeBehavior(IEnumerable<IBehaviorDescribingComponent> components)
         {
             List<IState> states = components.OfType<IState>().ToList();
-            Dictionary<IState, int> ranks = DetermineStateRanks(states, components.OfType<ITransition>());
+            List<ITransition> transitions = components.OfType<ITransition>().ToList();
+            PortsByTransitionId.Clear();
+            PrepareTransitionPorts(states, transitions);
+            Dictionary<IState, int> ranks = DetermineStateRanks(states, transitions);
             return ArrangeStates(states, ranks);
+        }
+
+        internal static void GetTransitionPorts(ITransition transition, out double sourceY, out double targetY)
+        {
+            sourceY = 0.5;
+            targetY = 0.5;
+            if (transition == null || string.IsNullOrEmpty(transition.getModelComponentID())) return;
+
+            if (PortsByTransitionId.TryGetValue(transition.getModelComponentID(), out TransitionPorts ports))
+            {
+                sourceY = ports.SourceY;
+                targetY = ports.TargetY;
+            }
         }
 
         public static void PrepareOrArrange(IVisioExportableWithShape exportable, int index, bool subjectDiagram)
@@ -151,6 +169,62 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             }
 
             return ranks;
+        }
+
+        private static void PrepareTransitionPorts(IEnumerable<IState> states, IEnumerable<ITransition> transitions)
+        {
+            Dictionary<IState, List<ITransition>> outgoing = states.ToDictionary(candidate => candidate, candidate => new List<ITransition>());
+            Dictionary<IState, List<ITransition>> incoming = states.ToDictionary(candidate => candidate, candidate => new List<ITransition>());
+
+            foreach (ITransition transition in transitions)
+            {
+                IState source = transition.getSourceState();
+                IState target = transition.getTargetState();
+                if (source != null && outgoing.ContainsKey(source)) outgoing[source].Add(transition);
+                if (target != null && incoming.ContainsKey(target)) incoming[target].Add(transition);
+            }
+
+            foreach (List<ITransition> stateTransitions in outgoing.Values)
+                AssignSourcePorts(stateTransitions);
+            foreach (List<ITransition> stateTransitions in incoming.Values)
+                AssignTargetPorts(stateTransitions);
+        }
+
+        private static void AssignSourcePorts(IEnumerable<ITransition> transitions)
+        {
+            List<ITransition> sortedTransitions = transitions.OrderBy(candidate => candidate.getModelComponentID()).ToList();
+            for (int index = 0; index < sortedTransitions.Count; index++)
+            {
+                TransitionPorts ports = GetOrCreateTransitionPorts(sortedTransitions[index]);
+                ports.SourceY = GetPortPosition(index, sortedTransitions.Count);
+            }
+        }
+
+        private static void AssignTargetPorts(IEnumerable<ITransition> transitions)
+        {
+            List<ITransition> sortedTransitions = transitions.OrderBy(candidate => candidate.getModelComponentID()).ToList();
+            for (int index = 0; index < sortedTransitions.Count; index++)
+            {
+                TransitionPorts ports = GetOrCreateTransitionPorts(sortedTransitions[index]);
+                ports.TargetY = GetPortPosition(index, sortedTransitions.Count);
+            }
+        }
+
+        private static TransitionPorts GetOrCreateTransitionPorts(ITransition transition)
+        {
+            string transitionId = transition.getModelComponentID();
+            if (!PortsByTransitionId.TryGetValue(transitionId, out TransitionPorts ports))
+            {
+                ports = new TransitionPorts();
+                PortsByTransitionId.Add(transitionId, ports);
+            }
+
+            return ports;
+        }
+
+        private static double GetPortPosition(int index, int count)
+        {
+            return (index + 1.0) / (count + 1.0);
         }
 
         private static Dictionary<IState, int> DetermineStateRanks(IEnumerable<IState> states, IEnumerable<ITransition> transitions)
@@ -313,6 +387,12 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             public double Y { get; private set; }
             public double Width { get; private set; }
             public double Height { get; private set; }
+        }
+
+        private sealed class TransitionPorts
+        {
+            public double SourceY { get; set; } = 0.5;
+            public double TargetY { get; set; } = 0.5;
         }
     }
 }

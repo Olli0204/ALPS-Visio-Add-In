@@ -75,10 +75,11 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             // Upper Bound if Multi Send: multiSendUpperBound
 
             // set path (auto arrange)
+            VisioLayout.GetTransitionPorts(transition, out double sourcePortY, out double targetPortY);
             if (transition.getSourceState() is IVisioExportableWithShape exportableSender && exportableSender.GetShape() != null)
-                this.GetShape().CellsU["BeginX"].GlueToPos(exportableSender.GetShape(), 1, 0.5);
+                this.GetShape().CellsU["BeginX"].GlueToPos(exportableSender.GetShape(), 1, sourcePortY);
             if (transition.getTargetState() is IVisioExportableWithShape exportableReceiver && exportableReceiver.GetShape() != null)
-                this.GetShape().CellsU["EndX"].GlueToPos(exportableReceiver.GetShape(), 0, 0.5);
+                this.GetShape().CellsU["EndX"].GlueToPos(exportableReceiver.GetShape(), 0, targetPortY);
 
             // set box movement
             VH.SetProperty(shape, Constants.Properties.Transition.BoxCanBeMovedFreely, "FALSE");
