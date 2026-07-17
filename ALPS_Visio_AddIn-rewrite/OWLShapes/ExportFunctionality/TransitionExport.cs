@@ -83,6 +83,8 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
                 this.GetShape().CellsU["BeginX"].GlueToPos(exportableSender.GetShape(), 1, sourcePortY);
             if (transition.getTargetState() is IVisioExportableWithShape exportableReceiver && exportableReceiver.GetShape() != null)
                 this.GetShape().CellsU["EndX"].GlueToPos(exportableReceiver.GetShape(), 0, targetPortY);
+            if (useFallbackRouting)
+                VH.PositionFallbackTransitionLabel(this.GetShape(), isFeedback);
 
             // set box movement
             VH.SetProperty(shape, Constants.Properties.Transition.BoxCanBeMovedFreely, "FALSE");

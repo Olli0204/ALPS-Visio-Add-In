@@ -204,6 +204,47 @@ namespace ALPS_Visio_AddIn_rewrite
             TrySetRoutingCell(connector, "ConLineJumpCode", 0, false);
         }
 
+        /// <summary>
+        /// A feedback connector is routed below the state graph, while Visio
+        /// normally leaves its text on the straight line between both end
+        /// points. Move the existing master text into the feedback lane without
+        /// replacing its fields or formatting.
+        /// </summary>
+        public static void PositionFallbackTransitionLabel(Visio.Shape connector, bool isFeedback)
+        {
+            if (connector == null || !isFeedback) return;
+
+            if (!TryPositionFeedbackText(connector))
+                Debug.Print("Could not locate a movable text block in feedback transition " + connector.ID);
+        }
+
+        private static bool TryPositionFeedbackText(Visio.Shape shape)
+        {
+            try
+            {
+                if (shape.Characters.CharCount > 0
+                    && shape.CellExistsU["TxtPinX", 0] != 0
+                    && shape.CellExistsU["TxtPinY", 0] != 0)
+                {
+                    // FormulaForceU also works when the stencil protects its
+                    // text transform with GUARD().
+                    shape.CellsU["TxtPinX"].FormulaForceU = "Width*0.5";
+                    shape.CellsU["TxtPinY"].FormulaForceU = "-0.45 in";
+                    return true;
+                }
+            }
+            catch (System.Runtime.InteropServices.COMException exception)
+            {
+                Debug.Print("Could not position feedback transition text on shape "
+                    + shape.ID + ": " + exception.Message);
+            }
+
+            foreach (Visio.Shape childShape in shape.Shapes)
+                if (TryPositionFeedbackText(childShape)) return true;
+
+            return false;
+        }
+
         private static bool TrySetRoutingCell(Visio.Shape shape, string cell, double value, bool millimeters)
         {
             try
