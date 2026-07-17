@@ -18,7 +18,11 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
         private const double SubjectWidth = 0.22;
         private const double SubjectHeight = 0.16;
         private const double StateWidth = 0.18;
-        private const double StateHeight = 0.12;
+        private const double StateHeight = 0.14;
+        private const double StateConnectionPitch = 0.055;
+        private const double StateRowGap = 0.16;
+        private const double RegularPortMargin = 0.22;
+        private const double FeedbackPortPosition = 0.10;
         private static readonly IDictionary<IPASSProcessModelElement, LayoutBounds> GeneratedBounds =
             new Dictionary<IPASSProcessModelElement, LayoutBounds>();
         private static readonly IDictionary<string, TransitionPorts> PortsByTransitionId =
@@ -37,21 +41,30 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             List<IState> states = components.OfType<IState>().ToList();
             List<ITransition> transitions = components.OfType<ITransition>().ToList();
             PortsByTransitionId.Clear();
-            PrepareTransitionPorts(states, transitions);
             Dictionary<IState, int> ranks = DetermineStateRanks(states, transitions);
-            return ArrangeStates(states, ranks);
+            Dictionary<IState, int> verticalOrder = DetermineStateVerticalOrder(states, transitions, ranks);
+            PrepareTransitionPorts(states, transitions, ranks, verticalOrder);
+            bool fallbackApplied = ArrangeStates(states, transitions, ranks, verticalOrder);
+            MarkFallbackTransitions(transitions);
+            return fallbackApplied;
         }
 
-        internal static void GetTransitionPorts(ITransition transition, out double sourceY, out double targetY)
+        internal static void GetTransitionPorts(ITransition transition, out double sourceY, out double targetY,
+            out bool isFeedback, out bool useFallbackRouting)
         {
             sourceY = 0.5;
             targetY = 0.5;
+            isFeedback = false;
+            useFallbackRouting = false;
             if (transition == null || string.IsNullOrEmpty(transition.getModelComponentID())) return;
 
-            if (PortsByTransitionId.TryGetValue(transition.getModelComponentID(), out TransitionPorts ports))
+            if (PortsByTransitionId.TryGetValue(transition.getModelComponentID(), out TransitionPorts ports)
+                && ports.UseFallbackRouting)
             {
                 sourceY = ports.SourceY;
                 targetY = ports.TargetY;
+                isFeedback = ports.IsFeedback;
+                useFallbackRouting = true;
             }
         }
 
@@ -96,24 +109,34 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             return fallbackApplied;
         }
 
-        private static bool ArrangeStates(IEnumerable<IState> states, IDictionary<IState, int> ranks)
+        private static bool ArrangeStates(IEnumerable<IState> states, IEnumerable<ITransition> transitions,
+            IDictionary<IState, int> ranks, IDictionary<IState, int> verticalOrder)
         {
             bool fallbackApplied = false;
+            List<ITransition> transitionList = transitions.ToList();
             int maxRank = ranks.Count == 0 ? 0 : ranks.Values.Max();
             double width = GetNodeWidth(StateWidth, maxRank, StateHorizontalMargin);
             foreach (IGrouping<int, IState> rankGroup in states.GroupBy(state => ranks[state]).OrderBy(group => group.Key))
             {
                 List<IState> missingStates = rankGroup
                     .Where(state => NeedsFallbackBounds(state as IVisioExportableWithShape))
-                    .OrderBy(state => state.getModelComponentID())
+                    .OrderBy(state => verticalOrder[state])
                     .ToList();
+
+                List<double> heights = missingStates
+                    .Select(state => GetRequiredStateHeight(state, transitionList))
+                    .ToList();
+                double rowGap = StateRowGap;
+                ScaleRowsToAvailableHeight(heights, ref rowGap);
+                double usedHeight = heights.Sum() + Math.Max(0, heights.Count - 1) * rowGap;
+                double top = 0.5 + usedHeight / 2.0;
 
                 for (int row = 0; row < missingStates.Count; row++)
                 {
                     double x = GetRankPosition(rankGroup.Key, maxRank, StateHorizontalMargin);
-                    double y = GetRowPosition(row, missingStates.Count);
-                    SetBounds((IPASSProcessModelElement)missingStates[row], x, y, width,
-                        GetNodeHeight(StateHeight, missingStates.Count));
+                    double y = top - heights[row] / 2.0;
+                    SetBounds((IPASSProcessModelElement)missingStates[row], x, y, width, heights[row]);
+                    top -= heights[row] + rowGap;
                     fallbackApplied = true;
                 }
             }
@@ -171,10 +194,14 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             return ranks;
         }
 
-        private static void PrepareTransitionPorts(IEnumerable<IState> states, IEnumerable<ITransition> transitions)
+        private static void PrepareTransitionPorts(IEnumerable<IState> states, IEnumerable<ITransition> transitions,
+            IDictionary<IState, int> ranks, IDictionary<IState, int> verticalOrder)
         {
-            Dictionary<IState, List<ITransition>> outgoing = states.ToDictionary(candidate => candidate, candidate => new List<ITransition>());
-            Dictionary<IState, List<ITransition>> incoming = states.ToDictionary(candidate => candidate, candidate => new List<ITransition>());
+            List<IState> stateList = states.ToList();
+            Dictionary<IState, List<ITransition>> outgoing =
+                stateList.ToDictionary(candidate => candidate, candidate => new List<ITransition>());
+            Dictionary<IState, List<ITransition>> incoming =
+                stateList.ToDictionary(candidate => candidate, candidate => new List<ITransition>());
 
             foreach (ITransition transition in transitions)
             {
@@ -182,32 +209,73 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
                 IState target = transition.getTargetState();
                 if (source != null && outgoing.ContainsKey(source)) outgoing[source].Add(transition);
                 if (target != null && incoming.ContainsKey(target)) incoming[target].Add(transition);
+
+                TransitionPorts ports = GetOrCreateTransitionPorts(transition);
+                ports.IsFeedback = source != null && target != null
+                    && ranks.ContainsKey(source) && ranks.ContainsKey(target)
+                    && ranks[target] <= ranks[source];
             }
 
             foreach (List<ITransition> stateTransitions in outgoing.Values)
-                AssignSourcePorts(stateTransitions);
+                AssignSourcePorts(stateTransitions, verticalOrder);
             foreach (List<ITransition> stateTransitions in incoming.Values)
-                AssignTargetPorts(stateTransitions);
+                AssignTargetPorts(stateTransitions, verticalOrder);
         }
 
-        private static void AssignSourcePorts(IEnumerable<ITransition> transitions)
+        private static void AssignSourcePorts(IEnumerable<ITransition> transitions,
+            IDictionary<IState, int> verticalOrder)
         {
-            List<ITransition> sortedTransitions = transitions.OrderBy(candidate => candidate.getModelComponentID()).ToList();
-            for (int index = 0; index < sortedTransitions.Count; index++)
-            {
-                TransitionPorts ports = GetOrCreateTransitionPorts(sortedTransitions[index]);
-                ports.SourceY = GetPortPosition(index, sortedTransitions.Count);
-            }
+            List<ITransition> transitionList = transitions.ToList();
+            List<ITransition> regularTransitions = transitionList
+                .Where(candidate => !GetOrCreateTransitionPorts(candidate).IsFeedback)
+                .OrderByDescending(candidate => GetVerticalOrder(candidate.getTargetState(), verticalOrder))
+                .ThenBy(candidate => candidate.getModelComponentID())
+                .ToList();
+            AssignRegularSourcePorts(regularTransitions);
+
+            List<ITransition> feedbackTransitions = transitionList
+                .Where(candidate => GetOrCreateTransitionPorts(candidate).IsFeedback)
+                .OrderByDescending(candidate => GetVerticalOrder(candidate.getTargetState(), verticalOrder))
+                .ThenBy(candidate => candidate.getModelComponentID())
+                .ToList();
+            for (int index = 0; index < feedbackTransitions.Count; index++)
+                GetOrCreateTransitionPorts(feedbackTransitions[index]).SourceY =
+                    GetFeedbackPortPosition(index, feedbackTransitions.Count);
         }
 
-        private static void AssignTargetPorts(IEnumerable<ITransition> transitions)
+        private static void AssignTargetPorts(IEnumerable<ITransition> transitions,
+            IDictionary<IState, int> verticalOrder)
         {
-            List<ITransition> sortedTransitions = transitions.OrderBy(candidate => candidate.getModelComponentID()).ToList();
-            for (int index = 0; index < sortedTransitions.Count; index++)
-            {
-                TransitionPorts ports = GetOrCreateTransitionPorts(sortedTransitions[index]);
-                ports.TargetY = GetPortPosition(index, sortedTransitions.Count);
-            }
+            List<ITransition> transitionList = transitions.ToList();
+            List<ITransition> regularTransitions = transitionList
+                .Where(candidate => !GetOrCreateTransitionPorts(candidate).IsFeedback)
+                .OrderByDescending(candidate => GetVerticalOrder(candidate.getSourceState(), verticalOrder))
+                .ThenBy(candidate => candidate.getModelComponentID())
+                .ToList();
+            AssignRegularTargetPorts(regularTransitions);
+
+            List<ITransition> feedbackTransitions = transitionList
+                .Where(candidate => GetOrCreateTransitionPorts(candidate).IsFeedback)
+                .OrderByDescending(candidate => GetVerticalOrder(candidate.getSourceState(), verticalOrder))
+                .ThenBy(candidate => candidate.getModelComponentID())
+                .ToList();
+            for (int index = 0; index < feedbackTransitions.Count; index++)
+                GetOrCreateTransitionPorts(feedbackTransitions[index]).TargetY =
+                    GetFeedbackPortPosition(index, feedbackTransitions.Count);
+        }
+
+        private static void AssignRegularSourcePorts(IList<ITransition> transitions)
+        {
+            for (int index = 0; index < transitions.Count; index++)
+                GetOrCreateTransitionPorts(transitions[index]).SourceY =
+                    GetRegularPortPosition(index, transitions.Count);
+        }
+
+        private static void AssignRegularTargetPorts(IList<ITransition> transitions)
+        {
+            for (int index = 0; index < transitions.Count; index++)
+                GetOrCreateTransitionPorts(transitions[index]).TargetY =
+                    GetRegularPortPosition(index, transitions.Count);
         }
 
         private static TransitionPorts GetOrCreateTransitionPorts(ITransition transition)
@@ -222,9 +290,157 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             return ports;
         }
 
-        private static double GetPortPosition(int index, int count)
+        private static void MarkFallbackTransitions(IEnumerable<ITransition> transitions)
         {
-            return (index + 1.0) / (count + 1.0);
+            foreach (ITransition transition in transitions)
+            {
+                TransitionPorts ports = GetOrCreateTransitionPorts(transition);
+                ports.UseFallbackRouting = HasGeneratedBounds(transition.getSourceState() as IPASSProcessModelElement)
+                    || HasGeneratedBounds(transition.getTargetState() as IPASSProcessModelElement);
+            }
+        }
+
+        private static double GetRegularPortPosition(int index, int count)
+        {
+            if (count <= 1) return 0.5;
+            return RegularPortMargin
+                + index * ((1.0 - 2.0 * RegularPortMargin) / (count - 1.0));
+        }
+
+        private static double GetFeedbackPortPosition(int index, int count)
+        {
+            if (count <= 1) return FeedbackPortPosition;
+            return 0.06 + index * (0.10 / (count - 1.0));
+        }
+
+        private static Dictionary<IState, int> DetermineStateVerticalOrder(IEnumerable<IState> states,
+            IEnumerable<ITransition> transitions, IDictionary<IState, int> ranks)
+        {
+            List<IState> stateList = states.ToList();
+            List<ITransition> transitionList = transitions.ToList();
+            Dictionary<IState, int> result = new Dictionary<IState, int>();
+            Dictionary<int, List<IState>> statesByRank = stateList
+                .GroupBy(state => ranks[state])
+                .ToDictionary(group => group.Key,
+                    group => group.OrderBy(state => state.getModelComponentID()).ToList());
+
+            foreach (List<IState> rankStates in statesByRank.Values)
+                UpdateVerticalOrder(rankStates, result);
+
+            int maxRank = ranks.Count == 0 ? 0 : ranks.Values.Max();
+            for (int iteration = 0; iteration < 4; iteration++)
+            {
+                for (int rank = 1; rank <= maxRank; rank++)
+                {
+                    if (!statesByRank.TryGetValue(rank, out List<IState> rankStates)) continue;
+                    rankStates.Sort((left, right) => CompareByBarycenter(left, right, true,
+                        transitionList, ranks, statesByRank, result));
+                    UpdateVerticalOrder(rankStates, result);
+                }
+
+                for (int rank = maxRank - 1; rank >= 0; rank--)
+                {
+                    if (!statesByRank.TryGetValue(rank, out List<IState> rankStates)) continue;
+                    rankStates.Sort((left, right) => CompareByBarycenter(left, right, false,
+                        transitionList, ranks, statesByRank, result));
+                    UpdateVerticalOrder(rankStates, result);
+                }
+            }
+
+            return result;
+        }
+
+        private static int CompareByBarycenter(IState left, IState right, bool usePredecessors,
+            IEnumerable<ITransition> transitions, IDictionary<IState, int> ranks,
+            IDictionary<int, List<IState>> statesByRank, IDictionary<IState, int> verticalOrder)
+        {
+            double leftBarycenter = GetNeighborBarycenter(left, usePredecessors, transitions, ranks,
+                statesByRank, verticalOrder);
+            double rightBarycenter = GetNeighborBarycenter(right, usePredecessors, transitions, ranks,
+                statesByRank, verticalOrder);
+            int comparison = leftBarycenter.CompareTo(rightBarycenter);
+            if (comparison != 0) return comparison;
+
+            comparison = verticalOrder[left].CompareTo(verticalOrder[right]);
+            return comparison != 0
+                ? comparison
+                : string.CompareOrdinal(left.getModelComponentID(), right.getModelComponentID());
+        }
+
+        private static double GetNeighborBarycenter(IState state, bool usePredecessors,
+            IEnumerable<ITransition> transitions, IDictionary<IState, int> ranks,
+            IDictionary<int, List<IState>> statesByRank, IDictionary<IState, int> verticalOrder)
+        {
+            IEnumerable<IState> neighbors = usePredecessors
+                ? transitions.Where(transition => transition.getTargetState() == state
+                    && transition.getSourceState() != null
+                    && ranks.ContainsKey(transition.getSourceState())
+                    && ranks[transition.getSourceState()] < ranks[state])
+                    .Select(transition => transition.getSourceState())
+                : transitions.Where(transition => transition.getSourceState() == state
+                    && transition.getTargetState() != null
+                    && ranks.ContainsKey(transition.getTargetState())
+                    && ranks[transition.getTargetState()] > ranks[state])
+                    .Select(transition => transition.getTargetState());
+
+            List<IState> neighborList = neighbors.Distinct().ToList();
+            if (neighborList.Count == 0)
+                return GetNormalizedVerticalOrder(state, ranks, statesByRank, verticalOrder);
+
+            return neighborList.Average(neighbor =>
+                GetNormalizedVerticalOrder(neighbor, ranks, statesByRank, verticalOrder));
+        }
+
+        private static double GetNormalizedVerticalOrder(IState state, IDictionary<IState, int> ranks,
+            IDictionary<int, List<IState>> statesByRank, IDictionary<IState, int> verticalOrder)
+        {
+            int count = statesByRank[ranks[state]].Count;
+            return (verticalOrder[state] + 0.5) / Math.Max(1, count);
+        }
+
+        private static void UpdateVerticalOrder(IEnumerable<IState> states,
+            IDictionary<IState, int> verticalOrder)
+        {
+            int index = 0;
+            foreach (IState state in states)
+                verticalOrder[state] = index++;
+        }
+
+        private static int GetVerticalOrder(IState state, IDictionary<IState, int> verticalOrder)
+        {
+            return state != null && verticalOrder.TryGetValue(state, out int order) ? order : 0;
+        }
+
+        private static double GetRequiredStateHeight(IState state, IEnumerable<ITransition> transitions)
+        {
+            int outgoingRegularCount = transitions.Count(transition => transition.getSourceState() == state
+                && !GetOrCreateTransitionPorts(transition).IsFeedback);
+            int incomingRegularCount = transitions.Count(transition => transition.getTargetState() == state
+                && !GetOrCreateTransitionPorts(transition).IsFeedback);
+            bool hasOutgoingFeedback = transitions.Any(transition => transition.getSourceState() == state
+                && GetOrCreateTransitionPorts(transition).IsFeedback);
+            bool hasIncomingFeedback = transitions.Any(transition => transition.getTargetState() == state
+                && GetOrCreateTransitionPorts(transition).IsFeedback);
+            int outgoingCount = outgoingRegularCount + (hasOutgoingFeedback ? 1 : 0);
+            int incomingCount = incomingRegularCount + (hasIncomingFeedback ? 1 : 0);
+            int regularPortCount = Math.Max(outgoingCount, incomingCount);
+            return Math.Min(0.25, StateHeight + Math.Max(0, regularPortCount - 1) * StateConnectionPitch);
+        }
+
+        private static void ScaleRowsToAvailableHeight(IList<double> heights, ref double rowGap)
+        {
+            if (heights.Count == 0) return;
+
+            double availableHeight = 1.0 - 2.0 * Margin;
+            double gaps = Math.Max(0, heights.Count - 1) * StateRowGap;
+            double totalHeight = heights.Sum();
+            double totalRequired = totalHeight + gaps;
+            if (totalRequired <= availableHeight) return;
+
+            double scale = availableHeight / totalRequired;
+            rowGap *= scale;
+            for (int index = 0; index < heights.Count; index++)
+                heights[index] *= scale;
         }
 
         private static Dictionary<IState, int> DetermineStateRanks(IEnumerable<IState> states, IEnumerable<ITransition> transitions)
@@ -393,6 +609,8 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
         {
             public double SourceY { get; set; } = 0.5;
             public double TargetY { get; set; } = 0.5;
+            public bool IsFeedback { get; set; }
+            public bool UseFallbackRouting { get; set; }
         }
     }
 }

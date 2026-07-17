@@ -20,7 +20,8 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             if (usesFallbackLayout)
             {
                 VH.SetSizeMM(currentPage.PageSheet, "PageWidth", 420);
-                VH.SetSizeMM(currentPage.PageSheet, "PageHeight", 210);
+                VH.SetSizeMM(currentPage.PageSheet, "PageHeight", 240);
+                VH.ConfigureFallbackSbdRouting(currentPage);
             }
 
             // TODO: hasInitialState

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using alps.net.api.ALPS;
 using alps.net.api.parsing;
 using alps.net.api.StandardPASS;
@@ -20,11 +21,13 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             if (usesFallbackLayout)
             {
                 VH.SetSizeMM(currentPage.PageSheet, "PageWidth", 420);
-                VH.SetSizeMM(currentPage.PageSheet, "PageHeight", 210);
+                VH.SetSizeMM(currentPage.PageSheet, "PageHeight", 240);
+                VH.ConfigureFallbackSbdRouting(currentPage);
             }
 
             int componentIndex = 0;
-            foreach (IBehaviorDescribingComponent component in this.getBehaviorDescribingComponents().Values)
+            foreach (IBehaviorDescribingComponent component in this.getBehaviorDescribingComponents().Values
+                .OrderBy(component => component is ITransition))
             {
                 if (!(component is IVisioExportable exportable)) continue;
 

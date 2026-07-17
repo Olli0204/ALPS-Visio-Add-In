@@ -177,6 +177,35 @@ namespace ALPS_Visio_AddIn_rewrite
             shape.CellsU[cell].FormulaU = valueString;
         }
 
+        /// <summary>
+        /// Configures routing only. Node placement remains controlled by
+        /// <see cref="OWLShapes.VisioLayout"/> and is never handed to Visio's
+        /// automatic page layout.
+        /// </summary>
+        public static void ConfigureFallbackSbdRouting(Visio.Page page)
+        {
+            if (page == null) throw new ArgumentNullException(nameof(page));
+
+            SetSize(page.PageSheet, "RouteStyle", 1); // visLORouteRightAngle
+            SetSizeMM(page.PageSheet, "LineToLineX", 10);
+            SetSizeMM(page.PageSheet, "LineToLineY", 10);
+            SetSizeMM(page.PageSheet, "ShapeToShapeX", 12);
+            SetSizeMM(page.PageSheet, "ShapeToShapeY", 12);
+        }
+
+        /// <summary>
+        /// Keeps forward transitions in their assigned horizontal lanes while
+        /// allowing feedback transitions to route around the state graph.
+        /// </summary>
+        public static void ConfigureFallbackTransitionRouting(Visio.Shape connector, bool isFeedback)
+        {
+            if (connector == null) throw new ArgumentNullException(nameof(connector));
+
+            SetSize(connector, "ShapeRouteStyle", isFeedback ? 1 : 21);
+            SetSize(connector, "ConFixedCode", 1); // reroute as needed
+            SetSize(connector, "ConLineJumpCode", 0);
+        }
+
         private enum CellFormulaMode
         {
             Normal,

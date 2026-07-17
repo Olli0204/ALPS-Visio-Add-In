@@ -75,7 +75,10 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             // Upper Bound if Multi Send: multiSendUpperBound
 
             // set path (auto arrange)
-            VisioLayout.GetTransitionPorts(transition, out double sourcePortY, out double targetPortY);
+            VisioLayout.GetTransitionPorts(transition, out double sourcePortY, out double targetPortY,
+                out bool isFeedback, out bool useFallbackRouting);
+            if (useFallbackRouting)
+                VH.ConfigureFallbackTransitionRouting(this.GetShape(), isFeedback);
             if (transition.getSourceState() is IVisioExportableWithShape exportableSender && exportableSender.GetShape() != null)
                 this.GetShape().CellsU["BeginX"].GlueToPos(exportableSender.GetShape(), 1, sourcePortY);
             if (transition.getTargetState() is IVisioExportableWithShape exportableReceiver && exportableReceiver.GetShape() != null)
