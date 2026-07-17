@@ -177,18 +177,6 @@ namespace ALPS_Visio_AddIn_rewrite
             shape.CellsU[cell].FormulaU = valueString;
         }
 
-        /// <summary>
-        /// Configures a left-to-right flowchart router for automatically
-        /// generated subject-behaviour diagrams.
-        /// </summary>
-        public static void ConfigureFallbackSbdRouting(Visio.Page page)
-        {
-            if (page == null) throw new ArgumentNullException(nameof(page));
-
-            SetSize(page.PageSheet, "RouteStyle", 6); // visLORouteFlowchartWE
-            SetSizeMM(page.PageSheet, "LineToLineX", 12);
-            SetSizeMM(page.PageSheet, "LineToLineY", 12);
-        }
         private enum CellFormulaMode
         {
             Normal,

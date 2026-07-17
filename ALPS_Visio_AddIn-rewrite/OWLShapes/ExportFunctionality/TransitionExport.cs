@@ -80,6 +80,7 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
                 this.GetShape().CellsU["BeginX"].GlueToPos(exportableSender.GetShape(), 1, sourcePortY);
             if (transition.getTargetState() is IVisioExportableWithShape exportableReceiver && exportableReceiver.GetShape() != null)
                 this.GetShape().CellsU["EndX"].GlueToPos(exportableReceiver.GetShape(), 0, targetPortY);
+            PositionLabel(sourcePortY, targetPortY);
 
             // set box movement
             VH.SetProperty(shape, Constants.Properties.Transition.BoxCanBeMovedFreely, "FALSE");
@@ -88,6 +89,23 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             if (transition.getImplementedInterfaces().Count > 0)
                 VH.SetProperty(shape, Constants.Properties.Transition.Implements,
                     string.Join(";", transition.getImplementedInterfaces().Keys));
+        }
+
+        private void PositionLabel(double sourcePortY, double targetPortY)
+        {
+            Visio.Shape transitionShape = this.GetShape();
+            if (transitionShape == null
+                || transitionShape.CellExistsU["TxtPinX", 0] == 0
+                || transitionShape.CellExistsU["TxtPinY", 0] == 0) return;
+
+            // Place the label close to the source and on the free side of the
+            // connector. Branches therefore no longer stack their labels at the
+            // centre of the diagram.
+            transitionShape.CellsU["TxtPinX"].FormulaU = "Width*0.30";
+            double averagePortY = (sourcePortY + targetPortY) / 2.0;
+            transitionShape.CellsU["TxtPinY"].FormulaU = averagePortY <= 0.5
+                ? "Height*0.5 + 0.18 in"
+                : "Height*0.5 - 0.18 in";
         }
     }
 }
