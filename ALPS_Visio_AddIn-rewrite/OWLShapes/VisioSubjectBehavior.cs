@@ -21,6 +21,7 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             {
                 VH.SetSizeMM(currentPage.PageSheet, "PageWidth", 420);
                 VH.SetSizeMM(currentPage.PageSheet, "PageHeight", 210);
+                VH.ConfigureFallbackSbdRouting(currentPage);
             }
 
             // TODO: hasInitialState
@@ -43,6 +44,8 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
 
                 if (exportable is IState || exportable is ITransition) exportable.ExportToVisio(currentPage);
             }
+
+            if (usesFallbackLayout) currentPage.Layout();
         }
 
         public override IParseablePASSProcessModelElement getParsedInstance()
