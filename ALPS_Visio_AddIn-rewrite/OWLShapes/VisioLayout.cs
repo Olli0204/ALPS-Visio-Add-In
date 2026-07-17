@@ -111,7 +111,7 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             Queue<ISubject> queue = new Queue<ISubject>(incomingCounts
                 .Where(pair => pair.Value == 0)
                 .Select(pair => pair.Key)
-                .OrderBy(subject => subject.getModelComponentID()));
+                .OrderBy(candidate => candidate.getModelComponentID()));
             HashSet<ISubject> processed = new HashSet<ISubject>();
             while (processed.Count < subjectList.Count)
             {
@@ -121,9 +121,9 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
                 if (queue.Count == 0)
                 {
                     ISubject cycleRoot = subjectList
-                        .Where(subject => !processed.Contains(subject))
+                        .Where(candidate => !processed.Contains(candidate))
                         .OrderByDescending(GetMessageExchangeCount)
-                        .ThenBy(subject => subject.getModelComponentID())
+                        .ThenBy(candidate => candidate.getModelComponentID())
                         .First();
                     queue.Enqueue(cycleRoot);
                 }
