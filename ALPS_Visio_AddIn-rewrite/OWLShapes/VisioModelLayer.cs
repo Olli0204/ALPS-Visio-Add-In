@@ -18,6 +18,12 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
         {
             bool usesFallbackLayout = VisioLayout.ArrangeModelLayer(this.getElements().Values);
             SetPageDimensions(page, usesFallbackLayout);
+            ISet<string> exchangesExportedByList = new HashSet<string>(
+                this.getElements().Values
+                    .OfType<IMessageExchangeList>()
+                    .SelectMany(list => list.getMessageExchanges().Values)
+                    .Where(exchange => exchange != null)
+                    .Select(exchange => exchange.getModelComponentID()));
 
             // hasPriorityNumber
             VH.SetProperty(page.PageSheet, Constants.Properties.PriorityOrderNumber, this.priorityNumber.ToString());
@@ -25,6 +31,7 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             int elementIndex = 0;
             foreach (IPASSProcessModelElement modelElement in this.getElements().Values
                 .Where(element => !(element is ISubjectBehavior))
+                .Where(element => !IsContainedInMessageExchangeList(element, exchangesExportedByList))
                 .OrderBy(GetExportOrder))
             {
                 if (!(modelElement is IVisioExportable exportable)) continue;
@@ -42,6 +49,12 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             if (element is IMessageExchangeList) return 1;
             if (element is IMessageExchange) return 2;
             return 3;
+        }
+
+        private static bool IsContainedInMessageExchangeList(IPASSProcessModelElement element, ISet<string> exchangesExportedByList)
+        {
+            return element is IMessageExchange exchange
+                && exchangesExportedByList.Contains(exchange.getModelComponentID());
         }
 
         /// <summary>
