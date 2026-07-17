@@ -16,8 +16,8 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
 
         public void ExportToVisio(Visio.Page page)
         {
-            SetPageDimensions(page);
-            VisioLayout.ArrangeModelLayer(this.getElements().Values);
+            bool usesFallbackLayout = VisioLayout.ArrangeModelLayer(this.getElements().Values);
+            SetPageDimensions(page, usesFallbackLayout);
 
             // hasPriorityNumber
             VH.SetProperty(page.PageSheet, Constants.Properties.PriorityOrderNumber, this.priorityNumber.ToString());
@@ -49,8 +49,17 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
         /// 
         /// Note: This is inconsistent, it would be great to add some size to the standard.
         /// </summary>
-        private void SetPageDimensions(Visio.Page page)
+        private void SetPageDimensions(Visio.Page page, bool usesFallbackLayout)
         {
+            // Missing coordinates are represented by non-zero API defaults in
+            // some models. Do not use those defaults to calculate a tiny page.
+            if (usesFallbackLayout)
+            {
+                VH.SetSizeMM(page.PageSheet, "PageWidth", 297);
+                VH.SetSizeMM(page.PageSheet, "PageHeight", 210);
+                return;
+            }
+
             double pageRatio = 1;
             double sumWidth = 0;
             int subjectCount = 0;

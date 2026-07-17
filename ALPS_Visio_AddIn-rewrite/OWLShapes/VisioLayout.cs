@@ -18,11 +18,11 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
         private const double StateWidth = 0.18;
         private const double StateHeight = 0.12;
 
-        public static void ArrangeModelLayer(IEnumerable<IPASSProcessModelElement> elements)
+        public static bool ArrangeModelLayer(IEnumerable<IPASSProcessModelElement> elements)
         {
             List<ISubject> subjects = elements.OfType<ISubject>().ToList();
             Dictionary<ISubject, int> ranks = DetermineSubjectRanks(subjects);
-            ArrangeSubjects(subjects, ranks);
+            return ArrangeSubjects(subjects, ranks);
         }
 
         public static void ArrangeBehavior(IEnumerable<IBehaviorDescribingComponent> components)
@@ -47,8 +47,9 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
                 subjectDiagram ? StateHeight : SubjectHeight);
         }
 
-        private static void ArrangeSubjects(IEnumerable<ISubject> subjects, IDictionary<ISubject, int> ranks)
+        private static bool ArrangeSubjects(IEnumerable<ISubject> subjects, IDictionary<ISubject, int> ranks)
         {
+            bool fallbackApplied = false;
             int maxRank = ranks.Count == 0 ? 0 : ranks.Values.Max();
             double width = GetNodeWidth(SubjectWidth, maxRank);
             foreach (IGrouping<int, ISubject> rankGroup in subjects.GroupBy(subject => ranks[subject]).OrderBy(group => group.Key))
@@ -65,8 +66,11 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
                     double y = GetRowPosition(row, missingSubjects.Count);
                     SetBounds((IPASSProcessModelElement)missingSubjects[row], x, y, width,
                         GetNodeHeight(SubjectHeight, missingSubjects.Count));
+                    fallbackApplied = true;
                 }
             }
+
+            return fallbackApplied;
         }
 
         private static void ArrangeStates(IEnumerable<IState> states, IDictionary<IState, int> ranks)
