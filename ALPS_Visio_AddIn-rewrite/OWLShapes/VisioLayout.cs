@@ -1,4 +1,3 @@
-using alps.net.api;
 using alps.net.api.ALPS;
 using alps.net.api.StandardPASS;
 using System.Collections.Generic;
@@ -39,8 +38,8 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
         public static void PrepareOrArrange(IVisioExportableWithShape exportable, int index, bool subjectDiagram)
         {
             IPASSProcessModelElement element = exportable as IPASSProcessModelElement;
-            if (exportable == null || element == null || HasGeneratedBounds(element) || HasBounds(element)) return;
-            if (HasUsableCoordinates(element) && exportable.PrepareDimensions()) return;
+            if (exportable == null || element == null || HasGeneratedBounds(element)) return;
+            if (PrepareUsableBounds(exportable, element)) return;
 
             int columns = subjectDiagram ? 4 : 3;
             int column = index % columns;
@@ -172,7 +171,7 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
         {
             IPASSProcessModelElement element = exportable as IPASSProcessModelElement;
             return exportable != null && element != null && !HasGeneratedBounds(element)
-                && !HasBounds(element) && !HasUsableCoordinates(element);
+                && !PrepareUsableBounds(exportable, element);
         }
 
         internal static bool TryGetGeneratedBounds(IPASSProcessModelElement element, out List<ISimple2DVisualizationPoint> bounds)
@@ -191,24 +190,29 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             return false;
         }
 
-        private static bool HasBounds(IPASSProcessModelElement element)
-        {
-            return element.getElementsWithUnspecifiedRelation().Values.OfType<ISimple2DVisualizationPoint>().Count() >= 2;
-        }
-
         private static bool HasGeneratedBounds(IPASSProcessModelElement element)
         {
             return element != null && GeneratedBounds.ContainsKey(element);
         }
 
-        private static bool HasUsableCoordinates(IPASSProcessModelElement element)
+        private static bool PrepareUsableBounds(IVisioExportableWithShape exportable, IPASSProcessModelElement element)
         {
-            if (!(element is IHasSimple2DVisualizationBox bounds)) return false;
+            if (HasUsableBounds(element)) return true;
+            if (!exportable.PrepareDimensions()) return false;
+            return HasUsableBounds(element);
+        }
 
-            double x = bounds.getRelative2DPosX();
-            double y = bounds.getRelative2DPosY();
-            double width = bounds.getRelative2DWidth();
-            double height = bounds.getRelative2DHeight();
+        private static bool HasUsableBounds(IPASSProcessModelElement element)
+        {
+            List<ISimple2DVisualizationPoint> bounds = element.getElementsWithUnspecifiedRelation().Values
+                .OfType<ISimple2DVisualizationPoint>()
+                .ToList();
+            if (bounds.Count < 2) return false;
+
+            double x = bounds[0].getRelative2DPosX();
+            double y = bounds[0].getRelative2DPosY();
+            double width = bounds[1].getRelative2DPosX();
+            double height = bounds[1].getRelative2DPosY();
 
             // The API represents missing data with a full-page default box.
             // A real element must have a positive, smaller-than-page size.
