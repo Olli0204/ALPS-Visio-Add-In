@@ -333,6 +333,9 @@ namespace ALPS_Visio_AddIn_rewrite
 
         public static List<ISimple2DVisualizationPoint> GetBounds(PASSProcessModelElement element)
         {
+            if (OWLShapes.VisioLayout.TryGetGeneratedBounds(element, out List<ISimple2DVisualizationPoint> generatedBounds))
+                return generatedBounds;
+
             List<ISimple2DVisualizationPoint> bounds = new List<ISimple2DVisualizationPoint>(
                 element.getElementsWithUnspecifiedRelation().Values.OfType<ISimple2DVisualizationPoint>());
 

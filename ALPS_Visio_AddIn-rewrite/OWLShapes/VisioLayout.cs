@@ -17,9 +17,12 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
         private const double SubjectHeight = 0.16;
         private const double StateWidth = 0.18;
         private const double StateHeight = 0.12;
+        private static readonly IDictionary<IPASSProcessModelElement, LayoutBounds> GeneratedBounds =
+            new Dictionary<IPASSProcessModelElement, LayoutBounds>();
 
         public static bool ArrangeModelLayer(IEnumerable<IPASSProcessModelElement> elements)
         {
+            GeneratedBounds.Clear();
             List<ISubject> subjects = elements.OfType<ISubject>().ToList();
             Dictionary<ISubject, int> ranks = DetermineSubjectRanks(subjects);
             return ArrangeSubjects(subjects, ranks);
@@ -35,8 +38,8 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
         public static void PrepareOrArrange(IVisioExportableWithShape exportable, int index, bool subjectDiagram)
         {
             IPASSProcessModelElement element = exportable as IPASSProcessModelElement;
-            if (exportable == null || element == null || HasBounds(element)) return;
-            if (exportable.PrepareDimensions() && HasBounds(element)) return;
+            if (exportable == null || element == null || HasGeneratedBounds(element) || HasBounds(element)) return;
+            if (HasUsableCoordinates(element) && exportable.PrepareDimensions()) return;
 
             int columns = subjectDiagram ? 4 : 3;
             int column = index % columns;
@@ -167,13 +170,55 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
         private static bool NeedsFallbackBounds(IVisioExportableWithShape exportable)
         {
             IPASSProcessModelElement element = exportable as IPASSProcessModelElement;
-            if (exportable == null || element == null || HasBounds(element)) return false;
-            return !exportable.PrepareDimensions() || !HasBounds(element);
+            return exportable != null && element != null && !HasGeneratedBounds(element)
+                && !HasBounds(element) && !HasUsableCoordinates(element);
+        }
+
+        internal static bool TryGetGeneratedBounds(IPASSProcessModelElement element, out List<ISimple2DVisualizationPoint> bounds)
+        {
+            if (element != null && GeneratedBounds.TryGetValue(element, out LayoutBounds generatedBounds))
+            {
+                bounds = new List<ISimple2DVisualizationPoint>
+                {
+                    CreatePoint(generatedBounds.X, generatedBounds.Y),
+                    CreatePoint(generatedBounds.Width, generatedBounds.Height)
+                };
+                return true;
+            }
+
+            bounds = null;
+            return false;
         }
 
         private static bool HasBounds(IPASSProcessModelElement element)
         {
             return element.getElementsWithUnspecifiedRelation().Values.OfType<ISimple2DVisualizationPoint>().Count() >= 2;
+        }
+
+        private static bool HasGeneratedBounds(IPASSProcessModelElement element)
+        {
+            return element != null && GeneratedBounds.ContainsKey(element);
+        }
+
+        private static bool HasUsableCoordinates(IPASSProcessModelElement element)
+        {
+            if (!(element is IHasSimple2DVisualizationBox bounds)) return false;
+
+            double x = bounds.getRelative2DPosX();
+            double y = bounds.getRelative2DPosY();
+            double width = bounds.getRelative2DWidth();
+            double height = bounds.getRelative2DHeight();
+
+            // The API represents missing data with a full-page default box.
+            // A real element must have a positive, smaller-than-page size.
+            return IsFinite(x) && IsFinite(y) && IsFinite(width) && IsFinite(height)
+                && x >= 0 && x <= 1 && y >= 0 && y <= 1
+                && width > 0 && width < 1 && height > 0 && height < 1;
+        }
+
+        private static bool IsFinite(double value)
+        {
+            return !double.IsNaN(value) && !double.IsInfinity(value);
         }
 
         private static double GetRankPosition(int rank, int maxRank)
@@ -198,16 +243,31 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
 
         private static void SetBounds(IPASSProcessModelElement element, double x, double y, double width, double height)
         {
-            AddPoint(element, x, y);
-            AddPoint(element, width, height);
+            GeneratedBounds[element] = new LayoutBounds(x, y, width, height);
         }
 
-        private static void AddPoint(IPASSProcessModelElement element, double x, double y)
+        private static Simple2DVisualizationPoint CreatePoint(double x, double y)
         {
             Simple2DVisualizationPoint point = new Simple2DVisualizationPoint();
             point.setRelative2DPosX(x);
             point.setRelative2DPosY(y);
-            element.addElementWithUnspecifiedRelation(point);
+            return point;
+        }
+
+        private sealed class LayoutBounds
+        {
+            public LayoutBounds(double x, double y, double width, double height)
+            {
+                X = x;
+                Y = y;
+                Width = width;
+                Height = height;
+            }
+
+            public double X { get; private set; }
+            public double Y { get; private set; }
+            public double Width { get; private set; }
+            public double Height { get; private set; }
         }
     }
 }
