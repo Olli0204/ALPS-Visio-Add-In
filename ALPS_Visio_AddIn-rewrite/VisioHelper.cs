@@ -104,7 +104,11 @@ namespace ALPS_Visio_AddIn_rewrite
             Constants.SIDMasters.CommunicationRestriction,
             Constants.SIDMasters.StandardMessageConnector,
             Constants.SIDMasters.Message,
-            Constants.SIDMasters.StandAloneMacro
+            Constants.SIDMasters.StandAloneMacro,
+            Constants.SIDMasters.ActorExtension,
+            Constants.SIDMasters.AbstractCommunicationChannel,
+            Constants.SIDMasters.SystemInterfaceSubject,
+            Constants.SIDMasters.SubjectGroup
         };
 
         private static readonly ISet<string> SbdMasterNames = new HashSet<string>

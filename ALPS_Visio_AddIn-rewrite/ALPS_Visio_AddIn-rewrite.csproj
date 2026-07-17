@@ -278,11 +278,17 @@
     <Compile Include="OWLShapes\ExportFunctionality\StateExport.cs" />
     <Compile Include="OWLShapes\ExportFunctionality\TransitionExport.cs" />
     <Compile Include="OWLShapes\InteractionDescribing\VisioFullySpecifiedSubject.cs" />
+    <Compile Include="OWLShapes\InteractionDescribing\VisioCommunicationChannel.cs" />
+    <Compile Include="OWLShapes\InteractionDescribing\VisioGuardExtension.cs" />
     <Compile Include="OWLShapes\InteractionDescribing\VisioInterfaceSubject.cs" />
+    <Compile Include="OWLShapes\InteractionDescribing\VisioMacroExtension.cs" />
     <Compile Include="OWLShapes\InteractionDescribing\VisioMessageExchange.cs" />
     <Compile Include="OWLShapes\InteractionDescribing\VisioMessageExchangeList.cs" />
     <Compile Include="OWLShapes\InteractionDescribing\VisioMessageSpecification.cs" />
     <Compile Include="OWLShapes\InteractionDescribing\VisioStandAloneMacroSubject.cs" />
+    <Compile Include="OWLShapes\InteractionDescribing\VisioSubjectExtension.cs" />
+    <Compile Include="OWLShapes\InteractionDescribing\VisioSubjectGroup.cs" />
+    <Compile Include="OWLShapes\InteractionDescribing\VisioSystemInterfaceSubject.cs" />
     <Compile Include="OWLShapes\VisioMacroBehavior.cs" />
     <Compile Include="OWLShapes\VisioModelLayer.cs" />
     <Compile Include="OWLShapes\IVisioExportable.cs" />

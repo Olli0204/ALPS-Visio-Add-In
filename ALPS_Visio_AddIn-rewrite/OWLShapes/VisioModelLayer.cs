@@ -22,16 +22,25 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             VH.SetProperty(page.PageSheet, Constants.Properties.PriorityOrderNumber, this.priorityNumber.ToString());
 
             int elementIndex = 0;
-            foreach (IPASSProcessModelElement modelElement in this.getElements().Values.OrderBy(el => el is IMessageExchangeList))
+            foreach (IPASSProcessModelElement modelElement in this.getElements().Values
+                .Where(element => !(element is ISubjectBehavior))
+                .OrderBy(GetExportOrder))
             {
                 if (!(modelElement is IVisioExportable exportable)) continue;
 
                 if (exportable is IVisioExportableWithShape shapeExportable)
                     VisioLayout.PrepareOrArrange(shapeExportable, elementIndex++, false);
 
-                if (exportable is ISubject || exportable is IMessageExchangeList || modelElement is ICommunicationRestriction)
-                    exportable.ExportToVisio(page);
+                exportable.ExportToVisio(page);
             }
+        }
+
+        private static int GetExportOrder(IPASSProcessModelElement element)
+        {
+            if (element is ISubject) return 0;
+            if (element is IMessageExchangeList) return 1;
+            if (element is IMessageExchange) return 2;
+            return 3;
         }
 
         /// <summary>
