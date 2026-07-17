@@ -15,6 +15,7 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
 
         public void ExportToVisio(Visio.Page currentPage)
         {
+            VisioLayout.ArrangeBehavior(this.getBehaviorDescribingComponents().Values);
             // TODO: set page dimensions
 
             // TODO: hasInitialState

@@ -17,6 +17,7 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
         public void ExportToVisio(Visio.Page page)
         {
             SetPageDimensions(page);
+            VisioLayout.ArrangeModelLayer(this.getElements().Values);
 
             // hasPriorityNumber
             VH.SetProperty(page.PageSheet, Constants.Properties.PriorityOrderNumber, this.priorityNumber.ToString());
