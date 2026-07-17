@@ -108,14 +108,32 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
                     if (exchange.getReceiver() != null && incomingCounts.ContainsKey(exchange.getReceiver()))
                         incomingCounts[exchange.getReceiver()]++;
 
-            Queue<ISubject> queue = new Queue<ISubject>(incomingCounts.Where(pair => pair.Value == 0).Select(pair => pair.Key));
-            while (queue.Count > 0)
+            Queue<ISubject> queue = new Queue<ISubject>(incomingCounts
+                .Where(pair => pair.Value == 0)
+                .Select(pair => pair.Key)
+                .OrderBy(subject => subject.getModelComponentID()));
+            HashSet<ISubject> processed = new HashSet<ISubject>();
+            while (processed.Count < subjectList.Count)
             {
+                // A bidirectional exchange produces a cycle and has no natural
+                // root. Pick a stable root so connected subjects receive
+                // separate columns instead of being stacked on top of each other.
+                if (queue.Count == 0)
+                {
+                    ISubject cycleRoot = subjectList
+                        .Where(subject => !processed.Contains(subject))
+                        .OrderByDescending(GetMessageExchangeCount)
+                        .ThenBy(subject => subject.getModelComponentID())
+                        .First();
+                    queue.Enqueue(cycleRoot);
+                }
+
                 ISubject subject = queue.Dequeue();
+                if (!processed.Add(subject)) continue;
                 foreach (IMessageExchange exchange in subject.getOutgoingMessageExchanges().Values)
                 {
                     ISubject receiver = exchange.getReceiver();
-                    if (receiver == null || !incomingCounts.ContainsKey(receiver)) continue;
+                    if (receiver == null || processed.Contains(receiver) || !incomingCounts.ContainsKey(receiver)) continue;
 
                     ranks[receiver] = Math.Max(ranks[receiver], ranks[subject] + 1);
                     incomingCounts[receiver]--;
