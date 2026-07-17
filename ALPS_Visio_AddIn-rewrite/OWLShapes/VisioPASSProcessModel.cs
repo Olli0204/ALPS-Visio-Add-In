@@ -20,7 +20,8 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
 
             foreach (IModelLayer modelLayer in this.getAllElements().Values.OfType<IModelLayer>())
             {
-                Visio.Page SIDPage = VH.CreateSIDPage(modelLayer.getModelComponentID(), " ", modelLayer.getUriModelComponentID(), " ", " ", " "); // TODO: SID page creation
+                string layerId = modelLayer.getModelComponentID();
+                Visio.Page SIDPage = VH.CreateSIDPage(layerId, layerId, modelLayer.getUriModelComponentID(), string.Empty, string.Empty, "0");
 
                 // TODO: ExtensionLayer, GuardLayer, MacroLayer
                 if (modelLayer is IVisioExportable exportable) exportable.ExportToVisio(SIDPage);

@@ -288,6 +288,7 @@
     <Compile Include="OWLShapes\IVisioExportable.cs" />
     <Compile Include="OWLShapes\IVisioExportableWithShape.cs" />
     <Compile Include="OWLShapes\VisioClassFactory.cs" />
+    <Compile Include="OWLShapes\VisioLayout.cs" />
     <Compile Include="OWLShapes\VisioPASSProcessModel.cs" />
     <Compile Include="OWLShapes\VisioSubjectBehavior.cs" />
     <Compile Include="Properties\AssemblyInfo.cs">
@@ -385,8 +386,12 @@
     <Compile Include="ThisAddIn.cs">
       <SubType>Code</SubType>
     </Compile>
-    <None Include="Resources\ALPS_ont_v_0.8.0.owl" />
-    <None Include="Resources\standard_PASS_ont_v_1.1.0.owl" />
+    <Content Include="Resources\ALPS_ont_v_0.8.0.owl">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Resources\standard_PASS_ont_v_1.1.0.owl">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <None Include="ThisAddIn.Designer.xml">
       <DependentUpon>ThisAddIn.cs</DependentUpon>
     </None>

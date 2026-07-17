@@ -51,17 +51,11 @@ muss dringend überarbeitet werden! `ShapeFinder` ist für das Finden der Stenci
 ## nächste Schritte
 Jetzt da du dich hoffentlich in angemessenerer Zeit einarbeiten konntest, kommen die nächsten Aufgaben auf dich zu.
 
-### Probleme
-- Strings müssen escaped werden, bevor sie über `VisioHelper` als Property gesetzt werden: Es gab z.B. ein Problem, wenn
-ein Label von `GetEnglishLabel` in `PASSProcessModelElementExport` Anführungszeichen (`"`) enthält.
-
-### Aufgaben
-- Aktuell crasht das AddIn, wenn ein Name (z.B. einer Seite) bereits existiert. (Siehe TODO in `VisioHelper.cs`, Zeile 242.)
-Zum Testen muss auf den Prompt des VBA-Makros mit **Nein** geantwortet werden.
-- Das Anordnen **ohne** Koordinaten ist aktuell nicht implementiert. Die Vorbedingung existiert:
-`IVisioExportableWithShape#PrepareDimensions` gibt `false` zurück, wenn keine Koordinaten existieren. Ein Ansatz für einen
-Algorithmus findet sich in den Branches `main` und `development`; im Branch `rewrite` wurde dieser zwecks Übersicht zunächst
-nicht übernommen.
+### Erledigte Stabilitätsarbeiten
+- Texte werden zentral als Visio-Formel-Literale geschrieben und Anführungszeichen korrekt escaped.
+- SID- und SBD-Seiten erhalten bei Namenskollisionen einen eindeutigen Suffix.
+- Modelle ohne 2D-Koordinaten erhalten ein deterministisches, einfaches Rasterlayout.
+- Die Ontologien werden aus dem mitgelieferten `Resources`-Ordner geladen; der Import reaktiviert VBA-Listener auch nach Fehlern.
 - Dokumentation ist teilweise unvollständig oder fehlt komplett. Ein einheitliches Schema wäre von Vorteil - ich habe
 bisher die JavaDoc Konventionen übernommen. Inline-Kommentare sollten reduziert werden und nur für die aktive Entwicklung
 (z.B. Notiz von Aufgaben) benutzt werden. Nur in Ausnahmefällen dürfen einzelne Zeilen mit einem Kommentar erklärt werden;

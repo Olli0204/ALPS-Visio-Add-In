@@ -18,10 +18,10 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             export.Export(shapeType, page, VH.GetBounds(this));
 
             // set path (auto arrange)
-            if (this.getSender() is IVisioExportableWithShape exportableSender)
+            if (this.getSender() is IVisioExportableWithShape exportableSender && exportableSender.GetShape() != null)
                 this.GetShape().CellsU["BeginX"].GlueToPos(exportableSender.GetShape(), 1, 0.5);
-            if (this.getReceiver() is IVisioExportableWithShape exportableReceiver)
-                this.GetShape().CellsU["EndY"].GlueToPos(exportableReceiver.GetShape(), 0, 0.5);
+            if (this.getReceiver() is IVisioExportableWithShape exportableReceiver && exportableReceiver.GetShape() != null)
+                this.GetShape().CellsU["EndX"].GlueToPos(exportableReceiver.GetShape(), 0, 0.5);
 
             // TODO: AbstractMessageExchange
             // TODO: FinalizedMessageExchange -> alps.net.api

@@ -69,8 +69,9 @@ namespace ALPS_Visio_AddIn_rewrite
         /// <param name="window">The active window, not used by this function</param>
         private void Application_WindowActivated(Window window)
         {
-            // If no window change, return
-            if (activeDoc.FullName.Equals(Application.ActiveDocument.FullName)) return;
+            if (Application.ActiveDocument == null) return;
+            if (activeDoc != null && string.Equals(activeDoc.FullName, Application.ActiveDocument.FullName,
+                System.StringComparison.OrdinalIgnoreCase)) return;
             activeDoc = Application.ActiveDocument;
             reset();
         }

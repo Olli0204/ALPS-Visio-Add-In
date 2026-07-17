@@ -21,13 +21,16 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             // hasPriorityNumber
             VH.SetProperty(page.PageSheet, Constants.Properties.PriorityOrderNumber, this.priorityNumber.ToString());
 
+            int elementIndex = 0;
             foreach (IPASSProcessModelElement modelElement in this.getElements().Values.OrderBy(el => el is IMessageExchangeList))
             {
                 if (!(modelElement is IVisioExportable exportable)) continue;
 
-                if (exportable is IVisioExportableWithShape shapeExportable) shapeExportable.PrepareDimensions(); // TODO: if not: auto arrange
+                if (exportable is IVisioExportableWithShape shapeExportable)
+                    VisioLayout.PrepareOrArrange(shapeExportable, elementIndex++, false);
 
-                if (exportable is ISubject || exportable is IMessageExchangeList) exportable.ExportToVisio(page);
+                if (exportable is ISubject || exportable is IMessageExchangeList || modelElement is ICommunicationRestriction)
+                    exportable.ExportToVisio(page);
             }
         }
 
@@ -53,6 +56,13 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
                     if (width > 0) subjectCount++;
                 }
             }
+            if (subjectCount == 0 || sumWidth <= 0 || pageRatio <= 0)
+            {
+                VH.SetSizeMM(page.PageSheet, "PageWidth", 297);
+                VH.SetSizeMM(page.PageSheet, "PageHeight", 210);
+                return;
+            }
+
             double averageWidth = sumWidth / subjectCount;
 
             // the average subject is 32 mm wide

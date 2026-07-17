@@ -30,7 +30,7 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             // DoTransition
             // TODO: hasPriorityNumber max 1 int(>=0)
             // -> DoTransitionCondition
-            // label mit condition string überschreiben
+            // label mit condition string Ã¼berschreiben
 
             // CommunicationTransition (contains Receive and Send)
             // -> MessageExchangeCondition (requiresPerformedMessageExchange exactly 1 MessageExchange)
@@ -75,17 +75,18 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             // Upper Bound if Multi Send: multiSendUpperBound
 
             // set path (auto arrange)
-            if (transition.getSourceState() is IVisioExportableWithShape exportableSender)
+            if (transition.getSourceState() is IVisioExportableWithShape exportableSender && exportableSender.GetShape() != null)
                 this.GetShape().CellsU["BeginX"].GlueToPos(exportableSender.GetShape(), 1, 0.5);
-            if (transition.getTargetState() is IVisioExportableWithShape exportableReceiver)
-                this.GetShape().CellsU["EndY"].GlueToPos(exportableReceiver.GetShape(), 0, 0.5);
+            if (transition.getTargetState() is IVisioExportableWithShape exportableReceiver && exportableReceiver.GetShape() != null)
+                this.GetShape().CellsU["EndX"].GlueToPos(exportableReceiver.GetShape(), 0, 0.5);
 
             // set box movement
             VH.SetProperty(shape, Constants.Properties.Transition.BoxCanBeMovedFreely, "FALSE");
 
             // set implements
             if (transition.getImplementedInterfaces().Count > 0)
-                shape.CellsU["Prop." + Constants.Properties.Transition.Implements].Formula = "\"" + string.Join(";", transition.getImplementedInterfaces().Keys) + "\"";
+                VH.SetProperty(shape, Constants.Properties.Transition.Implements,
+                    string.Join(";", transition.getImplementedInterfaces().Keys));
         }
     }
 }

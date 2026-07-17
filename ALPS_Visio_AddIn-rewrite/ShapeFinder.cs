@@ -68,10 +68,7 @@ namespace ALPS_Visio_AddIn_rewrite
             }
             //Debug.Print("newestFile.Name;: " + newestFile.Name + " - startswith: " + newestFile.Name.StartsWith("~$$"));
             if (newestFile.Name.StartsWith("~$$"))
-            {
-                //Debug.Print("delete!!!!");
-                newestFile.Delete();
-            }
+                return prefix + " v.x.x.x.x" + ending;
             return newestFile.Name;
         }
 

@@ -27,11 +27,13 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             //currentPage.setSeparationStyle
 
 
+            int componentIndex = 0;
             foreach (IBehaviorDescribingComponent component in this.getBehaviorDescribingComponents().Values.OrderBy(c => c is ITransition))
             {
                 if (!(component is IVisioExportable exportable)) continue;
 
-                if (exportable is IVisioExportableWithShape shapeExportable) shapeExportable.PrepareDimensions(); // TODO: if not: auto arrange
+                if (exportable is IVisioExportableWithShape shapeExportable)
+                    VisioLayout.PrepareOrArrange(shapeExportable, componentIndex++, true);
 
                 if (exportable is IState || exportable is ITransition) exportable.ExportToVisio(currentPage);
             }

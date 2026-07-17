@@ -20,35 +20,35 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
         {
             export.Export(shapeType, page, VH.GetBounds(this));
 
-            // TODO: VH and stuff
+            var condition = getTransitionCondition();
+            if (condition == null) return;
 
             // sender
-            ISubject sender = getTransitionCondition().getMessageSentFrom();
+            ISubject sender = condition.getMessageSentFrom();
             if (sender != null && sender.getModelComponentLabels().Count > 0)
             {
-                export.GetShape().CellsU["User." + Constants.Properties.Transition.ReceiverSenderListForSubject].Formula = "\";" + sender.getModelComponentLabelsAsStrings()[0] + "\"";
-                export.GetShape().CellsU["User." + Constants.Properties.Transition.ReceiverSenderListForSubjectID].Formula = "\";" + sender.getModelComponentID() + "\"";
-                export.GetShape().CellsU["Prop." + Constants.Properties.Transition.MessageSender].FormulaU = "=INDEX(1, Prop.senderOfMessage.Format)";
+                VH.SetUser(export.GetShape(), Constants.Properties.Transition.ReceiverSenderListForSubject, ";" + sender.getModelComponentLabelsAsStrings()[0]);
+                VH.SetUser(export.GetShape(), Constants.Properties.Transition.ReceiverSenderListForSubjectID, ";" + sender.getModelComponentID());
+                VH.SetPropertyFormulaU(export.GetShape(), Constants.Properties.Transition.MessageSender, "INDEX(1, Prop.senderOfMessage.Format)");
             }
 
             // message
-            IMessageSpecification messageSpec = getTransitionCondition().getReceptionOfMessage();
+            IMessageSpecification messageSpec = condition.getReceptionOfMessage();
             if (messageSpec != null && messageSpec.getModelComponentLabels().Count > 0)
             {
-                export.GetShape().CellsU["User." + Constants.Properties.Transition.PossibleMessageList].Formula = "\";" + messageSpec.getModelComponentLabelsAsStrings()[0] + "\"";
-                export.GetShape().CellsU["User." + Constants.Properties.Transition.PossibleMessageListID].Formula = "\";" + messageSpec.getModelComponentID() + "\"";
-                export.GetShape().CellsU["Prop." + Constants.Properties.Transition.Message].FormulaU = "=INDEX(1, Prop.Message.Format)";
+                VH.SetUser(export.GetShape(), Constants.Properties.Transition.PossibleMessageList, ";" + messageSpec.getModelComponentLabelsAsStrings()[0]);
+                VH.SetUser(export.GetShape(), Constants.Properties.Transition.PossibleMessageListID, ";" + messageSpec.getModelComponentID());
+                VH.SetPropertyFormulaU(export.GetShape(), Constants.Properties.Transition.Message, "INDEX(1, Prop.Message.Format)");
             }
 
-            // multiple sends
-            export.GetShape().CellsU["Prop." + Constants.Properties.Transition.MultiReceiveLowerBound].Formula = "\"" + getTransitionCondition().getMultipleLowerBound() + "\"";
-            export.GetShape().CellsU["Prop." + Constants.Properties.Transition.MultiReceiveUpperBound].Formula = "\"" + getTransitionCondition().getMultipleUpperBound() + "\"";
+            VH.SetProperty(export.GetShape(), Constants.Properties.Transition.MultiReceiveLowerBound, condition.getMultipleLowerBound().ToString());
+            VH.SetProperty(export.GetShape(), Constants.Properties.Transition.MultiReceiveUpperBound, condition.getMultipleUpperBound().ToString());
 
             // priority number
-            export.GetShape().CellsU["Prop." + Constants.Properties.Transition.AlternativePriorityNumber].Formula = "\"" + getPriorityNumber() + "\"";
+            VH.SetProperty(export.GetShape(), Constants.Properties.Transition.AlternativePriorityNumber, getPriorityNumber().ToString());
 
-            // recieve type
-            export.GetShape().CellsU["Prop." + Constants.Properties.Transition.ReceiveType].FormulaU = "INDEX(" + (int)getTransitionCondition().getReceiveType() + ", Prop.receiveType.Format)";
+            VH.SetPropertyFormulaU(export.GetShape(), Constants.Properties.Transition.ReceiveType,
+                "INDEX(" + (int)condition.getReceiveType() + ", Prop.receiveType.Format)");
 
             // add data mapping
             if (getDataMappingFunctions().Count > 0)
@@ -57,9 +57,7 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
                 if (tempList.Count > 0)
                 {
                     string dataMappingString = tempList[0].getDataMappingString();
-                    dataMappingString = VisioAddIn.ALPSGlobalFunctions.prepareXMLLiteralForEntryIntoVisioShapeData(dataMappingString);
-
-                    export.GetShape().CellsU["Prop." + Constants.Properties.Transition.DataMappingIncomming].Formula = "\"" + dataMappingString + "\"";
+                    VH.SetProperty(export.GetShape(), Constants.Properties.Transition.DataMappingIncomming, dataMappingString);
                 }
             }
         }

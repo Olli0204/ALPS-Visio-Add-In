@@ -29,21 +29,25 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
         protected Visio.Shape shape;
         public virtual void Export(string shapeType, Visio.Page page, IList<ISimple2DVisualizationPoint> bounds)
         {
+            if (page == null) throw new ArgumentNullException(nameof(page));
             this.shape = VH.Place(shapeType, page);
 
             // hasModelComponentID
             VH.SetProperty(shape, Constants.Properties.ID, element.getModelComponentID());
             // hasModelComponentLabel
-            VH.SetProperty(shape, Constants.Properties.Label, this.GetEnglishLabel(out IList<IStringWithExtra> otherLabels));
+            VH.SetProperty(shape, Constants.Properties.Label, this.GetEnglishLabel(out IList<IStringWithExtra> otherLabels) ?? element.getModelComponentID());
             foreach (IStringWithExtra otherLabel in otherLabels)
-                VH.SetProperty(shape, Constants.Properties.Label + otherLabel.getExtra().ToUpper(), otherLabel.getContent());
+            {
+                if (otherLabel == null || string.IsNullOrWhiteSpace(otherLabel.getExtra())) continue;
+                VH.SetProperty(shape, Constants.Properties.Label + otherLabel.getExtra().ToUpperInvariant(), otherLabel.getContent());
+            }
             // TODO: hasAdditionalAttribute into new Fields
             // some of element.getElementsWithUnspecifiedRelation()
 
             VH.SetProperty(shape, Constants.Properties.Comment, string.Join(";", element.getComments()));
 
             // maybe extract positioning
-            if (this.element is IHasSimple2DVisualizationBox)
+            if (this.element is IHasSimple2DVisualizationBox && bounds != null && bounds.Count >= 2)
             {
                 // set position
                 VH.SetSize(shape, "PinX", bounds[0].getRelative2DPosX() * VH.GetSize(page.PageSheet, "PageWidth"));
@@ -67,7 +71,7 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
 
             foreach (IStringWithExtra label in element.getModelComponentLabels())
             {
-                if (label.getExtra().ToLower() == "en") englishLabel = label;
+                if (label != null && string.Equals(label.getExtra(), "en", StringComparison.OrdinalIgnoreCase)) englishLabel = label;
                 else nonEnglishLabels.Add(label);
             }
 

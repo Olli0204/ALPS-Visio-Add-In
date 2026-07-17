@@ -3,7 +3,9 @@ using alps.net.api.parsing;
 using alps.net.api.StandardPASS;
 using ALPS_Visio_AddIn_rewrite.OWLShapes;
 using System.Collections.Generic;
+using System.IO;
 using System.Reflection;
+using System.Windows.Forms;
 using VH = ALPS_Visio_AddIn_rewrite.VisioHelper;
 
 namespace ALPS_Visio_AddIn_rewrite
@@ -26,10 +28,18 @@ namespace ALPS_Visio_AddIn_rewrite
             ReflectiveEnumerator.addAssemblyToCheckForTypes(Assembly.GetExecutingAssembly());
             parser.setModelElementFactory(new VisioClassFactory());
 
+            string resourcesDirectory = Path.Combine(
+                Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "Resources");
+            string standardOntology = Path.Combine(resourcesDirectory, "standard_PASS_ont_v_1.1.0.owl");
+            string alpsOntology = Path.Combine(resourcesDirectory, "ALPS_ont_v_0.8.0.owl");
+
+            if (!File.Exists(standardOntology) || !File.Exists(alpsOntology))
+                throw new FileNotFoundException("The bundled ALPS ontology resources could not be found.", resourcesDirectory);
+
             parser.loadOWLParsingStructure(new List<string>
             {
-                "../../Resources/standard_PASS_ont_v_1.1.0.owl",
-                "../../Resources/ALPS_ont_v_0.8.0.owl"
+                standardOntology,
+                alpsOntology
             });
         }
 
@@ -38,20 +48,28 @@ namespace ALPS_Visio_AddIn_rewrite
         /// </summary>
         public void Parse(string fileName)
         {
-            IList<IPASSProcessModel> passProcessModels = parser.loadModels(new List<string> { fileName });
-
-            // open stencils to reduce load time
-            VH.openStencil(VH.VisioStencils.SID_STENCIL);
-
-            // disable VBA listeners to prevent interference
-            VH.setVBAListenersRunning(false);
-
-            if (passProcessModels.Count > 0 && passProcessModels[0] is IVisioExportable exportable) // FEAT: import all models
+            try
             {
-                exportable.ExportToVisio(null); // FEAT: import into current page
-            }
+                IList<IPASSProcessModel> passProcessModels = parser.loadModels(new List<string> { fileName });
 
-            VH.setVBAListenersRunning(true);
+                VH.openStencil(VH.VisioStencils.SID_STENCIL);
+                VH.setVBAListenersRunning(false);
+
+                foreach (IPASSProcessModel processModel in passProcessModels)
+                {
+                    IVisioExportable exportable = processModel as IVisioExportable;
+                    if (exportable != null) exportable.ExportToVisio(null);
+                }
+            }
+            catch (System.Exception exception)
+            {
+                MessageBox.Show("The OWL model could not be imported.\n\n" + exception.Message,
+                    "ALPS/PASS Import", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                VH.setVBAListenersRunning(true);
+            }
         }
     }
 }

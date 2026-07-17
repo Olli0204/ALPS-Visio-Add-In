@@ -17,6 +17,8 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
         {
             if (this.getMessageExchanges().Values.FirstOrDefault() is IVisioExportableWithShape messageExchangeWithConnector)
             {
+                VisioLayout.PrepareOrArrange(messageExchangeWithConnector, 0, false);
+
                 // store previous shapes
                 List<Visio.Shape> previousShapes = new List<Visio.Shape>();
                 foreach (Visio.Shape shape in page.Shapes) previousShapes.Add(shape);
@@ -33,10 +35,18 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
                         break;
                     }
 
+                if (messageBox == null)
+                    throw new System.InvalidOperationException("The message connector did not create its message container.");
+
                 // delete wrong shapes
                 // alternative idea: delete messages with default label (or label == id)
+                List<Visio.Shape> shapesToDelete = new List<Visio.Shape>();
                 foreach (Visio.Shape shape in page.Shapes)
-                    if (!previousShapes.Contains(shape) && shape != messageExchangeWithConnector.GetShape() && shape != messageBox) shape.Delete();
+                    if (!previousShapes.Contains(shape) && shape != messageExchangeWithConnector.GetShape() && shape != messageBox)
+                        shapesToDelete.Add(shape);
+
+                foreach (Visio.Shape shape in shapesToDelete)
+                    shape.Delete();
 
                 // center message box
                 messageBox.CellsU["Actions.Center.Action"].Trigger();
@@ -46,6 +56,7 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
                 {
                     if (messageExchange.getMessageType() is IVisioExportableWithShape exportable)
                     {
+                        VisioLayout.PrepareOrArrange(exportable, 0, false);
                         exportable.ExportToVisio(page);
 
                         messageBox.ContainerProperties.InsertListMember(exportable.GetShape(), 0);

@@ -20,10 +20,11 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             export.Export(shapeType, page, VH.GetBounds(this));
 
             ITimeTransitionCondition condition = this.getTransitionCondition();
+            if (condition == null) return;
 
             // transition type
-            export.GetShape().CellsU["Prop." + Constants.Properties.Transition.TimeOutType].FormulaU = "INDEX(" + (int)condition.getTimeTransitionType() + ", Prop." + Constants.Properties.Transition.TimeOutType + ".Format)";
-            VH.SetPropertyU(export.GetShape(), Constants.Properties.Transition.TimeOutType, "INDEX(" + (int)condition.getTimeTransitionType() + ", Prop.timeOutType.Format)");
+            VH.SetPropertyFormulaU(export.GetShape(), Constants.Properties.Transition.TimeOutType,
+                "INDEX(" + (int)condition.getTimeTransitionType() + ", Prop." + Constants.Properties.Transition.TimeOutType + ".Format)");
 
             // timeout
             bool isReminder = condition.getTimeTransitionType() == ITimeTransitionCondition.TimeTransitionConditionType.TimeBasedReminder || condition.getTimeTransitionType() == ITimeTransitionCondition.TimeTransitionConditionType.CalendarBasedReminder;

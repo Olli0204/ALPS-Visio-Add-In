@@ -20,7 +20,7 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             // TODO
 
             //if (getCorrespondentA() != null && getCorrespondentA() is IVisioExportableWithShape exportableSender) GetShape().CellsU["BeginX"].GlueToPos(exportableSender.GetShape(), 1, 0.5);
-            //if (getCorrespondentB() != null && getCorrespondentB() is IVisioExportableWithShape exportableReceiver) GetShape().CellsU["EndY"].GlueToPos(exportableReceiver.GetShape(), 0, 0.5);
+            // Correspondent links are currently not exposed consistently by the API.
         }
 
         public bool PrepareDimensions() // TODO: prepare dimensions
