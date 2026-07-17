@@ -28,19 +28,37 @@ namespace ALPS_Visio_AddIn_rewrite
             ReflectiveEnumerator.addAssemblyToCheckForTypes(Assembly.GetExecutingAssembly());
             parser.setModelElementFactory(new VisioClassFactory());
 
-            string resourcesDirectory = Path.Combine(
-                Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "Resources");
-            string standardOntology = Path.Combine(resourcesDirectory, "standard_PASS_ont_v_1.1.0.owl");
-            string alpsOntology = Path.Combine(resourcesDirectory, "ALPS_ont_v_0.8.0.owl");
-
-            if (!File.Exists(standardOntology) || !File.Exists(alpsOntology))
-                throw new FileNotFoundException("The bundled ALPS ontology resources could not be found.", resourcesDirectory);
+            string standardOntology = GetOntologyPath(
+                "standard_PASS_ont_v_1.1.0.owl", Properties.Resources.standard_PASS_ont_v_1_1_0);
+            string alpsOntology = GetOntologyPath(
+                "ALPS_ont_v_0.8.0.owl", Properties.Resources.ALPS_ont_v_0_8_0);
 
             parser.loadOWLParsingStructure(new List<string>
             {
                 standardOntology,
                 alpsOntology
             });
+        }
+
+        private static string GetOntologyPath(string fileName, byte[] embeddedContents)
+        {
+            string assemblyDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            string deployedPath = Path.Combine(assemblyDirectory, "Resources", fileName);
+            if (File.Exists(deployedPath)) return deployedPath;
+
+            if (embeddedContents == null || embeddedContents.Length == 0)
+                throw new FileNotFoundException("The embedded ontology resource is unavailable.", fileName);
+
+            string cacheDirectory = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "ALPS-Visio-Add-In", "Ontologies");
+            Directory.CreateDirectory(cacheDirectory);
+
+            string cachedPath = Path.Combine(cacheDirectory, fileName);
+            if (!File.Exists(cachedPath) || new FileInfo(cachedPath).Length != embeddedContents.Length)
+                File.WriteAllBytes(cachedPath, embeddedContents);
+
+            return cachedPath;
         }
 
         /// <summary>
