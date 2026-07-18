@@ -71,7 +71,7 @@ namespace ALPS_Visio_AddIn_rewrite
             {
                 IList<IPASSProcessModel> passProcessModels = parser.loadModels(new List<string> { fileName });
 
-                VH.openStencil(VH.VisioStencils.SID_STENCIL);
+                VH.OpenImportStencils();
                 VH.setVBAListenersRunning(false);
 
                 foreach (IPASSProcessModel processModel in passProcessModels)

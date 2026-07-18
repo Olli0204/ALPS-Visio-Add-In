@@ -28,44 +28,103 @@ namespace ALPS_Visio_AddIn_rewrite
             SBD_STENCIL
         }
 
+        private static readonly IDictionary<VisioStencils, Visio.Document> OpenStencils =
+            new Dictionary<VisioStencils, Visio.Document>();
+
         /// <summary>
         /// Opens the latest SID-Stencil file from specified shape-folder
         /// </summary>
         /// <returns>The specified stencil file or null</returns>
         public static Visio.Document openStencil(VisioStencils stencil)
         {
+            return OpenStencil(stencil, false);
+        }
+
+        /// <summary>
+        /// Opens both master sources once for an OWL import. Their VBA projects
+        /// are not used by the C# exporter and stay disabled, avoiding duplicate
+        /// macro security prompts from the two .vssm files.
+        /// </summary>
+        public static void OpenImportStencils()
+        {
+            OpenStencil(VisioStencils.SID_STENCIL, true);
+            OpenStencil(VisioStencils.SBD_STENCIL, true);
+        }
+
+        private static Visio.Document OpenStencil(VisioStencils stencil, bool disableMacros)
+        {
             Visio.Documents visioDocs = Globals.ThisAddIn.Application.Documents;
+            string stencilName = GetStencilName(stencil);
+            Visio.Document openDocument = FindOpenStencil(visioDocs, stencil, stencilName);
+            if (openDocument != null) return openDocument;
+
             try
             {
-                switch (stencil)
-                {
-                    case VisioStencils.SID_STENCIL:
-                        Visio.Document sidShapes = visioDocs.OpenEx(ShapeFinder.getSIDName(),
-                            (short)Visio.VisOpenSaveArgs.visOpenDocked);
-                        return sidShapes;
-                    case VisioStencils.SBD_STENCIL:
-                        Visio.Document sbdShapes = visioDocs.OpenEx(ShapeFinder.getSBDName(),
-                            (short)Visio.VisOpenSaveArgs.visOpenDocked);
-                        return sbdShapes;
-                }
+                int flags = (int)Visio.VisOpenSaveArgs.visOpenDocked;
+                if (disableMacros)
+                    flags |= (int)Visio.VisOpenSaveArgs.visOpenMacrosDisabled;
 
+                Visio.Document document = visioDocs.OpenEx(stencilName, (short)flags);
+                OpenStencils[stencil] = document;
+                return document;
             }
             catch (System.Runtime.InteropServices.COMException e)
             {
-                string msg = "Failed to load SID Shapes. Expecting file \"";
-                switch (stencil)
-                {
-                    case VisioStencils.SID_STENCIL:
-                        msg += ShapeFinder.getSIDName();
-                        break;
-                    case VisioStencils.SBD_STENCIL:
-                        msg += ShapeFinder.getSBDName();
-                        break;
-                }
-                msg += "\" to exist in \"my Shapes\" folder.\n";
+                string msg = "Failed to load ALPS/PASS shapes. Expecting file \""
+                    + stencilName + "\" to exist in \"My Shapes\".\n";
                 msg += "Error: " + e.Message;
                 System.Windows.Forms.MessageBox.Show(msg);
             }
+            return null;
+        }
+
+        private static string GetStencilName(VisioStencils stencil)
+        {
+            switch (stencil)
+            {
+                case VisioStencils.SID_STENCIL:
+                    return ShapeFinder.getSIDName();
+                case VisioStencils.SBD_STENCIL:
+                    return ShapeFinder.getSBDName();
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(stencil));
+            }
+        }
+
+        private static Visio.Document FindOpenStencil(Visio.Documents documents,
+            VisioStencils stencil, string stencilName)
+        {
+            if (OpenStencils.TryGetValue(stencil, out Visio.Document cachedDocument))
+            {
+                try
+                {
+                    if (cachedDocument != null
+                        && string.Equals(cachedDocument.Name, stencilName, StringComparison.OrdinalIgnoreCase))
+                        return cachedDocument;
+                }
+                catch (System.Runtime.InteropServices.COMException)
+                {
+                    // The user closed the cached stencil. Search the live
+                    // Documents collection before opening it again.
+                }
+
+                OpenStencils.Remove(stencil);
+            }
+
+            foreach (Visio.Document document in documents)
+            {
+                try
+                {
+                    if (!string.Equals(document.Name, stencilName, StringComparison.OrdinalIgnoreCase)) continue;
+                    OpenStencils[stencil] = document;
+                    return document;
+                }
+                catch (System.Runtime.InteropServices.COMException)
+                {
+                    // Ignore a document that is currently being closed.
+                }
+            }
+
             return null;
         }
 
