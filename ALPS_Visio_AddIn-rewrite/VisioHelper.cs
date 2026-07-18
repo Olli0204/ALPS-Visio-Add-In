@@ -192,16 +192,15 @@ namespace ALPS_Visio_AddIn_rewrite
         }
 
         /// <summary>
-        /// Draws regular transitions directly between their ordered ports.
-        /// Only feedback transitions use obstacle-avoiding right-angle routing.
-        /// A diamond-shaped branch/join therefore has no shared line segments
-        /// and no avoidable crossings.
+        /// Routes regular transitions with one deterministic horizontal/vertical
+        /// bend between their ordered ports. Feedback transitions use the
+        /// obstacle-avoiding right-angle router outside the state graph.
         /// </summary>
         public static void ConfigureFallbackTransitionRouting(Visio.Shape connector, bool isFeedback)
         {
             if (connector == null) throw new ArgumentNullException(nameof(connector));
 
-            TrySetRoutingCell(connector, "ShapeRouteStyle", isFeedback ? 1 : 2, false);
+            TrySetRoutingCell(connector, "ShapeRouteStyle", isFeedback ? 1 : 21, false);
             TrySetRoutingCell(connector, "ConFixedCode", 0, false);
             TrySetRoutingCell(connector, "ConLineJumpCode", 0, false);
         }
@@ -210,50 +209,9 @@ namespace ALPS_Visio_AddIn_rewrite
         {
             if (connector == null) throw new ArgumentNullException(nameof(connector));
 
-            // Freeze the calculated direct route. Feedback connectors remain
-            // reroutable so Visio can keep them outside moved state shapes.
+            // Freeze the calculated single-bend route. Feedback connectors
+            // remain reroutable so Visio can keep them outside moved states.
             TrySetRoutingCell(connector, "ConFixedCode", isFeedback ? 1 : 2, false);
-        }
-
-        /// <summary>
-        /// A feedback connector is routed below the state graph, while Visio
-        /// normally leaves its text on the straight line between both end
-        /// points. Move the existing master text into the feedback lane without
-        /// replacing its fields or formatting.
-        /// </summary>
-        public static void PositionFallbackTransitionLabel(Visio.Shape connector, bool isFeedback)
-        {
-            if (connector == null || !isFeedback) return;
-
-            if (!TryPositionFeedbackText(connector))
-                Debug.Print("Could not locate a movable text block in feedback transition " + connector.ID);
-        }
-
-        private static bool TryPositionFeedbackText(Visio.Shape shape)
-        {
-            try
-            {
-                if (shape.Characters.CharCount > 0
-                    && shape.CellExistsU["TxtPinX", 0] != 0
-                    && shape.CellExistsU["TxtPinY", 0] != 0)
-                {
-                    // FormulaForceU also works when the stencil protects its
-                    // text transform with GUARD().
-                    shape.CellsU["TxtPinX"].FormulaForceU = "Width*0.5";
-                    shape.CellsU["TxtPinY"].FormulaForceU = "-0.45 in";
-                    return true;
-                }
-            }
-            catch (System.Runtime.InteropServices.COMException exception)
-            {
-                Debug.Print("Could not position feedback transition text on shape "
-                    + shape.ID + ": " + exception.Message);
-            }
-
-            foreach (Visio.Shape childShape in shape.Shapes)
-                if (TryPositionFeedbackText(childShape)) return true;
-
-            return false;
         }
 
         private static bool TrySetRoutingCell(Visio.Shape shape, string cell, double value, bool millimeters)

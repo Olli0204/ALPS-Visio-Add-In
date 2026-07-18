@@ -86,7 +86,6 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             if (useFallbackRouting)
             {
                 VH.FinalizeFallbackTransitionRouting(this.GetShape(), isFeedback);
-                VH.PositionFallbackTransitionLabel(this.GetShape(), isFeedback);
             }
 
             // set box movement
