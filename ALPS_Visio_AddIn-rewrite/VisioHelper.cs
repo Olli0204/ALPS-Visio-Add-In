@@ -133,6 +133,36 @@ namespace ALPS_Visio_AddIn_rewrite
             SBD, SID
         }
 
+        public enum GraphLayoutDirection
+        {
+            TopDown = 1,
+            LeftRight = 2
+        }
+
+        /// <summary>
+        /// Applies Visio's connected-graph layout to a drawing page. Fixed
+        /// imported connectors are released first so they can be rerouted around
+        /// the newly positioned nodes.
+        /// </summary>
+        public static void AutoArrangePage(Visio.IVPage page, GraphLayoutDirection direction)
+        {
+            if (page == null) throw new ArgumentNullException(nameof(page));
+            if (!Enum.IsDefined(typeof(GraphLayoutDirection), direction))
+                throw new ArgumentOutOfRangeException(nameof(direction));
+
+            page.PageSheet.CellsU["PlaceStyle"].FormulaU =
+                ((int)direction).ToString(CultureInfo.InvariantCulture);
+            TrySetRoutingCell(page.PageSheet, "RouteStyle", 1, false);
+
+            foreach (Visio.Shape shape in page.Shapes)
+            {
+                if (shape.OneD == 0 || shape.CellExistsU["ConFixedCode", 0] == 0) continue;
+                shape.CellsU["ConFixedCode"].FormulaU = "0";
+            }
+
+            page.Layout();
+        }
+
         public static Visio.Shape Place(string shapeType, Visio.Page page)
         {
             if (page == null) throw new ArgumentNullException(nameof(page));

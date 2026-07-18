@@ -1,6 +1,7 @@
 ﻿using Microsoft.Office.Tools.Ribbon;
 using Microsoft.Office.Core;
 using System.Windows.Forms;
+using Visio = Microsoft.Office.Interop.Visio;
 
 namespace ALPS_Visio_AddIn_rewrite
 {
@@ -30,6 +31,33 @@ namespace ALPS_Visio_AddIn_rewrite
             owlImporterButton.ControlSize = RibbonControlSize.RibbonControlSizeLarge;
             owlImporterButton.Click += new RibbonControlEventHandler(this.LoadOWLFile);
             owlGroup.Items.Add(owlImporterButton);
+
+            RibbonSplitButton autoArrangeButton = this.Factory.CreateRibbonSplitButton();
+            autoArrangeButton.Name = "autoArrangeButton";
+            autoArrangeButton.Label = "Auto-Arrange";
+            autoArrangeButton.ScreenTip = "Graph automatisch anordnen";
+            autoArrangeButton.SuperTip = "Ordnet den Graphen standardmäßig von oben nach unten an. Über das Menü kann alternativ eine Anordnung von links nach rechts gewählt werden.";
+            autoArrangeButton.Image = Properties.Resources.pageSetup;
+            autoArrangeButton.ShowLabel = true;
+            autoArrangeButton.ControlSize = RibbonControlSize.RibbonControlSizeLarge;
+            autoArrangeButton.ItemSize = RibbonControlSize.RibbonControlSizeRegular;
+            autoArrangeButton.Click += new RibbonControlEventHandler(this.AutoArrangeTopDown);
+
+            RibbonButton topDownButton = this.Factory.CreateRibbonButton();
+            topDownButton.Name = "autoArrangeTopDownButton";
+            topDownButton.Label = "Top-down";
+            topDownButton.ScreenTip = "Von oben nach unten anordnen";
+            topDownButton.Click += new RibbonControlEventHandler(this.AutoArrangeTopDown);
+            autoArrangeButton.Items.Add(topDownButton);
+
+            RibbonButton leftRightButton = this.Factory.CreateRibbonButton();
+            leftRightButton.Name = "autoArrangeLeftRightButton";
+            leftRightButton.Label = "Left-right";
+            leftRightButton.ScreenTip = "Von links nach rechts anordnen";
+            leftRightButton.Click += new RibbonControlEventHandler(this.AutoArrangeLeftRight);
+            autoArrangeButton.Items.Add(leftRightButton);
+
+            owlGroup.Items.Add(autoArrangeButton);
 
             RibbonButton openStencilsButton = this.Factory.CreateRibbonButton();
             openStencilsButton.Name = "openStencilsButton";
@@ -67,6 +95,37 @@ namespace ALPS_Visio_AddIn_rewrite
             };
 
             if (dialog.ShowDialog() == DialogResult.OK) OWLImporter.Instance.Parse(dialog.FileName);
+        }
+
+        private void AutoArrangeTopDown(object sender, RibbonControlEventArgs e)
+        {
+            AutoArrange(VisioHelper.GraphLayoutDirection.TopDown);
+        }
+
+        private void AutoArrangeLeftRight(object sender, RibbonControlEventArgs e)
+        {
+            AutoArrange(VisioHelper.GraphLayoutDirection.LeftRight);
+        }
+
+        private static void AutoArrange(VisioHelper.GraphLayoutDirection direction)
+        {
+            Visio.IVPage activePage = Globals.ThisAddIn.Application.ActivePage;
+            if (activePage == null)
+            {
+                MessageBox.Show("Es ist keine Zeichnungsseite aktiv.", "ALPS/PASS Auto-Arrange",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            try
+            {
+                VisioHelper.AutoArrangePage(activePage, direction);
+            }
+            catch (System.Runtime.InteropServices.COMException exception)
+            {
+                MessageBox.Show("Der Graph konnte nicht automatisch angeordnet werden.\n\n" + exception.Message,
+                    "ALPS/PASS Auto-Arrange", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         /// <summary>
