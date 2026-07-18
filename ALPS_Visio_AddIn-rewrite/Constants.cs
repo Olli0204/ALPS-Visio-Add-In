@@ -11,6 +11,7 @@ namespace ALPS_Visio_AddIn_rewrite
             public const string InterfaceActor = "InterfaceActor";
             public const string CommunicationRestriction = "CommunicationRestriction";
             public const string StandardMessageConnector = "StandardMessageConnector";
+            public const string MessageBox = "MessageBox";
             public const string Message = "Message";
             public const string StandAloneMacro = "StandAloneMakro";
             public const string ActorExtension = "ActorExtension";

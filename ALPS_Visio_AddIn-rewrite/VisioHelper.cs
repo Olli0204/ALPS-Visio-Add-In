@@ -41,15 +41,13 @@ namespace ALPS_Visio_AddIn_rewrite
         }
 
         /// <summary>
-        /// Opens both master sources once for an OWL import. The SID stencil must
-        /// keep VBA enabled because its message connector creates the associated
-        /// message container from its drop event. The SBD masters used by the C#
-        /// exporter do not require VBA and can therefore be opened without a
-        /// second macro security prompt.
+        /// Opens both master sources once for an OWL import. Import-specific drop
+        /// behavior is implemented by the C# exporter, so neither stencil needs
+        /// to execute VBA or display a macro security prompt.
         /// </summary>
         public static void OpenImportStencils()
         {
-            OpenStencil(VisioStencils.SID_STENCIL, false);
+            OpenStencil(VisioStencils.SID_STENCIL, true);
             OpenStencil(VisioStencils.SBD_STENCIL, true);
         }
 
@@ -164,6 +162,7 @@ namespace ALPS_Visio_AddIn_rewrite
             Constants.SIDMasters.InterfaceActor,
             Constants.SIDMasters.CommunicationRestriction,
             Constants.SIDMasters.StandardMessageConnector,
+            Constants.SIDMasters.MessageBox,
             Constants.SIDMasters.Message,
             Constants.SIDMasters.StandAloneMacro,
             Constants.SIDMasters.ActorExtension,

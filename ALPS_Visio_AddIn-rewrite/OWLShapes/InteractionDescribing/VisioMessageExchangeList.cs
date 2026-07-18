@@ -2,6 +2,7 @@ using alps.net.api.ALPS;
 using alps.net.api.parsing;
 using alps.net.api.StandardPASS;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using VH = ALPS_Visio_AddIn_rewrite.VisioHelper;
 using Visio = Microsoft.Office.Interop.Visio;
@@ -36,7 +37,7 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
                     }
 
                 if (messageBox == null)
-                    throw new System.InvalidOperationException("The message connector did not create its message container.");
+                    messageBox = CreateMessageContainer(page, messageExchangeWithConnector.GetShape());
 
                 // delete wrong shapes
                 // alternative idea: delete messages with default label (or label == id)
@@ -64,6 +65,19 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
                     }
                 }
             }
+        }
+
+        private static Visio.Shape CreateMessageContainer(Visio.Page page, Visio.Shape connector)
+        {
+            Visio.Shape messageBox = VH.Place(Constants.SIDMasters.MessageBox, page);
+
+            string connectorId = connector.ID.ToString(CultureInfo.InvariantCulture);
+            string messageBoxId = messageBox.ID.ToString(CultureInfo.InvariantCulture);
+
+            connector.CellsU["User.idOfCorrespondingShape"].FormulaU = messageBoxId;
+            messageBox.CellsU["User.idOfCorrespondingShape"].FormulaU = connectorId;
+
+            return messageBox;
         }
 
         public override IParseablePASSProcessModelElement getParsedInstance()
