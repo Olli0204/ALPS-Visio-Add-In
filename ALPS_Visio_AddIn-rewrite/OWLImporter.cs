@@ -4,6 +4,7 @@ using alps.net.api.StandardPASS;
 using ALPS_Visio_AddIn_rewrite.OWLShapes;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Windows.Forms;
@@ -82,6 +83,8 @@ namespace ALPS_Visio_AddIn_rewrite
             }
             catch (System.Exception exception)
             {
+                Debug.WriteLine("OWL import failed:");
+                Debug.WriteLine(exception.ToString());
                 MessageBox.Show("The OWL model could not be imported.\n\n" + exception.Message,
                     "ALPS/PASS Import", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }

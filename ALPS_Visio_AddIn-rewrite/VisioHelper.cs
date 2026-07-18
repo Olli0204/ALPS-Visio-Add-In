@@ -41,13 +41,15 @@ namespace ALPS_Visio_AddIn_rewrite
         }
 
         /// <summary>
-        /// Opens both master sources once for an OWL import. Their VBA projects
-        /// are not used by the C# exporter and stay disabled, avoiding duplicate
-        /// macro security prompts from the two .vssm files.
+        /// Opens both master sources once for an OWL import. The SID stencil must
+        /// keep VBA enabled because its message connector creates the associated
+        /// message container from its drop event. The SBD masters used by the C#
+        /// exporter do not require VBA and can therefore be opened without a
+        /// second macro security prompt.
         /// </summary>
         public static void OpenImportStencils()
         {
-            OpenStencil(VisioStencils.SID_STENCIL, true);
+            OpenStencil(VisioStencils.SID_STENCIL, false);
             OpenStencil(VisioStencils.SBD_STENCIL, true);
         }
 
