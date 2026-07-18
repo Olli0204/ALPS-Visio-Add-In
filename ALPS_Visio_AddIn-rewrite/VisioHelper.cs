@@ -152,6 +152,7 @@ namespace ALPS_Visio_AddIn_rewrite
 
             page.PageSheet.CellsU["PlaceStyle"].FormulaU =
                 ((int)direction).ToString(CultureInfo.InvariantCulture);
+            ConfigureAutoArrangeSpacing(page.PageSheet, direction);
             TrySetRoutingCell(page.PageSheet, "RouteStyle", 1, false);
 
             foreach (Visio.Shape shape in page.Shapes)
@@ -161,6 +162,36 @@ namespace ALPS_Visio_AddIn_rewrite
             }
 
             page.Layout();
+        }
+
+        private static void ConfigureAutoArrangeSpacing(Visio.Shape pageSheet,
+            GraphLayoutDirection direction)
+        {
+            // The ALPS state masters are considerably larger than Visio's
+            // default flowchart shapes. A larger internal grid prevents state
+            // labels, transition labels and parallel branches from competing
+            // for the same narrow routing lanes.
+            TrySetRoutingCell(pageSheet, "EnableGrid", 1, false);
+            TrySetRoutingCell(pageSheet, "ResizePage", 1, false);
+            TrySetRoutingCell(pageSheet, "PlaceDepth", 2, false);
+            TrySetRoutingCell(pageSheet, "BlockSizeX", 90, true);
+            TrySetRoutingCell(pageSheet, "BlockSizeY", 30, true);
+
+            if (direction == GraphLayoutDirection.TopDown)
+            {
+                TrySetRoutingCell(pageSheet, "AvenueSizeX", 45, true);
+                TrySetRoutingCell(pageSheet, "AvenueSizeY", 35, true);
+            }
+            else
+            {
+                TrySetRoutingCell(pageSheet, "AvenueSizeX", 45, true);
+                TrySetRoutingCell(pageSheet, "AvenueSizeY", 30, true);
+            }
+
+            TrySetRoutingCell(pageSheet, "LineToNodeX", 12, true);
+            TrySetRoutingCell(pageSheet, "LineToNodeY", 12, true);
+            TrySetRoutingCell(pageSheet, "LineToLineX", 8, true);
+            TrySetRoutingCell(pageSheet, "LineToLineY", 8, true);
         }
 
         public static Visio.Shape Place(string shapeType, Visio.Page page)
