@@ -49,9 +49,6 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
                 foreach (Visio.Shape shape in shapesToDelete)
                     shape.Delete();
 
-                // center message box
-                messageBox.CellsU["Actions.Center.Action"].Trigger();
-
                 // aggregate list
                 foreach (IMessageExchange messageExchange in this.getMessageExchanges().Values)
                 {
@@ -64,6 +61,8 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
                         exportable.GetShape().BringToFront();
                     }
                 }
+
+                CenterMessageContainer(messageBox, messageExchangeWithConnector.GetShape());
             }
         }
 
@@ -73,11 +72,28 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
 
             string connectorId = connector.ID.ToString(CultureInfo.InvariantCulture);
             string messageBoxId = messageBox.ID.ToString(CultureInfo.InvariantCulture);
+            string connectorReference = "Sheet." + connectorId;
+            string messageBoxReference = "Sheet." + messageBoxId;
 
-            connector.CellsU["User.idOfCorrespondingShape"].FormulaU = messageBoxId;
-            messageBox.CellsU["User.idOfCorrespondingShape"].FormulaU = connectorId;
+            connector.CellsU["User.idOfCorrespondingShape"].FormulaU =
+                "=" + messageBoxReference + "!User.idOnPage";
+            connector.CellsU["User.globalX"].FormulaU =
+                "=SETATREF(" + messageBoxReference + "!User.connectorControlsPositionX)";
+            connector.CellsU["User.globalY"].FormulaU =
+                "=SETATREF(" + messageBoxReference + "!User.connectorControlsPositionY)";
+            messageBox.CellsU["User.idOfCorrespondingShape"].FormulaU =
+                "=" + connectorReference + "!User.idOnPage";
 
             return messageBox;
+        }
+
+        private static void CenterMessageContainer(Visio.Shape messageBox, Visio.Shape connector)
+        {
+            double centerX = (VH.GetSize(connector, "BeginX") + VH.GetSize(connector, "EndX")) / 2d;
+            double centerY = (VH.GetSize(connector, "BeginY") + VH.GetSize(connector, "EndY")) / 2d;
+
+            VH.SetSize(messageBox, "PinX", centerX);
+            VH.SetSize(messageBox, "PinY", centerY);
         }
 
         public override IParseablePASSProcessModelElement getParsedInstance()
