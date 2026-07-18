@@ -192,16 +192,27 @@ namespace ALPS_Visio_AddIn_rewrite
         }
 
         /// <summary>
-        /// Keeps forward transitions in their assigned horizontal lanes while
-        /// allowing feedback transitions to route around the state graph.
+        /// Draws regular transitions directly between their ordered ports.
+        /// Only feedback transitions use obstacle-avoiding right-angle routing.
+        /// A diamond-shaped branch/join therefore has no shared line segments
+        /// and no avoidable crossings.
         /// </summary>
         public static void ConfigureFallbackTransitionRouting(Visio.Shape connector, bool isFeedback)
         {
             if (connector == null) throw new ArgumentNullException(nameof(connector));
 
-            TrySetRoutingCell(connector, "ShapeRouteStyle", isFeedback ? 1 : 21, false);
-            TrySetRoutingCell(connector, "ConFixedCode", 1, false); // reroute as needed
+            TrySetRoutingCell(connector, "ShapeRouteStyle", isFeedback ? 1 : 2, false);
+            TrySetRoutingCell(connector, "ConFixedCode", 0, false);
             TrySetRoutingCell(connector, "ConLineJumpCode", 0, false);
+        }
+
+        public static void FinalizeFallbackTransitionRouting(Visio.Shape connector, bool isFeedback)
+        {
+            if (connector == null) throw new ArgumentNullException(nameof(connector));
+
+            // Freeze the calculated direct route. Feedback connectors remain
+            // reroutable so Visio can keep them outside moved state shapes.
+            TrySetRoutingCell(connector, "ConFixedCode", isFeedback ? 1 : 2, false);
         }
 
         /// <summary>

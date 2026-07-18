@@ -17,11 +17,11 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
         private const double StateHorizontalMargin = 0.12;
         private const double SubjectWidth = 0.22;
         private const double SubjectHeight = 0.16;
-        private const double StateWidth = 0.18;
-        private const double StateHeight = 0.14;
-        private const double StateConnectionPitch = 0.055;
-        private const double StateRowGap = 0.16;
-        private const double RegularPortMargin = 0.22;
+        private const double StateWidth = 0.14;
+        private const double StateHeight = 0.06;
+        private const double StateConnectionPitch = 0.015;
+        private const double StateRowGap = 0.10;
+        private const double RegularPortMargin = 0.25;
         private const double FeedbackPortPosition = 0.10;
         private static readonly IDictionary<IPASSProcessModelElement, LayoutBounds> GeneratedBounds =
             new Dictionary<IPASSProcessModelElement, LayoutBounds>();
@@ -424,7 +424,7 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             int outgoingCount = outgoingRegularCount + (hasOutgoingFeedback ? 1 : 0);
             int incomingCount = incomingRegularCount + (hasIncomingFeedback ? 1 : 0);
             int regularPortCount = Math.Max(outgoingCount, incomingCount);
-            return Math.Min(0.25, StateHeight + Math.Max(0, regularPortCount - 1) * StateConnectionPitch);
+            return Math.Min(0.11, StateHeight + Math.Max(0, regularPortCount - 1) * StateConnectionPitch);
         }
 
         private static void ScaleRowsToAvailableHeight(IList<double> heights, ref double rowGap)
