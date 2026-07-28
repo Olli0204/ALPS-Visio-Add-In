@@ -11,7 +11,7 @@ and separating VSTO, ontology, export, and COM concerns:
 - **Visio infrastructure:** ShapeSheet access, stencils, page creation, shape
   positioning, routing, and Auto-Arrange have focused implementations.
 - **Model adapters:** `OWLShapes` maps PASS/ALPS elements to shared exporters.
-- **Interactive editing:** `Snapping` and `ModelExplorer` remain directly
+- **Interactive editing:** `Snapping` and the Model Explorer in `_old/UI` remain directly
   connected to `ThisAddIn` until characterization tests allow behavioral
   decomposition.
 
@@ -29,15 +29,17 @@ and legacy callers do not need a risky all-at-once migration.
 - [x] Consolidate shared behavior export and SID page sizing.
 - [x] Replace ID-keyed/static layout dictionaries with weak, object-keyed state.
 
-- [x] Promote active snapping, explorer, and compatibility code out of `_old`.
+- [x] Promote active snapping and compatibility code out of `_old`.
+
 ## Deliberately Deferred
 
 Automated unit tests, Windows CI, and reproducible VSTO packaging require a
 Windows runner with Microsoft Visio/VSTO and are not added in this source-only
-pass. Snapping and the layer explorer now have first-class module directories,
-but retain their established namespaces and behavior. Internal decomposition is
-deferred until characterization tests exist. A lifecycle-adapter extraction was
-rolled back after the Model Explorer stopped responding in Visio.
+pass. Snapping now has a first-class module directory. The Model Explorer remains
+under `_old/UI` because moving its WPF sources triggers MC1000 in the legacy WinFX
+markup compiler. Both retain their established namespaces and behavior. Internal
+decomposition is deferred until characterization tests exist. A lifecycle-adapter
+extraction was rolled back after the Model Explorer stopped responding in Visio.
 
 ## Quality Gates
 

@@ -8,8 +8,9 @@ wie das AddIn aufgebaut ist und funktioniert.
 ### Entrypoint
 ![ThisAddIn.svg](../docs/ThisAddIn.svg)
 Beim Start wird `ThisAddIn#ThisAddIn_Startup` ausgeführt. Das initialisiert vor allem den Model Explorer und die Snap Handler.
-Die produktiven Komponenten liegen in `ModelExplorer/` und `Snapping/`; ihr Verhalten ist kompatibilitätssensitiv und soll
-erst mit Windows-/Visio-Charakterisierungstests weiter zerlegt werden.
+Die produktiven Komponenten liegen in `_old/UI/` und `Snapping/`; ihr Verhalten ist kompatibilitätssensitiv und soll
+erst mit Windows-/Visio-Charakterisierungstests weiter zerlegt werden. Der WPF-Pfad `_old/UI/` bleibt wegen der
+Pfadabhängigkeit des alten WinFX-Markup-Compilers vorerst bestehen.
 
 Außerdem werden die Buttons erzeugt, siehe dazu `ALPSRibbon`.
 
@@ -66,8 +67,8 @@ Eine Dokumentation der API wäre sehr von Vorteil.
 	- Bei manchen Eigenschaften habe ich einen Kommentar `// alps.net.api` dazugeschrieben, diese habe ich zwar nicht
 gefunden, konnte aber auch nicht verifizieren, dass sie nicht in der API existieren.
 - Alle Eigenschaften aus der Ontologie sollten implementiert werden.
-- `Snapping/` und `ModelExplorer/` funktionieren produktiv, benötigen aber Charakterisierungstests und eine schrittweise
-  interne Zerlegung.
+- `Snapping/` und der Model Explorer in `_old/UI/` funktionieren produktiv, benötigen aber Charakterisierungstests und
+  eine schrittweise interne Zerlegung.
 
 ## Empfehlungen und persönliche Hinweise
 Ich habe im Laufe meiner Entwicklung mehrere *Mini-Dokumentationen* geschrieben, diese habe ich alle mit in den `docs`

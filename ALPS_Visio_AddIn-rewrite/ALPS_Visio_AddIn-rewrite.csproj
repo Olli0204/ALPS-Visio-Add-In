@@ -323,31 +323,31 @@
     <Compile Include="Snapping\Core\SIDSnapHandler.cs" />
     <Compile Include="Snapping\Core\SnapHandler.cs" />
     <Compile Include="Snapping\Core\VisioProcessModel.cs" />
-    <Compile Include="ModelExplorer\AnchorBarsUsage.cs" />
-    <Compile Include="ModelExplorer\DirectoryTreeViewItem.cs" />
-    <Compile Include="ModelExplorer\IDialogCallback.cs" />
-    <Compile Include="ModelExplorer\TemporaryModelExplorer.cs">
+    <Compile Include="_old\UI\AnchorBarsUsage.cs" />
+    <Compile Include="_old\UI\DirectoryTreeViewItem.cs" />
+    <Compile Include="_old\UI\IDialogCallback.cs" />
+    <Compile Include="_old\UI\TemporaryModelExplorer.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="ModelExplorer\TemporaryModelExplorer.Designer.cs">
+    <Compile Include="_old\UI\TemporaryModelExplorer.Designer.cs">
       <DependentUpon>TemporaryModelExplorer.cs</DependentUpon>
     </Compile>
-    <Compile Include="ModelExplorer\WindowChangeLayerName.xaml.cs">
+    <Compile Include="_old\UI\WindowChangeLayerName.xaml.cs">
       <DependentUpon>WindowChangeLayerName.xaml</DependentUpon>
     </Compile>
-    <Compile Include="ModelExplorer\WindowChangeProperties.xaml.cs">
+    <Compile Include="_old\UI\WindowChangeProperties.xaml.cs">
       <DependentUpon>WindowChangeProperties.xaml</DependentUpon>
     </Compile>
-    <Compile Include="ModelExplorer\WindowChangePropertiesSBD.xaml.cs">
+    <Compile Include="_old\UI\WindowChangePropertiesSBD.xaml.cs">
       <DependentUpon>WindowChangePropertiesSBD.xaml</DependentUpon>
     </Compile>
-    <Compile Include="ModelExplorer\WindowDirectory.xaml.cs">
+    <Compile Include="_old\UI\WindowDirectory.xaml.cs">
       <DependentUpon>WindowDirectory.xaml</DependentUpon>
     </Compile>
-    <Compile Include="ModelExplorer\WindowSnapConfirmation.xaml.cs">
+    <Compile Include="_old\UI\WindowSnapConfirmation.xaml.cs">
       <DependentUpon>WindowSnapConfirmation.xaml</DependentUpon>
     </Compile>
-    <Compile Include="ModelExplorer\WindowSnapMaintenance.xaml.cs">
+    <Compile Include="_old\UI\WindowSnapMaintenance.xaml.cs">
       <DependentUpon>WindowSnapMaintenance.xaml</DependentUpon>
     </Compile>
     <Compile Include="Snapping\Geometry\ShapeCorners.cs" />
@@ -374,7 +374,7 @@
       <LastGenOutput>strings.Designer.cs</LastGenOutput>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="ModelExplorer\TemporaryModelExplorer.resx">
+    <EmbeddedResource Include="_old\UI\TemporaryModelExplorer.resx">
       <DependentUpon>TemporaryModelExplorer.cs</DependentUpon>
     </EmbeddedResource>
     <None Include="packages.config" />
@@ -432,27 +432,27 @@
     <None Include="Resources\owlIcon2.bmp" />
   </ItemGroup>
   <ItemGroup>
-    <Page Include="ModelExplorer\WindowChangeLayerName.xaml">
+    <Page Include="_old\UI\WindowChangeLayerName.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="ModelExplorer\WindowChangeProperties.xaml">
+    <Page Include="_old\UI\WindowChangeProperties.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="ModelExplorer\WindowChangePropertiesSBD.xaml">
+    <Page Include="_old\UI\WindowChangePropertiesSBD.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="ModelExplorer\WindowDirectory.xaml">
+    <Page Include="_old\UI\WindowDirectory.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="ModelExplorer\WindowSnapConfirmation.xaml">
+    <Page Include="_old\UI\WindowSnapConfirmation.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="ModelExplorer\WindowSnapMaintenance.xaml">
+    <Page Include="_old\UI\WindowSnapMaintenance.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
