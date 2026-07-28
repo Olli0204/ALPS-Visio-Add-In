@@ -1,4 +1,5 @@
 using alps.net.api;
+using alps.net.api.parsing;
 using alps.net.api.StandardPASS;
 using ALPS_Visio_AddIn_rewrite.OWLShapes;
 using System;
@@ -12,11 +13,11 @@ namespace ALPS_Visio_AddIn_rewrite.Importing
     internal sealed class OwlImportService
     {
         private readonly IPASSReaderWriter parser;
-        private readonly Action openStencils;
-        private readonly Action<bool> setVbaListenersRunning;
+        private readonly System.Action openStencils;
+        private readonly System.Action<bool> setVbaListenersRunning;
 
-        public OwlImportService(IPASSReaderWriter parser, Action openStencils,
-            Action<bool> setVbaListenersRunning)
+        public OwlImportService(IPASSReaderWriter parser, System.Action openStencils,
+            System.Action<bool> setVbaListenersRunning)
         {
             this.parser = parser ?? throw new ArgumentNullException(nameof(parser));
             this.openStencils = openStencils
