@@ -20,7 +20,8 @@ namespace ALPS_Visio_AddIn_rewrite
 
         public static void setVBAListenersRunning(Boolean newStatus)
         {
-            Visio.IVDocument myActiveDocument = Globals.ThisAddIn.Application.ActiveDocument;
+            Visio.IVDocument myActiveDocument =
+                Globals.ThisAddIn.GetDrawingDocument();
 
             if (myActiveDocument == null) return;
 
@@ -43,12 +44,53 @@ namespace ALPS_Visio_AddIn_rewrite
         }
 
         /// <summary>
-        /// Opens both master sources with VBA macros enabled so imported
-        /// documents remain fully interactive.
+        /// Opens both master sources for automated import without executing VBA.
         /// </summary>
         public static void OpenImportStencils()
         {
-            StencilRepository.OpenImportStencils();
+            RestoreDrawingWindow(StencilRepository.OpenImportStencils, true);
+        }
+
+        /// <summary>
+        /// Opens both stencils for interactive use, allowing their VBA macros.
+        /// </summary>
+        public static void OpenInteractiveStencils()
+        {
+            RestoreDrawingWindow(StencilRepository.OpenInteractiveStencils, false);
+        }
+
+        private static void RestoreDrawingWindow(System.Action openStencils,
+            bool createDrawingIfMissing)
+        {
+            Visio.Window drawingWindow = null;
+            try
+            {
+                Visio.Document drawing = Globals.ThisAddIn.GetDrawingDocument();
+                if (drawing == null && createDrawingIfMissing)
+                {
+                    drawing = Globals.ThisAddIn.Application.Documents.Add("");
+                }
+
+                Visio.Document activeDocument =
+                    Globals.ThisAddIn.Application.ActiveDocument;
+                if (drawing != null
+                    && activeDocument != null
+                    && activeDocument.Type == Visio.VisDocumentTypes.visTypeDrawing)
+                    drawingWindow = Globals.ThisAddIn.Application.ActiveWindow;
+
+                openStencils();
+            }
+            finally
+            {
+                try
+                {
+                    drawingWindow?.Activate();
+                }
+                catch (System.Runtime.InteropServices.COMException)
+                {
+                    // The drawing may have been closed while a stencil opened.
+                }
+            }
         }
 
         public enum ShapeType

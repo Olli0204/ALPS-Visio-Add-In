@@ -14,6 +14,8 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
         private readonly Action<string> errorPresenter;
         private readonly IDictionary<StencilKind, Visio.Document> openStencils =
             new Dictionary<StencilKind, Visio.Document>();
+        private readonly ISet<StencilKind> macroDisabledStencils =
+            new HashSet<StencilKind>();
 
         private static readonly ISet<string> SidMasterNames = new HashSet<string>
         {
@@ -54,7 +56,7 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
                 ?? throw new ArgumentNullException(nameof(errorPresenter));
         }
 
-        public Visio.Document Open(StencilKind stencil)
+        public Visio.Document Open(StencilKind stencil, bool disableMacros = false)
         {
             Visio.Documents documents = documentsProvider();
             if (documents == null)
@@ -62,27 +64,25 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
 
             string stencilName = GetStencilName(stencil);
             Visio.Document openDocument = FindOpen(documents, stencil, stencilName);
-            if (openDocument != null) return openDocument;
+            if (openDocument != null)
+            {
+                return !disableMacros && macroDisabledStencils.Contains(stencil)
+                    ? ReopenWithMacros(documents, stencil, stencilName, openDocument)
+                    : openDocument;
+            }
 
-            try
-            {
-                short flags =
-                    (short)Visio.VisOpenSaveArgs.visOpenDocked;
-                Visio.Document document = documents.OpenEx(stencilName, (short)flags);
-                openStencils[stencil] = document;
-                return document;
-            }
-            catch (System.Runtime.InteropServices.COMException exception)
-            {
-                errorPresenter(
-                    "Failed to load ALPS/PASS shapes. Expecting file \""
-                    + stencilName + "\" to exist in \"My Shapes\".\n"
-                    + "Error: " + exception.Message);
-                return null;
-            }
+            return OpenNew(documents, stencil, stencilName, disableMacros);
         }
 
         public void OpenImportStencils()
+        {
+            // Import uses the masters only. Disabling their VBA here avoids one
+            // Trust Center prompt per .vssm while C# builds the model.
+            Open(StencilKind.SID_STENCIL, true);
+            Open(StencilKind.SBD_STENCIL, true);
+        }
+
+        public void OpenInteractiveStencils()
         {
             Open(StencilKind.SID_STENCIL);
             Open(StencilKind.SBD_STENCIL);
@@ -94,7 +94,15 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
             if (string.IsNullOrWhiteSpace(masterName))
                 throw new ArgumentException("A Visio master name is required.", nameof(masterName));
 
-            Visio.Document stencil = Open(GetStencil(masterName));
+            StencilKind stencilKind = GetStencil(masterName);
+            Visio.Documents documents = documentsProvider();
+            if (documents == null)
+                throw new InvalidOperationException("The Visio document collection is unavailable.");
+
+            string stencilName = GetStencilName(stencilKind);
+            Visio.Document stencil =
+                FindOpen(documents, stencilKind, stencilName)
+                ?? Open(stencilKind);
             if (stencil == null)
                 throw new InvalidOperationException("The required Visio stencil could not be opened.");
 
@@ -124,6 +132,55 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
             }
         }
 
+        private Visio.Document OpenNew(Visio.Documents documents, StencilKind stencil,
+            string stencilName, bool disableMacros)
+        {
+            try
+            {
+                short flags = (short)Visio.VisOpenSaveArgs.visOpenDocked;
+                if (disableMacros)
+                    flags |= (short)Visio.VisOpenSaveArgs.visOpenMacrosDisabled;
+
+                Visio.Document document = documents.OpenEx(stencilName, flags);
+                openStencils[stencil] = document;
+
+                if (disableMacros)
+                    macroDisabledStencils.Add(stencil);
+                else
+                    macroDisabledStencils.Remove(stencil);
+
+                return document;
+            }
+            catch (System.Runtime.InteropServices.COMException exception)
+            {
+                errorPresenter(
+                    "Failed to load ALPS/PASS shapes. Expecting file \""
+                    + stencilName + "\" to exist in \"My Shapes\".\n"
+                    + "Error: " + exception.Message);
+                return null;
+            }
+        }
+
+        private Visio.Document ReopenWithMacros(Visio.Documents documents,
+            StencilKind stencil, string stencilName, Visio.Document document)
+        {
+            try
+            {
+                document.Close();
+                openStencils.Remove(stencil);
+                macroDisabledStencils.Remove(stencil);
+            }
+            catch (System.Runtime.InteropServices.COMException exception)
+            {
+                errorPresenter(
+                    "The macro-disabled stencil \"" + stencilName
+                    + "\" could not be reopened.\nError: " + exception.Message);
+                return document;
+            }
+
+            return OpenNew(documents, stencil, stencilName, false);
+        }
+
         private Visio.Document FindOpen(Visio.Documents documents, StencilKind stencil,
             string stencilName)
         {
@@ -143,6 +200,7 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
                 }
 
                 openStencils.Remove(stencil);
+                macroDisabledStencils.Remove(stencil);
             }
 
             foreach (Visio.Document document in documents)

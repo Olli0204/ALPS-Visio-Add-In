@@ -42,7 +42,9 @@ namespace ALPS_Visio_AddIn_rewrite
             Application.DocumentOpened += Application_DocumentOpened;
 
             // Set the current active document
-            activeDoc = Application.ActiveDocument;
+            Visio.Document document = Application.ActiveDocument;
+            if (IsDrawingDocument(document))
+                activeDoc = document;
         }
 
         /// <summary>
@@ -69,10 +71,11 @@ namespace ALPS_Visio_AddIn_rewrite
         /// <param name="window">The active window, not used by this function</param>
         private void Application_WindowActivated(Window window)
         {
-            if (Application.ActiveDocument == null) return;
-            if (activeDoc != null && string.Equals(activeDoc.FullName, Application.ActiveDocument.FullName,
-                System.StringComparison.OrdinalIgnoreCase)) return;
-            activeDoc = Application.ActiveDocument;
+            Visio.Document document = Application.ActiveDocument;
+            if (!IsDrawingDocument(document)) return;
+
+            if (IsSameDocument(activeDoc, document)) return;
+            activeDoc = document;
             reset();
         }
 
@@ -81,6 +84,9 @@ namespace ALPS_Visio_AddIn_rewrite
         /// </summary>
         private void Application_PageAdded(Page page)
         {
+            if (page == null || !IsDrawingDocument(page.Document))
+                return;
+
             //let the model manager determine to what model the new Page belongs to
             modelManager.pageAdded(page);
 
@@ -89,19 +95,28 @@ namespace ALPS_Visio_AddIn_rewrite
 
         private void Application_DocumentOpened(IVDocument doc)
         {
-            activeDoc = Application.ActiveDocument;
+            Visio.Document document = doc as Visio.Document;
+            if (!IsDrawingDocument(document)) return;
+
+            activeDoc = document;
             reset();
         }
 
         private void Application_DocumentCreated(IVDocument doc)
         {
-            activeDoc = Application.ActiveDocument;
+            Visio.Document document = doc as Visio.Document;
+            if (!IsDrawingDocument(document)) return;
+
+            activeDoc = document;
             reset();
         }
 
         internal void updateClicked()
         {
-            modelManager.updateWholeController(Application.ActiveDocument.Pages);
+            Visio.Document document = GetDrawingDocument();
+            if (document == null) return;
+
+            modelManager.updateWholeController(document.Pages);
             layerExplorer.displayTreeView(modelManager.getTreeView());
         }
 
@@ -110,9 +125,17 @@ namespace ALPS_Visio_AddIn_rewrite
             return modelManager;
         }
 
+        internal void RefreshModelFromDrawing()
+        {
+            reset();
+        }
+
         internal void extendsChanged(SIDPage extends, SIDPage changedPage)
         {
-            modelManager.updateWholeController(Application.ActiveDocument.Pages);
+            Visio.Document document = GetDrawingDocument();
+            if (document == null) return;
+
+            modelManager.updateWholeController(document.Pages);
             //if (changedPage.)
             modelManager.updateBackground(extends, changedPage);
             layerExplorer.displayTreeView(modelManager.getTreeView());
@@ -120,7 +143,10 @@ namespace ALPS_Visio_AddIn_rewrite
 
         internal void showDirectoryClicked()
         {
-            modelManager.updateWholeController(Application.ActiveDocument.Pages);
+            Visio.Document document = GetDrawingDocument();
+            if (document == null) return;
+
+            modelManager.updateWholeController(document.Pages);
 
             //Methods are not used due to a problem with the setParent-Method regarding the anchor-bar
             AnchorBarsUsage ancBar = new AnchorBarsUsage(this, modelManager);
@@ -132,9 +158,57 @@ namespace ALPS_Visio_AddIn_rewrite
         }
         private void reset()
         {
+            Visio.Document document = GetDrawingDocument();
+            if (document == null) return;
+
             this.modelManager = new ModelController(this);
-            modelManager.updateWholeController(Application.ActiveDocument.Pages);
+            modelManager.updateWholeController(document.Pages);
             layerExplorer?.displayTreeView(modelManager.getTreeView());
+        }
+
+        /// <summary>
+        /// Returns the most recently active drawing. Stencil windows can become
+        /// ActiveDocument while they are opened and must never replace the model.
+        /// </summary>
+        internal Visio.Document GetDrawingDocument()
+        {
+            Visio.Document document = Application.ActiveDocument;
+            if (IsDrawingDocument(document))
+                activeDoc = document;
+
+            return IsDrawingDocument(activeDoc) ? activeDoc : null;
+        }
+
+        private static bool IsDrawingDocument(IVDocument document)
+        {
+            if (document == null) return false;
+
+            try
+            {
+                return document.Type == Visio.VisDocumentTypes.visTypeDrawing;
+            }
+            catch (System.Runtime.InteropServices.COMException)
+            {
+                // A closing COM document is no longer a valid model source.
+                return false;
+            }
+        }
+
+        private static bool IsSameDocument(Visio.Document first,
+            Visio.Document second)
+        {
+            if (first == null || second == null) return false;
+
+            try
+            {
+                return string.Equals(first.FullName, second.FullName,
+                    System.StringComparison.OrdinalIgnoreCase);
+            }
+            catch (System.Runtime.InteropServices.COMException)
+            {
+                // A closing document cannot be the active model.
+                return false;
+            }
         }
 
         public void refreshLayerExplorerTreeView()

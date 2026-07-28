@@ -19,7 +19,8 @@ namespace ALPS_Visio_AddIn_rewrite.Importing
             return new OwlImportService(
                 parser,
                 VisioHelper.OpenImportStencils,
-                VisioHelper.setVBAListenersRunning);
+                VisioHelper.setVBAListenersRunning,
+                Globals.ThisAddIn.RefreshModelFromDrawing);
         }
 
         private static IPASSReaderWriter CreateConfiguredParser()

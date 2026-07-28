@@ -23,12 +23,7 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
             string extends, string implements, string priority)
         {
             Visio.Application application = GetApplication();
-            if (application.Documents.Count < 1)
-                application.Documents.Add("");
-
-            Visio.IVDocument document = application.ActiveDocument;
-            if (document == null)
-                throw new InvalidOperationException("An active Visio document is required.");
+            Visio.Document document = GetOrCreateDrawing(application);
 
             Visio.Page page = document.Pages.Add();
             string pageName = GetUniquePageName(document, name, "SID");
@@ -61,9 +56,13 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
             if (sidPage == null) throw new ArgumentNullException(nameof(sidPage));
             if (subjectShape == null) throw new ArgumentNullException(nameof(subjectShape));
 
-            Visio.IVDocument document = GetApplication().ActiveDocument;
-            if (document == null)
-                throw new InvalidOperationException("An active Visio document is required.");
+            // Keep behavior pages in the same drawing even if opening a
+            // stencil changed Visio's ActiveDocument in the meantime.
+            Visio.Document document = sidPage.Document;
+            if (document == null
+                || document.Type != Visio.VisDocumentTypes.visTypeDrawing)
+                throw new InvalidOperationException(
+                    "The SID page does not belong to a Visio drawing.");
 
             Visio.Page page = document.Pages.Add();
             string pageName = GetUniquePageName(document, name, "SBD");
@@ -93,6 +92,16 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
                 throw new InvalidOperationException("The Visio application is unavailable.");
 
             return application;
+        }
+
+        private static Visio.Document GetOrCreateDrawing(Visio.Application application)
+        {
+            Visio.Document document = application.ActiveDocument;
+            if (document != null
+                && document.Type == Visio.VisDocumentTypes.visTypeDrawing)
+                return document;
+
+            return application.Documents.Add("");
         }
 
         private static string GetUniquePageName(Visio.IVDocument document,

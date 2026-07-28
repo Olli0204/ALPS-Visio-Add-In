@@ -20,10 +20,15 @@ with the **ALPS/PASS ADDIN** Ribbon tab.
 
 - Create a blank document, open another document, switch between windows, and
   close one document. No exception dialog should appear.
-- Click **Open ALPS/PASS Stencils**. SID and SBD stencils should open with their
-  VBA macros enabled.
-- Import an OWL file and click the stencil button again. Both stencils must
-  remain interactive; their macro-driven actions must still respond.
+- Import an OWL file. SID and SBD stencils should open without macro security
+  dialogs; the import only reads their masters and deliberately disables VBA.
+- Click **Open ALPS/PASS Stencils** after the import. The disabled stencil
+  instances should be reopened for interactive use and their macro-driven
+  actions must respond.
+- When the stencil publisher or location is not trusted, Visio can show one
+  security prompt for each macro-enabled `.vssm`. Configure a trusted publisher
+  or trusted location on the test machine when prompt-free interactive use is
+  required.
 - Open **Show layer Explorer**. Switch pages/documents and confirm the tree
   refreshes, and verify that refresh, navigation, and editing remain responsive.
 
@@ -32,6 +37,8 @@ with the **ALPS/PASS ADDIN** Ribbon tab.
 Import `docs/[Test]_Vacation_Request_2D.owl`.
 
 - A SID and its linked SBD pages are created with unique names.
+- Open **Show layer Explorer** immediately after import. The imported model,
+  SID layers, and linked SBD pages must be present.
 - Shapes use the supplied coordinates and retain labels, IDs, comments, and
   hyperlinks.
 - Message exchanges and state transitions connect the correct endpoints.
