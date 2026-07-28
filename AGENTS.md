@@ -4,7 +4,11 @@
 
 `ALPS_Visio_Tools.sln` contains one .NET Framework 4.8 VSTO add-in under `ALPS_Visio_AddIn-rewrite/`. `ThisAddIn.cs` and `ALPSRibbon.cs` are UI/lifecycle entry points. OWL import orchestration lives in `Importing/`; ontology-to-Visio adapters and export logic live in `OWLShapes/`. Put reusable Visio COM concerns—ShapeSheet access, stencils, pages, routing, and layout application—in `VisioInfrastructure/`. `VisioHelper.cs` is a compatibility facade, not a home for new responsibilities.
 
-Treat `_old/` as supported legacy code: it still powers snapping and the layer explorer directly through `ThisAddIn`. Avoid extending or extracting it without Windows/Visio characterization tests. Ontologies and images are in `Resources/`; documentation and sample OWL files are in `docs/`. There is no active test project.
+`Snapping/` and `ModelExplorer/` contain active, compatibility-sensitive
+production code connected directly through `ThisAddIn`; preserve behavior unless
+Windows/Visio characterization tests cover the change. Transitional constants
+and helpers live in `Compatibility/`. Ontologies and images are in `Resources/`;
+documentation and sample OWL files are in `docs/`. There is no active test project.
 
 ## Build, Test, and Development Commands
 

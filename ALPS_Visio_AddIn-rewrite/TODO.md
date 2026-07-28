@@ -7,20 +7,16 @@ wie das AddIn aufgebaut ist und funktioniert.
 
 ### Entrypoint
 ![ThisAddIn.svg](../docs/ThisAddIn.svg)
-Beim Start wird `ThisAddIn#ThisAddIn_Startup` ausgeführt. Das startet vor allem den Layer Explorer und den Snap Handler -
-deren Code ist allerdings alt, nicht refactored und auch nicht so schön... daher im Ordner `_old`. Die Funktionen sind
-trotzdem wichtig und sollen auch noch ordentlich implementiert werden.
+Beim Start wird `ThisAddIn#ThisAddIn_Startup` ausgeführt. Das initialisiert vor allem den Model Explorer und die Snap Handler.
+Die produktiven Komponenten liegen in `ModelExplorer/` und `Snapping/`; ihr Verhalten ist kompatibilitätssensitiv und soll
+erst mit Windows-/Visio-Charakterisierungstests weiter zerlegt werden.
 
 Außerdem werden die Buttons erzeugt, siehe dazu `ALPSRibbon`.
 
 ### Importer
 ![OWLImporter.svg](../docs/OWLImporter.svg)
-Der Importer wird dann aufgerufen, wenn der `Import OWL`-Button gedrückt und eine Datei ausgewählt wurde. Der
-API-Parser liest die ganze Datei ein und lädt alle darin definierten Modelle; der Importer startet anschließend
-das Exportieren (ja die Bennung ist manchmal verwirrend) des ersten Modells nach Visio.
-
-(Randbemerkung: Der Importer beachtet nur das erste Modell, da sowieso so gut wie nie mehrere Modelle in einer Datei sind.
-Man könnte die weitere Funktionalität aber noch später hinzufügen.)
+Der Importer wird aufgerufen, wenn der `Import OWL`-Button gedrückt und eine Datei ausgewählt wurde. Der API-Parser lädt
+alle darin definierten Modelle; `OwlImportService` exportiert anschließend jedes unterstützte Modell nach Visio.
 
 ### Modell
 ![PASSProcessModel.svg](../docs/PASSProcessModel.svg)
@@ -40,13 +36,13 @@ Subjekte exportieren sich selber über eine Hilfsklasse, `SubjectExport`. Diese 
 welches Zustände und Transitionen enthält (welche wiederum ihre eigenen Hilfsklassen zum Export haben).
 
 ### Konstanten und Hilfsklassen
-`Constants` enthält (nicht) alle Konstanten, die für die Visio-Implementierung notwendig sind. Die alte (mehr, aber auch
-nicht ganz vollständige) Version ist `ALPSConstants` zusammen mit `ALPSGlobalFunctions`; eine offene Aufgabe ist noch,
-alle (auch nicht aktuell benötigten) Konstanten in die neue Struktur sinnvoll zu übertragen.
+`Constants` enthält die Konstanten der refaktorierten Visio-Implementierung. Die umfangreichere Übergangsversion
+`ALPSConstants` und `ALPSGlobalFunctions` liegt in `Compatibility/`; eine offene Aufgabe ist, noch benötigte Werte
+schrittweise in die neue Struktur zu übertragen.
 
-`VisioHelper` enthält viele Hilfsmethoden für die Visio-Implementierung. Der Code ist aber aktuell ein riesen Chaos und
-muss dringend überarbeitet werden! `ShapeFinder` ist für das Finden der Stencils zuständig, siehe auch
-`VisioHelper#openStencil`.
+`VisioHelper` ist eine schmale, quellkompatible Fassade. Die Implementierungen für ShapeSheet, Stencils, Seiten,
+Positionierung, Routing und Auto-Arrange liegen in `VisioInfrastructure/`. `ShapeFinder` ermittelt die installierten
+Stencil-Versionen.
 
 ## nächste Schritte
 Jetzt da du dich hoffentlich in angemessenerer Zeit einarbeiten konntest, kommen die nächsten Aufgaben auf dich zu.
@@ -55,14 +51,13 @@ Jetzt da du dich hoffentlich in angemessenerer Zeit einarbeiten konntest, kommen
 - Texte werden zentral als Visio-Formel-Literale geschrieben und Anführungszeichen korrekt escaped.
 - SID- und SBD-Seiten erhalten bei Namenskollisionen einen eindeutigen Suffix.
 - Modelle ohne 2D-Koordinaten erhalten ein deterministisches, einfaches Rasterlayout.
-- Die Ontologien werden aus dem mitgelieferten `Resources`-Ordner geladen; der Import reaktiviert VBA-Listener auch nach Fehlern.
+- Die Ontologien werden aus `Resources/` geladen; der Import öffnet SID makroaktiv und SBD ohne zweiten Sicherheitsdialog.
 - Dokumentation ist teilweise unvollständig oder fehlt komplett. Ein einheitliches Schema wäre von Vorteil - ich habe
 bisher die JavaDoc Konventionen übernommen. Inline-Kommentare sollten reduziert werden und nur für die aktive Entwicklung
 (z.B. Notiz von Aufgaben) benutzt werden. Nur in Ausnahmefällen dürfen einzelne Zeilen mit einem Kommentar erklärt werden;
 im Allgemeinen ist sprechender Code besser.
-- `Constants` sollte vervollständigt und aufgeräumt werden. Auch `VisioHelper` muss überarbeitet werden: Das Setzen von
-Eigenschaften u.ä. sollte einheitlich sein (d.h. alle Eigenschaften sollten auf dieselbe Art und Weise gesetzt werden)
-und bei der Erzeugung von neuen Seiten sollte kein Fehler aufgrund des Namens auftreten können.
+- `Constants` sollte weiter vervollständigt und mit `Compatibility/ALPSConstants.cs` konsolidiert werden.
+  ShapeSheet-Zugriffe und kollisionssichere Seitennamen sind bereits zentralisiert.
 
 ## offene Aufgaben
 - Die API stimmt nicht immer mit der Ontologie überein. Daher können manche Features aktuell nicht implementiert werden.
@@ -71,7 +66,8 @@ Eine Dokumentation der API wäre sehr von Vorteil.
 	- Bei manchen Eigenschaften habe ich einen Kommentar `// alps.net.api` dazugeschrieben, diese habe ich zwar nicht
 gefunden, konnte aber auch nicht verifizieren, dass sie nicht in der API existieren.
 - Alle Eigenschaften aus der Ontologie sollten implementiert werden.
-- Der Code in `_old` ist nur aus dem alten Projekt kopiert und umbenannt. Er funktioniert, aber ist kaum lesbar.
+- `Snapping/` und `ModelExplorer/` funktionieren produktiv, benötigen aber Charakterisierungstests und eine schrittweise
+  interne Zerlegung.
 
 ## Empfehlungen und persönliche Hinweise
 Ich habe im Laufe meiner Entwicklung mehrere *Mini-Dokumentationen* geschrieben, diese habe ich alle mit in den `docs`
@@ -82,13 +78,11 @@ Protégé ist manchmal etwas komisch, dennoch hilft der Reasoner sehr gut dabei,
 
 Dein Computer ist nicht langsam, das ist Visio.
 
-Die nächsten Dateien, an denen ich arbeiten wollte waren: `SubjectExport`, `StateExport`, `TransitionExport` und
-`SubjectBehavior`. Alle anderen sollten eigentlich soweit fertig implementiert sein (wobei ja wie oben erwähnt, neuerdings
-das Anordnen nicht mehr funktioniert).
+Die nächsten fachlichen Ausbaupunkte sind die noch markierten Ontologieeigenschaften in `SubjectExport`, `StateExport`
+und `TransitionExport`. Strukturell folgen Charakterisierungstests für `ModelController`, Model Explorer und Snapping.
 
-Ich habe mal noch die OWL-Datei in den `docs` Ordner hinzugefügt, die ich immer zum Testen benutzt habe:
-`[Test]_Vacation_Request_2D.owl`. Die Variante ohne Koordinaten (`[Test]_Vacation_Request.owl`) ist auch dabei, funktioniert
-aber wie oben gesagt aktuell nicht.
+Die Regressionseingaben `docs/[Test]_Vacation_Request_2D.owl` und `docs/[Test]_Vacation_Request.owl` decken Modelle mit
+und ohne Koordinaten ab. Beide gehören zum manuellen Abnahmelauf in `MANUAL_TESTING.md`.
 
 ---
 

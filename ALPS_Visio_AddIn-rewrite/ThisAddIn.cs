@@ -29,7 +29,7 @@ namespace ALPS_Visio_AddIn_rewrite
 
         #endregion
 
-        #region Code from old Project (i did not refactor this)
+        #region Model Explorer and snapping integration
 
         private void prepStuff()
         {
