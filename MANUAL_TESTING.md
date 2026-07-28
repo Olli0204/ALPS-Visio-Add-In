@@ -20,17 +20,18 @@ with the **ALPS/PASS ADDIN** Ribbon tab.
 
 - Create a blank document, open another document, switch between windows, and
   close one document. No exception dialog should appear.
-- Import an OWL file. SID and SBD stencils should open without macro security
-  dialogs; the import only reads their masters and deliberately disables VBA.
+- Import an OWL file. Exactly one macro security dialog should appear: accept it
+  to enable the SID drop macros. The SBD stencil opens with VBA disabled.
 - Click **Open ALPS/PASS Stencils** after the import. The disabled stencil
-  instances should be reopened for interactive use and their macro-driven
-  actions must respond.
+  instance should be reopened for interactive use and its macro-driven actions
+  must respond.
 - When the stencil publisher or location is not trusted, Visio can show one
-  security prompt for each macro-enabled `.vssm`. Configure a trusted publisher
-  or trusted location on the test machine when prompt-free interactive use is
-  required.
+  additional security prompt when the SBD stencil is reopened interactively.
 - Open **Show layer Explorer**. Switch pages/documents and confirm the tree
   refreshes, and verify that refresh, navigation, and editing remain responsive.
+
+- The Output window must not stop in `ThisDocument.restartMarkos`; OWL import no
+  longer stops and restarts the active VBA listener collection.
 
 ## 3. OWL Import
 

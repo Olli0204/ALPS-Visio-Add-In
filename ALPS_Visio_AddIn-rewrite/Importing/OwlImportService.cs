@@ -14,17 +14,14 @@ namespace ALPS_Visio_AddIn_rewrite.Importing
     {
         private readonly IPASSReaderWriter parser;
         private readonly System.Action openStencils;
-        private readonly System.Action<bool> setVbaListenersRunning;
         private readonly System.Action refreshModel;
 
         public OwlImportService(IPASSReaderWriter parser, System.Action openStencils,
-            System.Action<bool> setVbaListenersRunning, System.Action refreshModel)
+            System.Action refreshModel)
         {
             this.parser = parser ?? throw new ArgumentNullException(nameof(parser));
             this.openStencils = openStencils
                 ?? throw new ArgumentNullException(nameof(openStencils));
-            this.setVbaListenersRunning = setVbaListenersRunning
-                ?? throw new ArgumentNullException(nameof(setVbaListenersRunning));
             this.refreshModel = refreshModel
                 ?? throw new ArgumentNullException(nameof(refreshModel));
         }
@@ -36,26 +33,18 @@ namespace ALPS_Visio_AddIn_rewrite.Importing
                     nameof(fileName));
 
             int exportedModelCount = 0;
-            try
+            IList<IPASSProcessModel> processModels =
+                parser.loadModels(new List<string> { fileName });
+
+            openStencils();
+
+            foreach (IPASSProcessModel processModel in processModels)
             {
-                IList<IPASSProcessModel> processModels =
-                    parser.loadModels(new List<string> { fileName });
+                IVisioExportable exportable = processModel as IVisioExportable;
+                if (exportable == null) continue;
 
-                openStencils();
-                setVbaListenersRunning(false);
-
-                foreach (IPASSProcessModel processModel in processModels)
-                {
-                    IVisioExportable exportable = processModel as IVisioExportable;
-                    if (exportable == null) continue;
-
-                    exportable.ExportToVisio(null);
-                    exportedModelCount++;
-                }
-            }
-            finally
-            {
-                setVbaListenersRunning(true);
+                exportable.ExportToVisio(null);
+                exportedModelCount++;
             }
 
             refreshModel();

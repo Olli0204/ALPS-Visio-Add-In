@@ -76,9 +76,11 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
 
         public void OpenImportStencils()
         {
-            // Import uses the masters only. Disabling their VBA here avoids one
-            // Trust Center prompt per .vssm while C# builds the model.
-            Open(StencilKind.SID_STENCIL, true);
+            // SID drop events are required during export, so this stencil keeps
+            // VBA enabled and produces the single intended Trust Center prompt.
+            // SBD masters do not need VBA during import and remain disabled to
+            // avoid a second prompt.
+            Open(StencilKind.SID_STENCIL, false);
             Open(StencilKind.SBD_STENCIL, true);
         }
 

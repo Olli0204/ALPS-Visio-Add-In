@@ -35,6 +35,8 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
                 Constants.Properties.SIDPage);
             VisioShapeSheet.SetProperty(page.PageSheet, Constants.Properties.PageModelURI,
                 modelUri);
+            VisioShapeSheet.SetProperty(page.PageSheet, Constants.Properties.PageModelVersion,
+                string.Empty);
             VisioShapeSheet.SetProperty(page.PageSheet, Constants.Properties.PageLayer,
                 universalName);
             VisioShapeSheet.SetProperty(page.PageSheet,
