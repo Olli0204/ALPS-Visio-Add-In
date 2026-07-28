@@ -32,4 +32,9 @@ No automated suite or coverage threshold exists. Manually verify both `docs/[Tes
 
 Use focused Conventional Commit-style messages (`fix:`, `feat:`, `refactor:`, `chore:`), for example `refactor: isolate Visio stencil access`. Pull requests should describe affected model elements, manual test steps, known limitations, and linked issues. Include before/after screenshots for visual changes.
 
+Push through the configured SSH remote
+`git@github.com:Olli0204/ALPS-Visio-Add-In.git`. The available SSH key
+authenticates as `Olli0204`; do not replace it with the failing HTTPS/`gh`
+credential flow. Confirm the local branch and its upstream are synchronized.
+
 Do not commit `bin/`, `obj/`, `packages/`, certificates, generated publish output, or machine-specific Visio paths.
