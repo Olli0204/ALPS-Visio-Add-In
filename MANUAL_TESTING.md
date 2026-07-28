@@ -20,8 +20,10 @@ with the **ALPS/PASS ADDIN** Ribbon tab.
 
 - Create a blank document, open another document, switch between windows, and
   close one document. No exception dialog should appear.
-- Click **Open ALPS/PASS Stencils**. SID and SBD stencils should open once and
-  remain usable after closing and reopening a stencil.
+- Click **Open ALPS/PASS Stencils**. SID and SBD stencils should open with their
+  VBA macros enabled.
+- Import an OWL file and click the stencil button again. Both stencils must
+  remain interactive; their macro-driven actions must still respond.
 - Open **Show layer Explorer**. Switch pages/documents and confirm the tree
   refreshes, and verify that refresh, navigation, and editing remain responsive.
 

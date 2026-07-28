@@ -54,7 +54,7 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
                 ?? throw new ArgumentNullException(nameof(errorPresenter));
         }
 
-        public Visio.Document Open(StencilKind stencil, bool disableMacros)
+        public Visio.Document Open(StencilKind stencil)
         {
             Visio.Documents documents = documentsProvider();
             if (documents == null)
@@ -66,10 +66,8 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
 
             try
             {
-                int flags = (int)Visio.VisOpenSaveArgs.visOpenDocked;
-                if (disableMacros)
-                    flags |= (int)Visio.VisOpenSaveArgs.visOpenMacrosDisabled;
-
+                short flags =
+                    (short)Visio.VisOpenSaveArgs.visOpenDocked;
                 Visio.Document document = documents.OpenEx(stencilName, (short)flags);
                 openStencils[stencil] = document;
                 return document;
@@ -86,8 +84,8 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
 
         public void OpenImportStencils()
         {
-            Open(StencilKind.SID_STENCIL, true);
-            Open(StencilKind.SBD_STENCIL, true);
+            Open(StencilKind.SID_STENCIL);
+            Open(StencilKind.SBD_STENCIL);
         }
 
         public Visio.Shape Place(string masterName, Visio.Page page)
@@ -96,7 +94,7 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
             if (string.IsNullOrWhiteSpace(masterName))
                 throw new ArgumentException("A Visio master name is required.", nameof(masterName));
 
-            Visio.Document stencil = Open(GetStencil(masterName), false);
+            Visio.Document stencil = Open(GetStencil(masterName));
             if (stencil == null)
                 throw new InvalidOperationException("The required Visio stencil could not be opened.");
 

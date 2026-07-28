@@ -144,7 +144,7 @@ namespace ALPS_Visio_AddIn_rewrite
         /// </summary>
         private void OpenStencils(object sender, RibbonControlEventArgs e)
         {
-            VisioHelper.openStencil(VisioHelper.VisioStencils.SID_STENCIL);
+            VisioHelper.OpenImportStencils();
         }
 
         /// <summary>

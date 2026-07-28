@@ -39,11 +39,12 @@ namespace ALPS_Visio_AddIn_rewrite
         /// <returns>The specified stencil file or null</returns>
         public static Visio.Document openStencil(VisioStencils stencil)
         {
-            return StencilRepository.Open(stencil, false);
+            return StencilRepository.Open(stencil);
         }
 
         /// <summary>
-        /// Opens both master sources once for an OWL import.
+        /// Opens both master sources with VBA macros enabled so imported
+        /// documents remain fully interactive.
         /// </summary>
         public static void OpenImportStencils()
         {
