@@ -471,7 +471,8 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
 
         private static bool HasGeneratedBounds(IPASSProcessModelElement element)
         {
-            return element != null && GeneratedBounds.ContainsKey(element);
+            return element != null
+                && GeneratedBounds.TryGetValue(element, out LayoutBounds ignored);
         }
 
         private static bool PrepareUsableBounds(IVisioExportableWithShape exportable, IPASSProcessModelElement element)
