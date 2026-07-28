@@ -396,6 +396,9 @@
     <None Include="Resources\document-open-7.png" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Resources\document-page-setup.png" />
+  </ItemGroup>
+  <ItemGroup>
     <None Include="Resources\owlIcon2.png" />
   </ItemGroup>
   <ItemGroup>

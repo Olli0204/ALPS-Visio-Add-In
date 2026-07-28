@@ -91,6 +91,16 @@ namespace ALPS_Visio_AddIn_rewrite.Properties {
         }
         
         /// <summary>
+        ///   Sucht eine lokalisierte Ressource vom Typ System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap pageSetup {
+            get {
+                object obj = ResourceManager.GetObject("pageSetup", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+
+        /// <summary>
         ///   Sucht eine lokalisierte Ressource vom Typ System.Byte[].
         /// </summary>
         internal static byte[] standard_PASS_ont_v_1_1_0 {
