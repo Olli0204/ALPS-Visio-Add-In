@@ -49,7 +49,12 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
                 foreach (Visio.Shape shape in shapesToDelete)
                     shape.Delete();
 
+                // Position the list before inserting members. Visio places new
+                // list members at the list's current location.
+                CenterMessageContainer(messageBox, messageExchangeWithConnector.GetShape());
+
                 // aggregate list
+                int listPosition = 1;
                 foreach (IMessageExchange messageExchange in this.getMessageExchanges().Values)
                 {
                     if (messageExchange.getMessageType() is IVisioExportableWithShape exportable)
@@ -57,12 +62,11 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
                         VisioLayout.PrepareOrArrange(exportable, 0, false);
                         exportable.ExportToVisio(page);
 
-                        messageBox.ContainerProperties.InsertListMember(exportable.GetShape(), 0);
+                        messageBox.ContainerProperties.InsertListMember(
+                            exportable.GetShape(), listPosition++);
                         exportable.GetShape().BringToFront();
                     }
                 }
-
-                CenterMessageContainer(messageBox, messageExchangeWithConnector.GetShape());
             }
         }
 

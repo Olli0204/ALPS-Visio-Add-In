@@ -43,6 +43,8 @@ Import `docs/[Test]_Vacation_Request_2D.owl`.
 - Shapes use the supplied coordinates and retain labels, IDs, comments, and
   hyperlinks.
 - Message exchanges and state transitions connect the correct endpoints.
+- Every SID message appears inside its centered Message Box; no message list
+  members remain at the lower-left page origin.
 
 Import `docs/[Test]_Vacation_Request.owl`.
 
