@@ -42,8 +42,9 @@ welches Zustände und Transitionen enthält (welche wiederum ihre eigenen Hilfsk
 schrittweise in die neue Struktur zu übertragen.
 
 `VisioHelper` ist eine schmale, quellkompatible Fassade. Die Implementierungen für ShapeSheet, Stencils, Seiten,
-Positionierung, Routing und Auto-Arrange liegen in `VisioInfrastructure/`. `ShapeFinder` ermittelt die installierten
-Stencil-Versionen.
+Positionierung, Routing und Auto-Arrange liegen in `VisioInfrastructure/`. `ShapeFinder` bleibt als quellkompatible
+Fassade erhalten und delegiert die Dateisystemsuche sowie die Auswahl der neuesten installierten Stencil-Version an
+`VisioInfrastructure/StencilFileLocator`.
 
 ## nächste Schritte
 Jetzt da du dich hoffentlich in angemessenerer Zeit einarbeiten konntest, kommen die nächsten Aufgaben auf dich zu.

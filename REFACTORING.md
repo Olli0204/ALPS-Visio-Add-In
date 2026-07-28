@@ -21,6 +21,8 @@ and legacy callers do not need a risky all-at-once migration.
 ## Completed Work
 
 - [x] Extract ShapeSheet access and invariant formula formatting.
+- [x] Move My Shapes discovery and stencil version selection behind the
+  source-compatible `ShapeFinder` facade.
 - [x] Extract stencil lookup, caching, opening, and master placement.
 - [x] Extract SID/SBD page creation and collision-safe naming.
 - [x] Extract routing, Auto-Arrange, and normalized shape positioning.
