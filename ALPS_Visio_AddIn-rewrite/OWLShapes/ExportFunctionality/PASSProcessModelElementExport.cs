@@ -2,10 +2,9 @@ using alps.net.api;
 using alps.net.api.ALPS;
 using alps.net.api.StandardPASS;
 using alps.net.api.util;
+using ALPS_Visio_AddIn_rewrite.VisioInfrastructure;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
 using VH = ALPS_Visio_AddIn_rewrite.VisioHelper;
 using Visio = Microsoft.Office.Interop.Visio;
 
@@ -46,17 +45,8 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
 
             VH.SetProperty(shape, Constants.Properties.Comment, string.Join(";", element.getComments()));
 
-            // maybe extract positioning
             if (this.element is IHasSimple2DVisualizationBox && bounds != null && bounds.Count >= 2)
-            {
-                // set position
-                VH.SetSize(shape, "PinX", bounds[0].getRelative2DPosX() * VH.GetSize(page.PageSheet, "PageWidth"));
-                VH.SetSize(shape, "PinY", bounds[0].getRelative2DPosY() * VH.GetSize(page.PageSheet, "PageHeight"));
-
-                // set dimensions
-                VH.SetSize(shape, "Width", bounds[1].getRelative2DPosX() * VH.GetSize(page.PageSheet, "PageWidth"));
-                VH.SetSize(shape, "Height", bounds[1].getRelative2DPosY() * VH.GetSize(page.PageSheet, "PageHeight"));
-            }
+                VisioShapePositioner.Apply(shape, page, bounds);
         }
 
         /// <summary>

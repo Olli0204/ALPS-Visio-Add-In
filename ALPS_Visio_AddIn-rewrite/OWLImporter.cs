@@ -1,97 +1,56 @@
-using alps.net.api;
-using alps.net.api.parsing;
-using alps.net.api.StandardPASS;
-using ALPS_Visio_AddIn_rewrite.OWLShapes;
+using ALPS_Visio_AddIn_rewrite.Importing;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
-using System.Reflection;
 using System.Windows.Forms;
-using VH = ALPS_Visio_AddIn_rewrite.VisioHelper;
 
 namespace ALPS_Visio_AddIn_rewrite
 {
     /// <summary>
-    /// Importer for OWL ALPS files
+    /// UI-facing entry point for importing OWL ALPS files.
     /// </summary>
     public class OWLImporter
     {
+        private readonly Lazy<OwlImportService> importService;
+        private readonly Action<string, string> errorPresenter;
+
         /// <summary>
-        /// Singleton OWL importer instance
+        /// Retained for source compatibility. The Ribbon owns a separate importer.
         /// </summary>
+        [Obsolete("Create and retain an OWLImporter instance instead.")]
         public static readonly OWLImporter Instance = new OWLImporter();
 
-        private readonly IPASSReaderWriter parser = PASSReaderWriter.getInstance();
-
-        private OWLImporter()
+        public OWLImporter()
+            : this(new Lazy<OwlImportService>(OwlImportComposition.CreateDefault), ShowError)
         {
-            // enable reflection and set ModelElementFactory to assign parsed objects to Visio classes
-            ReflectiveEnumerator.addAssemblyToCheckForTypes(Assembly.GetExecutingAssembly());
-            parser.setModelElementFactory(new VisioClassFactory());
-
-            string standardOntology = GetOntologyPath(
-                "standard_PASS_ont_v_1.1.0.owl", Properties.Resources.standard_PASS_ont_v_1_1_0);
-            string alpsOntology = GetOntologyPath(
-                "ALPS_ont_v_0.8.0.owl", Properties.Resources.ALPS_ont_v_0_8_0);
-
-            parser.loadOWLParsingStructure(new List<string>
-            {
-                standardOntology,
-                alpsOntology
-            });
         }
 
-        private static string GetOntologyPath(string fileName, byte[] embeddedContents)
+        internal OWLImporter(Lazy<OwlImportService> importService,
+            Action<string, string> errorPresenter)
         {
-            string assemblyDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-            string deployedPath = Path.Combine(assemblyDirectory, "Resources", fileName);
-            if (File.Exists(deployedPath)) return deployedPath;
-
-            if (embeddedContents == null || embeddedContents.Length == 0)
-                throw new FileNotFoundException("The embedded ontology resource is unavailable.", fileName);
-
-            string cacheDirectory = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "ALPS-Visio-Add-In", "Ontologies");
-            Directory.CreateDirectory(cacheDirectory);
-
-            string cachedPath = Path.Combine(cacheDirectory, fileName);
-            if (!File.Exists(cachedPath) || new FileInfo(cachedPath).Length != embeddedContents.Length)
-                File.WriteAllBytes(cachedPath, embeddedContents);
-
-            return cachedPath;
+            this.importService = importService
+                ?? throw new ArgumentNullException(nameof(importService));
+            this.errorPresenter = errorPresenter
+                ?? throw new ArgumentNullException(nameof(errorPresenter));
         }
 
-        /// <summary>
-        /// Parse and import OWL file.
-        /// </summary>
         public void Parse(string fileName)
         {
             try
             {
-                IList<IPASSProcessModel> passProcessModels = parser.loadModels(new List<string> { fileName });
-
-                VH.OpenImportStencils();
-                VH.setVBAListenersRunning(false);
-
-                foreach (IPASSProcessModel processModel in passProcessModels)
-                {
-                    IVisioExportable exportable = processModel as IVisioExportable;
-                    if (exportable != null) exportable.ExportToVisio(null);
-                }
+                importService.Value.Import(fileName);
             }
-            catch (System.Exception exception)
+            catch (Exception exception)
             {
                 Debug.WriteLine("OWL import failed:");
                 Debug.WriteLine(exception.ToString());
-                MessageBox.Show("The OWL model could not be imported.\n\n" + exception.Message,
-                    "ALPS/PASS Import", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                errorPresenter("The OWL model could not be imported.\n\n"
+                    + exception.Message, "ALPS/PASS Import");
             }
-            finally
-            {
-                VH.setVBAListenersRunning(true);
-            }
+        }
+
+        private static void ShowError(string message, string title)
+        {
+            MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 }

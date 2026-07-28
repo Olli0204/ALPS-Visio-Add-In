@@ -17,7 +17,8 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
         public void ExportToVisio(Visio.Page page)
         {
             bool usesFallbackLayout = VisioLayout.ArrangeModelLayer(this.getElements().Values);
-            SetPageDimensions(page, usesFallbackLayout);
+            ModelPageSizer.Apply(page,
+                this.getElements().Values.OfType<ISubject>(), usesFallbackLayout);
             ISet<string> exchangesExportedByList = new HashSet<string>(
                 this.getElements().Values
                     .OfType<IMessageExchangeList>()
@@ -55,56 +56,6 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
         {
             return element is IMessageExchange exchange
                 && exchangesExportedByList.Contains(exchange.getModelComponentID());
-        }
-
-        /// <summary>
-        /// Calculate dimensions for this model and apply to given page.
-        /// 
-        /// Note: This is inconsistent, it would be great to add some size to the standard.
-        /// </summary>
-        private void SetPageDimensions(Visio.Page page, bool usesFallbackLayout)
-        {
-            // Missing coordinates are represented by non-zero API defaults in
-            // some models. Do not use those defaults to calculate a tiny page.
-            if (usesFallbackLayout)
-            {
-                VH.SetSizeMM(page.PageSheet, "PageWidth", 297);
-                VH.SetSizeMM(page.PageSheet, "PageHeight", 210);
-                return;
-            }
-
-            double pageRatio = 1;
-            double sumWidth = 0;
-            int subjectCount = 0;
-            foreach (ISubject modelElement in this.getElements().Select(x => x.Value).OfType<ISubject>())
-            {
-                if (modelElement is ISystemInterfaceSubject) continue;
-
-                if ((modelElement is IFullySpecifiedSubject || modelElement is IInterfaceSubject))
-                {
-                    pageRatio = modelElement.get2DPageRatio();
-                    double width = modelElement.getRelative2DWidth();
-                    sumWidth += width;
-                    if (width > 0) subjectCount++;
-                }
-            }
-            if (subjectCount == 0 || sumWidth <= 0 || pageRatio <= 0)
-            {
-                VH.SetSizeMM(page.PageSheet, "PageWidth", 297);
-                VH.SetSizeMM(page.PageSheet, "PageHeight", 210);
-                return;
-            }
-
-            double averageWidth = sumWidth / subjectCount;
-
-            // the average subject is 32 mm wide
-            double newPageWidth = 32 / averageWidth + 1;
-            double newPageHeight = newPageWidth / pageRatio;
-
-            // FEAT: round to nearest A4 page
-
-            VH.SetSizeMM(page.PageSheet, "PageWidth", newPageWidth);
-            VH.SetSizeMM(page.PageSheet, "PageHeight", newPageHeight);
         }
 
         public override IParseablePASSProcessModelElement getParsedInstance()

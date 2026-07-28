@@ -7,11 +7,21 @@ namespace ALPS_Visio_AddIn_rewrite
 {
     partial class ALPSRibbon : RibbonBase
     {
+        private readonly OWLImporter owlImporter;
+
         /// <summary>
         /// Ribbon containing ALPS Menu
         /// </summary>
-        public ALPSRibbon() : base(Globals.Factory.GetRibbonFactory())
+        public ALPSRibbon()
+            : this(new OWLImporter())
         {
+        }
+
+        internal ALPSRibbon(OWLImporter owlImporter)
+            : base(Globals.Factory.GetRibbonFactory())
+        {
+            this.owlImporter = owlImporter
+                ?? throw new System.ArgumentNullException(nameof(owlImporter));
             this.RibbonType = "Microsoft.Visio.Drawing";
 
             RibbonTab alpsTab = this.Factory.CreateRibbonTab();
@@ -94,7 +104,8 @@ namespace ALPS_Visio_AddIn_rewrite
                 Filter = "Ontology Files (.owl)|*.owl|RDF Files (*.rdf)|*.rdf"
             };
 
-            if (dialog.ShowDialog() == DialogResult.OK) OWLImporter.Instance.Parse(dialog.FileName);
+            if (dialog.ShowDialog() == DialogResult.OK)
+                owlImporter.Parse(dialog.FileName);
         }
 
         private void AutoArrangeTopDown(object sender, RibbonControlEventArgs e)

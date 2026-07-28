@@ -254,6 +254,9 @@
     can be found.
   -->
   <ItemGroup>
+    <Compile Include="Importing\OntologyResourceResolver.cs" />
+    <Compile Include="Importing\OwlImportComposition.cs" />
+    <Compile Include="Importing\OwlImportService.cs" />
     <Compile Include="OWLImporter.cs" />
     <Compile Include="_old\ALPSConstants.cs" />
     <Compile Include="_old\ALPSGlobalFunctions.cs" />
@@ -261,6 +264,7 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="Constants.cs" />
+    <Compile Include="LegacyIntegration\LegacyAddInController.cs" />
     <Compile Include="OWLShapes\BehaviorDescribing\States\VisioDoState.cs" />
     <Compile Include="OWLShapes\BehaviorDescribing\States\VisioGenericReturnToOriginReference.cs" />
     <Compile Include="OWLShapes\BehaviorDescribing\States\VisioRecieveState.cs" />
@@ -272,7 +276,9 @@
     <Compile Include="OWLShapes\BehaviorDescribing\Transitions\VisioSendTransition.cs" />
     <Compile Include="OWLShapes\BehaviorDescribing\Transitions\VisioTimeTransition.cs" />
     <Compile Include="OWLShapes\BehaviorDescribing\Transitions\VisioUserCancelTransition.cs" />
+    <Compile Include="OWLShapes\ExportFunctionality\BehaviorExport.cs" />
     <Compile Include="OWLShapes\ExportFunctionality\IShapeExport.cs" />
+    <Compile Include="OWLShapes\ExportFunctionality\ModelPageSizer.cs" />
     <Compile Include="OWLShapes\ExportFunctionality\PASSProcessModelElementExport.cs" />
     <Compile Include="OWLShapes\ExportFunctionality\StateExport.cs" />
     <Compile Include="OWLShapes\ExportFunctionality\TransitionExport.cs" />
@@ -300,6 +306,12 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="ShapeFinder.cs" />
+    <Compile Include="VisioInfrastructure\VisioAutoArrange.cs" />
+    <Compile Include="VisioInfrastructure\VisioPageFactory.cs" />
+    <Compile Include="VisioInfrastructure\VisioRouting.cs" />
+    <Compile Include="VisioInfrastructure\VisioShapeSheet.cs" />
+    <Compile Include="VisioInfrastructure\VisioShapePositioner.cs" />
+    <Compile Include="VisioInfrastructure\VisioStencilRepository.cs" />
     <Compile Include="VisioHelper.cs" />
     <Compile Include="_old\Snapping\DiagramPage.cs" />
     <Compile Include="_old\Snapping\DiagramPageController.cs" />

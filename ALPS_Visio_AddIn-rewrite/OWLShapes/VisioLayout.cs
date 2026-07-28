@@ -1,8 +1,9 @@
 using alps.net.api.ALPS;
 using alps.net.api.StandardPASS;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using System;
+using System.Runtime.CompilerServices;
 
 namespace ALPS_Visio_AddIn_rewrite.OWLShapes
 {
@@ -22,14 +23,14 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
         private const double StateConnectionPitch = 0.015;
         private const double StateRowGap = 0.10;
         private const double PortMargin = 0.25;
-        private static readonly IDictionary<IPASSProcessModelElement, LayoutBounds> GeneratedBounds =
-            new Dictionary<IPASSProcessModelElement, LayoutBounds>();
-        private static readonly IDictionary<string, TransitionPorts> PortsByTransitionId =
-            new Dictionary<string, TransitionPorts>();
+        private static ConditionalWeakTable<IPASSProcessModelElement, LayoutBounds> GeneratedBounds =
+            new ConditionalWeakTable<IPASSProcessModelElement, LayoutBounds>();
+        private static ConditionalWeakTable<ITransition, TransitionPorts> PortsByTransition =
+            new ConditionalWeakTable<ITransition, TransitionPorts>();
 
         public static bool ArrangeModelLayer(IEnumerable<IPASSProcessModelElement> elements)
         {
-            GeneratedBounds.Clear();
+            GeneratedBounds = new ConditionalWeakTable<IPASSProcessModelElement, LayoutBounds>();
             List<ISubject> subjects = elements.OfType<ISubject>().ToList();
             Dictionary<ISubject, int> ranks = DetermineSubjectRanks(subjects);
             return ArrangeSubjects(subjects, ranks);
@@ -39,7 +40,7 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
         {
             List<IState> states = components.OfType<IState>().ToList();
             List<ITransition> transitions = components.OfType<ITransition>().ToList();
-            PortsByTransitionId.Clear();
+            PortsByTransition = new ConditionalWeakTable<ITransition, TransitionPorts>();
             Dictionary<IState, int> ranks = DetermineStateRanks(states, transitions);
             Dictionary<IState, int> verticalOrder = DetermineStateVerticalOrder(states, transitions, ranks);
             PrepareTransitionPorts(states, transitions, ranks, verticalOrder);
@@ -57,7 +58,7 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             useFallbackRouting = false;
             if (transition == null || string.IsNullOrEmpty(transition.getModelComponentID())) return;
 
-            if (PortsByTransitionId.TryGetValue(transition.getModelComponentID(), out TransitionPorts ports)
+            if (PortsByTransition.TryGetValue(transition, out TransitionPorts ports)
                 && ports.UseFallbackRouting)
             {
                 sourceY = ports.SourceY;
@@ -249,14 +250,7 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
 
         private static TransitionPorts GetOrCreateTransitionPorts(ITransition transition)
         {
-            string transitionId = transition.getModelComponentID();
-            if (!PortsByTransitionId.TryGetValue(transitionId, out TransitionPorts ports))
-            {
-                ports = new TransitionPorts();
-                PortsByTransitionId.Add(transitionId, ports);
-            }
-
-            return ports;
+            return PortsByTransition.GetValue(transition, ignored => new TransitionPorts());
         }
 
         private static void MarkFallbackTransitions(IEnumerable<ITransition> transitions)
@@ -533,7 +527,8 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
 
         private static void SetBounds(IPASSProcessModelElement element, double x, double y, double width, double height)
         {
-            GeneratedBounds[element] = new LayoutBounds(x, y, width, height);
+            GeneratedBounds.Remove(element);
+            GeneratedBounds.Add(element, new LayoutBounds(x, y, width, height));
         }
 
         private static Simple2DVisualizationPoint CreatePoint(double x, double y)
