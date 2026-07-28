@@ -1,6 +1,4 @@
-﻿using System.Configuration;
-
-namespace ALPS_Visio_AddIn_rewrite
+﻿namespace ALPS_Visio_AddIn_rewrite
 {
     public static class Constants
     {

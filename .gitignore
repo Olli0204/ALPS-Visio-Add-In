@@ -139,23 +139,18 @@ DocProject/Help/*.hhp
 DocProject/Help/Html2
 DocProject/Help/html
 
-# Click-Once directory
-#publish/
-
 # Publish Web Output
 *.[Pp]ublish.xml
 *.azurePubxml
 
 # nuget 
 packages/ 
-# builds 
-VisioAddIn1/bin/ 
-VisioAddIn1/obj/
-/VisioAddIn/ALPS_Visio_Add_In.csproj
-/VisioAddIn/logs/logfile.txt
+
+# LaTeX build artifacts
 /docs/latex/main.synctex.gz
 /docs/latex/main.fls
 /docs/latex/main.fdb_latexmk
 /docs/latex/main.aux
-/VisioAddIn/logs/logfile.txt
+
+# Runtime logs
 /ALPS_Visio_AddIn-rewrite/logs/logfile.txt

@@ -157,7 +157,6 @@
       <HintPath>..\packages\Serilog.Sinks.File.5.0.0\lib\net45\Serilog.Sinks.File.dll</HintPath>
     </Reference>
     <Reference Include="System" />
-    <Reference Include="System.Configuration" />
     <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Runtime.CompilerServices.Unsafe, Version=4.0.4.1, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
@@ -305,6 +304,7 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="ShapeFinder.cs" />
+    <Compile Include="VisioInfrastructure\StencilFileLocator.cs" />
     <Compile Include="VisioInfrastructure\VisioAutoArrange.cs" />
     <Compile Include="VisioInfrastructure\VisioPageFactory.cs" />
     <Compile Include="VisioInfrastructure\VisioRouting.cs" />
@@ -326,12 +326,6 @@
     <Compile Include="_old\UI\AnchorBarsUsage.cs" />
     <Compile Include="_old\UI\DirectoryTreeViewItem.cs" />
     <Compile Include="_old\UI\IDialogCallback.cs" />
-    <Compile Include="_old\UI\TemporaryModelExplorer.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="_old\UI\TemporaryModelExplorer.Designer.cs">
-      <DependentUpon>TemporaryModelExplorer.cs</DependentUpon>
-    </Compile>
     <Compile Include="_old\UI\WindowChangeLayerName.xaml.cs">
       <DependentUpon>WindowChangeLayerName.xaml</DependentUpon>
     </Compile>
@@ -365,8 +359,6 @@
       <DesignTime>True</DesignTime>
     </Compile>
     <EmbeddedResource Include="Resources\strings.de.resx">
-      <Generator>PublicResXFileCodeGenerator</Generator>
-      <LastGenOutput>strings.de.Designer.cs</LastGenOutput>
       <SubType>Designer</SubType>
     </EmbeddedResource>
     <EmbeddedResource Include="Resources\strings.resx">
@@ -374,26 +366,9 @@
       <LastGenOutput>strings.Designer.cs</LastGenOutput>
       <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="_old\UI\TemporaryModelExplorer.resx">
-      <DependentUpon>TemporaryModelExplorer.cs</DependentUpon>
-    </EmbeddedResource>
     <None Include="packages.config" />
     <Compile Include="OWLShapes\ExportFunctionality\SubjectExport.cs" />
     <Compile Include="OWLShapes\InteractionDescribing\VisioCommunicationRestriction.cs" />
-    <None Include="Properties\Settings.settings">
-      <Generator>SettingsSingleFileGenerator</Generator>
-      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
-    </None>
-    <Compile Include="Properties\Settings.Designer.cs">
-      <AutoGen>True</AutoGen>
-      <DependentUpon>Settings.settings</DependentUpon>
-      <DesignTimeSharedInput>True</DesignTimeSharedInput>
-    </Compile>
-    <Compile Include="Resources\strings.de.Designer.cs">
-      <DependentUpon>strings.de.resx</DependentUpon>
-      <AutoGen>True</AutoGen>
-      <DesignTime>True</DesignTime>
-    </Compile>
     <Compile Include="Resources\strings.Designer.cs">
       <DependentUpon>strings.resx</DependentUpon>
       <AutoGen>True</AutoGen>
@@ -421,15 +396,7 @@
     <None Include="Resources\document-open-7.png" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Resources\document-page-setup.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\go_arrow.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Content Include="Resources\OWL.png" />
     <None Include="Resources\owlIcon2.png" />
-    <None Include="Resources\owlIcon2.bmp" />
   </ItemGroup>
   <ItemGroup>
     <Page Include="_old\UI\WindowChangeLayerName.xaml">

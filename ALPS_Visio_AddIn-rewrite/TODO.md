@@ -72,7 +72,7 @@ gefunden, konnte aber auch nicht verifizieren, dass sie nicht in der API existie
 
 ## Empfehlungen und persönliche Hinweise
 Ich habe im Laufe meiner Entwicklung mehrere *Mini-Dokumentationen* geschrieben, diese habe ich alle mit in den `docs`
-Ordner im Wurzelordner gelegt. (`documentation.md`, `combined-onts.notes`, `Data in ShapeSheet.md`) Ebenfalls beigefügt ist
+Ordner im Wurzelordner gelegt. (`combined-onts.notes`, `Data in ShapeSheet.md`) Ebenfalls beigefügt ist
 eine Syntax-Highlight Erweiterung für VSCodium (wahrscheinlich auch VSCode) für die `.notes` Datei.
 
 Protégé ist manchmal etwas komisch, dennoch hilft der Reasoner sehr gut dabei, die Ontologie zu verstehen.
