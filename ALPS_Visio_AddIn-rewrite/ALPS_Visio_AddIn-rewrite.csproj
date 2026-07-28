@@ -264,7 +264,6 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="Constants.cs" />
-    <Compile Include="LegacyIntegration\LegacyAddInController.cs" />
     <Compile Include="OWLShapes\BehaviorDescribing\States\VisioDoState.cs" />
     <Compile Include="OWLShapes\BehaviorDescribing\States\VisioGenericReturnToOriginReference.cs" />
     <Compile Include="OWLShapes\BehaviorDescribing\States\VisioRecieveState.cs" />

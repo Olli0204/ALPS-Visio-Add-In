@@ -23,7 +23,7 @@ with the **ALPS/PASS ADDIN** Ribbon tab.
 - Click **Open ALPS/PASS Stencils**. SID and SBD stencils should open once and
   remain usable after closing and reopening a stencil.
 - Open **Show layer Explorer**. Switch pages/documents and confirm the tree
-  refreshes. Close Visio normally to exercise event unsubscription.
+  refreshes, and verify that refresh, navigation, and editing remain responsive.
 
 ## 3. OWL Import
 

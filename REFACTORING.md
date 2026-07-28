@@ -11,8 +11,8 @@ and separating VSTO, ontology, export, and COM concerns:
 - **Visio infrastructure:** ShapeSheet access, stencils, page creation, shape
   positioning, routing, and Auto-Arrange have focused implementations.
 - **Model adapters:** `OWLShapes` maps PASS/ALPS elements to shared exporters.
-- **Legacy integration:** supported `_old` snapping and explorer code is reached
-  through `LegacyAddInController`.
+- **Legacy integration:** supported `_old` snapping and explorer code remains
+  directly connected to `ThisAddIn` until characterization tests exist.
 
 `VisioHelper` remains as a source-compatible facade so existing model adapters
 and legacy callers do not need a risky all-at-once migration.
@@ -26,8 +26,6 @@ and legacy callers do not need a risky all-at-once migration.
 - [x] Split OWL resource resolution, parser composition, import workflow, and UI.
 - [x] Replace Ribbon singleton use with lifecycle-owned importer composition.
 - [x] Consolidate shared behavior export and SID page sizing.
-- [x] Isolate VSTO lifecycle events from the supported legacy subsystem.
-- [x] Unsubscribe application events during add-in shutdown.
 - [x] Replace ID-keyed/static layout dictionaries with weak, object-keyed state.
 
 ## Deliberately Deferred
@@ -36,7 +34,8 @@ Automated unit tests, Windows CI, and reproducible VSTO packaging require a
 Windows runner with Microsoft Visio/VSTO and are not added in this source-only
 pass. Moving snapping and the layer explorer out of `_old` is also deferred:
 those components are active production code and need characterization tests
-before their behavior can be changed safely.
+before their behavior can be changed safely. A lifecycle-adapter extraction was
+rolled back after the Model Explorer stopped responding in Visio.
 
 ## Quality Gates
 
