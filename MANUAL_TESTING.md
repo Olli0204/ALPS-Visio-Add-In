@@ -79,9 +79,10 @@ Import `docs/[Test]_Vacation_Request.owl`.
   corridors, and repeated Auto-Arrange runs do not keep moving the states.
 - On SID pages, verify that only subjects participate in the graph layout.
   Message Boxes must stay next to the corresponding communication channel,
-  their message list members must move with them, opposite directions and
-  parallel Message Boxes must not overlap, and subjects must remain within one
-  compact portrait (Top-down) or landscape (Left-right) page.
+  their message list members must move with them and retain their list
+  membership without a red warning outline, opposite directions and parallel
+  Message Boxes must not overlap, and subjects must remain within one compact
+  portrait (Top-down) or landscape (Left-right) page.
 - Move subjects and states; verify snapping and connector updates.
 - Create or edit SID/SBD pages with the stencil macros and confirm the layer
   explorer reflects changes.

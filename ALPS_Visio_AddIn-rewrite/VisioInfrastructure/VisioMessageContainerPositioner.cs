@@ -12,9 +12,11 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
     /// </summary>
     internal static class VisioMessageContainerPositioner
     {
+        private const string MessageCategory = "alpsMessage";
         private const double ConnectorClearance = 0.45;
         private const double ContainerGap = 0.25;
         private const double PageClearance = 0.35;
+        private const double ContainmentTolerance = 0.05;
 
         public static void Reposition(
             Visio.IVPage page, LayoutDirection direction)
@@ -110,31 +112,36 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
         private static void MoveContainerWithListMembers(
             Visio.IVPage page, Visio.Shape container, double x, double y)
         {
-            double deltaX = x - GetNumber(container, "PinX");
-            double deltaY = y - GetNumber(container, "PinY");
-            List<MemberPosition> members =
-                CaptureListMemberPositions(page, container);
+            List<Visio.Shape> members =
+                CaptureListMembers(page, container);
+            if (members.Count == 0)
+            {
+                // Auto-Arrange versions before this fix could leave the
+                // messages visually inside the box but no longer registered
+                // as list members. Recover those diagrams on the next run.
+                members = CaptureContainedMessages(page, container);
+            }
 
+            RemoveListMembers(container, members);
             VisioShapeSheet.SetNumber(container, "PinX", x);
             VisioShapeSheet.SetNumber(container, "PinY", y);
 
-            // List members are independent page shapes. Moving a container
-            // through ShapeSheet cells does not reliably move them with it.
-            // Explicit target positions also avoid applying the delta twice
-            // in Visio versions that already move members automatically.
-            foreach (MemberPosition member in members)
+            int listPosition = 1;
+            foreach (Visio.Shape member in members)
             {
-                VisioShapeSheet.SetNumber(
-                    member.Shape, "PinX", member.X + deltaX);
-                VisioShapeSheet.SetNumber(
-                    member.Shape, "PinY", member.Y + deltaY);
+                // Inserting the shapes again lets Visio move and format them
+                // as true list members. Direct PinX/PinY changes detach them
+                // and make the Message master show its red warning outline.
+                container.ContainerProperties.InsertListMember(
+                    member, listPosition++);
+                member.BringToFront();
             }
         }
 
-        private static List<MemberPosition> CaptureListMemberPositions(
+        private static List<Visio.Shape> CaptureListMembers(
             Visio.IVPage page, Visio.Shape container)
         {
-            List<MemberPosition> members = new List<MemberPosition>();
+            List<Visio.Shape> members = new List<Visio.Shape>();
             try
             {
                 Array memberIds =
@@ -148,9 +155,7 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
 
                     Visio.Shape member =
                         page.Shapes.get_ItemFromID(memberId);
-                    members.Add(new MemberPosition(
-                        member, GetNumber(member, "PinX"),
-                        GetNumber(member, "PinY")));
+                    members.Add(member);
                 }
             }
             catch (System.Runtime.InteropServices.COMException)
@@ -159,6 +164,71 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
             }
 
             return members;
+        }
+
+        private static List<Visio.Shape> CaptureContainedMessages(
+            Visio.IVPage page, Visio.Shape container)
+        {
+            double centerX = GetNumber(container, "PinX");
+            double centerY = GetNumber(container, "PinY");
+            double halfWidth = GetNumber(container, "Width") / 2d
+                + ContainmentTolerance;
+            double halfHeight = GetNumber(container, "Height") / 2d
+                + ContainmentTolerance;
+            List<Visio.Shape> messages = new List<Visio.Shape>();
+
+            foreach (Visio.Shape shape in page.Shapes)
+            {
+                if (shape.OneD == 0
+                    && shape.ID != container.ID
+                    && IsMessage(shape)
+                    && Math.Abs(GetNumber(shape, "PinX") - centerX)
+                        <= halfWidth
+                    && Math.Abs(GetNumber(shape, "PinY") - centerY)
+                        <= halfHeight)
+                {
+                    messages.Add(shape);
+                }
+            }
+
+            return messages
+                .OrderByDescending(shape => GetNumber(shape, "PinY"))
+                .ThenBy(shape => GetNumber(shape, "PinX"))
+                .ThenBy(shape => shape.ID)
+                .ToList();
+        }
+
+        private static void RemoveListMembers(
+            Visio.Shape container, IEnumerable<Visio.Shape> members)
+        {
+            foreach (Visio.Shape member in members)
+            {
+                try
+                {
+                    container.ContainerProperties.RemoveMember(member);
+                }
+                catch (System.Runtime.InteropServices.COMException)
+                {
+                    // A recovered visual member may already be detached.
+                }
+            }
+        }
+
+        private static bool IsMessage(Visio.Shape shape)
+        {
+            try
+            {
+                if (shape.HasCategory(MessageCategory)) return true;
+
+                Visio.Master master = shape.Master;
+                return master != null && string.Equals(
+                    master.NameU, Constants.SIDMasters.Message,
+                    StringComparison.OrdinalIgnoreCase);
+            }
+            catch (System.Runtime.InteropServices.COMException)
+            {
+                return false;
+            }
         }
 
         private static bool IsMessageContainer(Visio.Shape shape)
@@ -232,19 +302,5 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
             public string PairKey { get; private set; }
         }
 
-        private sealed class MemberPosition
-        {
-            public MemberPosition(
-                Visio.Shape shape, double x, double y)
-            {
-                Shape = shape;
-                X = x;
-                Y = y;
-            }
-
-            public Visio.Shape Shape { get; private set; }
-            public double X { get; private set; }
-            public double Y { get; private set; }
-        }
     }
 }
