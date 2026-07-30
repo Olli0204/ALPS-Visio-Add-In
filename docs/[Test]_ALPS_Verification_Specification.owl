@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rdf:RDF
+    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+    xmlns:owl="http://www.w3.org/2002/07/owl#"
+    xmlns:pass="http://www.i2pm.net/standard-pass-ont#"
+    xmlns:alps="http://www.imi.kit.edu/abstract-pass-ont#">
+  <owl:Ontology rdf:about="https://example.org/alps-verification/spec" />
+
+  <owl:NamedIndividual rdf:about="https://example.org/alps-verification/spec#AbstractRequester">
+    <rdf:type rdf:resource="http://www.imi.kit.edu/abstract-pass-ont#AbstractSingleSubject" />
+    <pass:hasModelComponentID>AbstractRequester</pass:hasModelComponentID>
+    <pass:hasModelComponentLabel>Requester</pass:hasModelComponentLabel>
+  </owl:NamedIndividual>
+
+  <owl:NamedIndividual rdf:about="https://example.org/alps-verification/spec#RestrictedApprover">
+    <rdf:type rdf:resource="http://www.i2pm.net/standard-pass-ont#FullySpecifiedSubject" />
+    <pass:hasModelComponentID>RestrictedApprover</pass:hasModelComponentID>
+    <pass:hasModelComponentLabel>Approver</pass:hasModelComponentLabel>
+  </owl:NamedIndividual>
+
+  <owl:NamedIndividual rdf:about="https://example.org/alps-verification/spec#RequesterApproverRestriction">
+    <rdf:type rdf:resource="http://www.imi.kit.edu/abstract-pass-ont#CommunicationRestriction" />
+    <pass:hasModelComponentID>RequesterApproverRestriction</pass:hasModelComponentID>
+    <pass:hasModelComponentLabel>No direct requester/approver communication</pass:hasModelComponentLabel>
+    <pass:hasCorrespondent rdf:resource="https://example.org/alps-verification/spec#AbstractRequester" />
+    <pass:hasCorrespondent rdf:resource="https://example.org/alps-verification/spec#RestrictedApprover" />
+  </owl:NamedIndividual>
+</rdf:RDF>

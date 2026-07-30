@@ -11,7 +11,8 @@ commit is missing.
 | Open ALPS/PASS Stencils | Available | Available with drawing-window and macro handling |
 | Show layer Explorer | Available | Available with document-safe refresh |
 | Import OWL | Available | Available with refactored parser, multi-model export, and fallback layout |
-| ALPS Verification | Visible debug placeholder | Visible with an explicit not-implemented notice |
+| Convert PASS to BPMN | Separate command-line converter | Integrated OWL/RDF-to-BPMN 2.0 conversion with generated diagram layout |
+| ALPS Verification | Visible debug placeholder | Integrated two-model SID verification with structured findings |
 | Auto-Arrange | Not available | Top-down and left-right |
 | NLP PASS Checking | Separate external add-in | Integrated local naming check with selectable suggestion providers and models |
 
@@ -19,6 +20,40 @@ The Ribbon retains the three groups from main: **Standard Functions**, **ALPS
 Layer Editing**, and **OWL PASS Tools**. Auto-Arrange is added to OWL PASS
 Tools. **NLP PASS Checking** is an additional group whose split button provides
 the model check, classifier retraining, and provider settings.
+
+**Model Conversion** is an additional group containing **Convert PASS to
+BPMN**. The command selects an OWL/RDF PASS model, converts the first readable
+model with the integrated converter, generates BPMN diagram coordinates, and
+writes a `.bpmn` file selected by the user.
+
+## ALPS Verification
+
+The verification workflow was adapted from
+`andikra/ALPS-Verification-Thesis`. The console prototype is not embedded as
+an executable: its supported rules were ported into a UI-independent,
+in-process OWL/RDF verification service that remains compatible with the
+add-in's .NET Framework 4.8 host.
+
+The Ribbon command asks for an abstract specification and an implementing
+model, then checks:
+
+- explicit `implements` coverage for SID subjects, message exchanges, and
+  communication acts;
+- preservation of `FullySpecifiedSubject`;
+- communication restrictions in both directions; and
+- ambiguous multiple implementations or unresolvable restriction endpoints.
+
+The results dialog separates errors, warnings, and scope information and can
+copy a tab-separated report. Parsing and checking are completely offline.
+The original thesis model corpus is retained under
+`docs/verification-thesis/`; small deterministic add-in regression fixtures
+remain alongside it under `docs/`.
+
+The source repository is explicitly a prototype. Its SBD checker is empty and
+its README lists precedence/trigger transitions, abstract communication
+channels, finalized messages, multiplicities, and start/end properties as
+future work. The integrated result therefore reports this boundary and never
+claims full formal conformance beyond the supported SID checks.
 
 ## NLP Naming Check
 

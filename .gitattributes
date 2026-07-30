@@ -61,3 +61,7 @@
 #*.PDF   diff=astextplain
 #*.rtf   diff=astextplain
 #*.RTF   diff=astextplain
+
+# Preserve the upstream thesis fixtures byte-for-byte, including their
+# historical whitespace, without treating it as a repository whitespace error.
+docs/verification-thesis/*.owl whitespace=-trailing-space

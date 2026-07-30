@@ -1,7 +1,9 @@
-﻿using ALPS_Visio_AddIn_rewrite.NlpChecking;
+﻿using ALPS_Visio_AddIn_rewrite.BpmnConversion;
+using ALPS_Visio_AddIn_rewrite.NlpChecking;
 using Microsoft.Office.Tools.Ribbon;
 using Microsoft.Office.Core;
 using System.Windows.Forms;
+using ALPS_Visio_AddIn_rewrite.Verification;
 using Visio = Microsoft.Office.Interop.Visio;
 
 namespace ALPS_Visio_AddIn_rewrite
@@ -9,7 +11,10 @@ namespace ALPS_Visio_AddIn_rewrite
     partial class ALPSRibbon : RibbonBase
     {
         private readonly OWLImporter owlImporter;
+        private readonly BpmnConversionController bpmnConversionController;
         private readonly NlpCheckingController nlpCheckingController;
+        private readonly AlpsVerificationController
+            verificationController;
 
         /// <summary>
         /// Ribbon containing ALPS Menu
@@ -24,8 +29,12 @@ namespace ALPS_Visio_AddIn_rewrite
         {
             this.owlImporter = owlImporter
                 ?? throw new System.ArgumentNullException(nameof(owlImporter));
+            this.bpmnConversionController =
+                new BpmnConversionController();
             this.nlpCheckingController = new NlpCheckingController(
                 () => Globals.ThisAddIn.GetDrawingDocument());
+            this.verificationController =
+                new AlpsVerificationController();
             this.RibbonType = "Microsoft.Visio.Drawing";
 
             RibbonTab alpsTab = this.Factory.CreateRibbonTab();
@@ -83,14 +92,35 @@ namespace ALPS_Visio_AddIn_rewrite
 
             RibbonButton verificationButton = this.Factory.CreateRibbonButton();
             verificationButton.Name = "verificationButton";
-            verificationButton.Label = "ALPS Verification";
-            verificationButton.SuperTip = "The verification command is retained from main. The original implementation is only a debug placeholder; model verification is not implemented yet.";
+            verificationButton.Label = "Verify ALPS Models";
+            verificationButton.SuperTip = "Select an abstract ALPS specification and an implementing OWL/RDF model. The add-in checks the SID implementation relationships, fully specified subjects, and communication restrictions supported by the ALPS verification thesis prototype.";
             verificationButton.OfficeImageId = "AdpDiagramArrangeTables";
             verificationButton.ShowImage = true;
             verificationButton.ControlSize = RibbonControlSize.RibbonControlSizeLarge;
             verificationButton.Click += new RibbonControlEventHandler(
-                this.ShowVerificationStatus);
+                this.RunAlpsVerification);
             owlGroup.Items.Add(verificationButton);
+
+            RibbonGroup conversionGroup = this.Factory.CreateRibbonGroup();
+            conversionGroup.Name = "modelConversionGroup";
+            conversionGroup.Label = "Model Conversion";
+            alpsTab.Groups.Add(conversionGroup);
+
+            RibbonButton passToBpmnButton =
+                this.Factory.CreateRibbonButton();
+            passToBpmnButton.Name = "passToBpmnButton";
+            passToBpmnButton.Label = "Convert PASS to BPMN";
+            passToBpmnButton.ScreenTip = "Convert a PASS OWL model to BPMN";
+            passToBpmnButton.SuperTip =
+                "Select a PASS or ALPS OWL file and save the converted "
+                + "model as a BPMN 2.0 file.";
+            passToBpmnButton.OfficeImageId = "FileSaveAs";
+            passToBpmnButton.ShowImage = true;
+            passToBpmnButton.ControlSize =
+                RibbonControlSize.RibbonControlSizeLarge;
+            passToBpmnButton.Click += new RibbonControlEventHandler(
+                this.ConvertPassToBpmn);
+            conversionGroup.Items.Add(passToBpmnButton);
 
             RibbonGroup nlpGroup = this.Factory.CreateRibbonGroup();
             nlpGroup.Name = "nlpPassCheckingGroup";
@@ -243,14 +273,10 @@ namespace ALPS_Visio_AddIn_rewrite
             Globals.ThisAddIn.showDirectoryClicked();
         }
 
-        private void ShowVerificationStatus(
+        private void RunAlpsVerification(
             object sender, RibbonControlEventArgs e)
         {
-            MessageBox.Show(
-                "Die ALPS-Verifikation ist im main-Branch nur als Debug-Platzhalter vorhanden und enthält noch keine Prüfungslogik.",
-                "ALPS Verification",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information);
+            verificationController.Run();
         }
 
         private async void CheckModelNaming(
@@ -269,6 +295,12 @@ namespace ALPS_Visio_AddIn_rewrite
             object sender, RibbonControlEventArgs e)
         {
             nlpCheckingController.ConfigureProviders();
+        }
+
+        private void ConvertPassToBpmn(
+            object sender, RibbonControlEventArgs e)
+        {
+            bpmnConversionController.Run();
         }
     }
 }

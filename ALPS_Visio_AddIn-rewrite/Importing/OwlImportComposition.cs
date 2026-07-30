@@ -22,7 +22,7 @@ namespace ALPS_Visio_AddIn_rewrite.Importing
                 Globals.ThisAddIn.RefreshModelFromDrawing);
         }
 
-        private static IPASSReaderWriter CreateConfiguredParser()
+        internal static IPASSReaderWriter CreateConfiguredParser()
         {
             Assembly assembly = Assembly.GetExecutingAssembly();
             ReflectiveEnumerator.addAssemblyToCheckForTypes(assembly);

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rdf:RDF
+    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+    xmlns:owl="http://www.w3.org/2002/07/owl#"
+    xmlns:pass="http://www.i2pm.net/standard-pass-ont#"
+    xmlns:alps="http://www.imi.kit.edu/abstract-pass-ont#">
+  <owl:Ontology rdf:about="https://example.org/alps-verification/implementation" />
+
+  <owl:NamedIndividual rdf:about="https://example.org/alps-verification/implementation#ConcreteRequester">
+    <rdf:type rdf:resource="http://www.i2pm.net/standard-pass-ont#FullySpecifiedSubject" />
+    <pass:hasModelComponentID>ConcreteRequester</pass:hasModelComponentID>
+    <pass:hasModelComponentLabel>Concrete requester</pass:hasModelComponentLabel>
+    <alps:implements rdf:resource="https://example.org/alps-verification/spec#AbstractRequester" />
+  </owl:NamedIndividual>
+
+  <owl:NamedIndividual rdf:about="https://example.org/alps-verification/implementation#ConcreteApprover">
+    <rdf:type rdf:resource="http://www.i2pm.net/standard-pass-ont#FullySpecifiedSubject" />
+    <pass:hasModelComponentID>ConcreteApprover</pass:hasModelComponentID>
+    <pass:hasModelComponentLabel>Concrete approver</pass:hasModelComponentLabel>
+    <alps:implements rdf:resource="https://example.org/alps-verification/spec#RestrictedApprover" />
+  </owl:NamedIndividual>
+
+  <owl:NamedIndividual rdf:about="https://example.org/alps-verification/implementation#ForbiddenRequest">
+    <rdf:type rdf:resource="http://www.i2pm.net/standard-pass-ont#MessageExchange" />
+    <pass:hasModelComponentID>ForbiddenRequest</pass:hasModelComponentID>
+    <pass:hasModelComponentLabel>Forbidden direct request</pass:hasModelComponentLabel>
+    <pass:hasSender rdf:resource="https://example.org/alps-verification/implementation#ConcreteRequester" />
+    <pass:hasReceiver rdf:resource="https://example.org/alps-verification/implementation#ConcreteApprover" />
+  </owl:NamedIndividual>
+</rdf:RDF>

@@ -27,6 +27,8 @@
     <RootNamespace>ALPS_Visio_AddIn_rewrite</RootNamespace>
     <AssemblyName>ALPS_Visio_AddIn-rewrite</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <LangVersion>10.0</LangVersion>
+    <Nullable>annotations</Nullable>
     <DefineConstants>VSTO40;UseOfficeInterop</DefineConstants>
     <ResolveComReferenceSilent>true</ResolveComReferenceSilent>
     <TargetFrameworkProfile />
@@ -127,8 +129,8 @@
   -->
   <ItemGroup>
     <Reference Include="Accessibility" />
-    <Reference Include="alps.net.api, Version=0.9.1.6, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\alps.net.api.0.9.1.6\lib\net48\alps.net.api.dll</HintPath>
+    <Reference Include="alps.net.api, Version=0.9.1.7, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\alps.net.api.0.9.1.7\lib\net48\alps.net.api.dll</HintPath>
     </Reference>
     <Reference Include="dotNetRDF, Version=2.7.5.0, Culture=neutral, PublicKeyToken=6055ffe4c97cc780, processorArchitecture=MSIL">
       <HintPath>..\packages\dotNetRDF.2.7.5\lib\net40\dotNetRDF.dll</HintPath>
@@ -254,6 +256,8 @@
     can be found.
   -->
   <ItemGroup>
+    <Compile Include="BpmnConversion\BpmnConversionController.cs" />
+    <Compile Include="BpmnConversion\Upstream\**\*.cs" />
     <Compile Include="Importing\OntologyResourceResolver.cs" />
     <Compile Include="Importing\OwlImportComposition.cs" />
     <Compile Include="Importing\OwlImportService.cs" />
@@ -267,6 +271,11 @@
     <Compile Include="NlpChecking\NlpResultsForm.cs" />
     <Compile Include="NlpChecking\NlpShapeCollector.cs" />
     <Compile Include="NlpChecking\NlpSuggestionClient.cs" />
+    <Compile Include="Verification\AlpsVerificationController.cs" />
+    <Compile Include="Verification\AlpsVerificationService.cs" />
+    <Compile Include="Verification\OwlVerificationModel.cs" />
+    <Compile Include="Verification\VerificationModels.cs" />
+    <Compile Include="Verification\VerificationResultsForm.cs" />
     <EmbeddedResource Include="NlpChecking\Resources\training.tsv">
       <LogicalName>ALPS_Visio_AddIn_rewrite.NlpChecking.training.tsv</LogicalName>
     </EmbeddedResource>
@@ -414,6 +423,8 @@
     </Compile>
     <AppDesigner Include="Properties\" />
     <None Include="TODO.md" />
+    <None Include="BpmnConversion\Upstream\LICENSE" />
+    <None Include="BpmnConversion\Upstream\README.md" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\document-open-7.png" />

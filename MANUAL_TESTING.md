@@ -21,11 +21,13 @@ with the **ALPS/PASS ADDIN** Ribbon tab.
 - **Standard Functions** contains **Open ALPS/PASS Stencils**.
 - **ALPS Layer Editing** contains **Show layer Explorer**.
 - **OWL PASS Tools** contains **Import OWL**, the **Auto-Arrange** split button,
-  and **ALPS Verification**.
+  and **Verify ALPS Models**.
+- **Model Conversion** contains **Convert PASS to BPMN**.
 - **NLP PASS Checking** contains the **Check Model Naming** split button with
   **Check Model Naming**, **Retrain**, and **Provider Settings** menu entries.
-- Click **ALPS Verification** and confirm that a single informational message
-  explains that verification is not implemented. It must not start or stop VBA.
+- Click **Verify ALPS Models**, cancel the first file dialog, and confirm that
+  no verification result or exception dialog appears. It must not start or
+  stop VBA.
 
 ## 3. Lifecycle and Stencils
 
@@ -107,6 +109,47 @@ Import `docs/[Test]_Vacation_Request.owl`.
   fully functional offline and does not issue suggestion requests.
 - Click **Retrain** and confirm that 680 bundled examples are reported. Run the
   check twice and verify the Ribbon and dialogs stay responsive.
+
+## 7. ALPS Verification
+
+Use `docs/[Test]_ALPS_Verification_Specification.owl` and
+`docs/[Test]_ALPS_Verification_Implementation.owl` as the specification and
+implementation respectively.
+
+- Click **Verify ALPS Models** and select the specification first and the
+  implementation second.
+- Confirm that the result dialog names both files and reports the number of
+  checked rules, errors, and warnings.
+- Confirm that missing `implements` relationships are listed with their
+  specification elements instead of being written to a console or a relative
+  `log.txt`.
+- Confirm that communication restrictions are checked in both directions and
+  that `Forbidden direct request` is reported as a violating message exchange.
+- Confirm that the scope row explains that SBD precedence/trigger semantics and
+  the other thesis TODOs are not yet a complete formal proof.
+- Click **Ergebnisse kopieren** and paste into a text editor. The copied report
+  must contain both full file paths and one tab-separated row per finding.
+- Repeat the workflow with the original thesis fixtures
+  `docs/verification-thesis/AbstractModel.owl` and
+  `docs/verification-thesis/ImplementingModel.owl`. Confirm that both files
+  load locally and that their missing or incompatible implementation
+  relationships appear as structured findings.
+- Repeat with a malformed OWL file and confirm that a single error dialog is
+  shown and Visio remains responsive.
+
+## 8. PASS to BPMN Conversion
+
+- Click **Convert PASS to BPMN** and select
+  `docs/[Test]_Vacation_Request.owl`.
+- Save the proposed output as a `.bpmn` file and confirm that the success
+  dialog shows its complete path.
+- Open the output in a BPMN 2.0 viewer and confirm that participants, processes,
+  flow nodes, message flows, sequence flows, and BPMN diagram coordinates are
+  present.
+- Cancel the input dialog and then the output dialog in separate runs. Neither
+  cancellation may show an error.
+- Select a malformed OWL/RDF file and confirm that one error dialog is shown
+  and Visio remains usable.
 
 Record failures with the input OWL file, page name, action, exception text, and
 a before/after screenshot.
