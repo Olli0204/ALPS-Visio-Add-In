@@ -19,6 +19,7 @@ The integration also contains correctness fixes required by the add-in:
   feedback branches remain secondary;
 - sequence and message flows use obstacle-aware orthogonal routing, with
   feedback routes outside the stacked processes and each message name rendered
-  once at its envelope marker between aligned pools;
+  once at its envelope marker between aligned pools; message routes avoid one
+  another and nested feedback routes are ordered from inner to outer;
 - exclusive branches receive labeled, descriptive formal conditions;
 - only supported timer, conditional, and error events become boundary events.

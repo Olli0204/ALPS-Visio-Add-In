@@ -156,6 +156,9 @@ implementation respectively.
   instead of crossing tasks and message flows.
 - Confirm that sequence and message flows use horizontal/vertical segments
   only. No connector may run through an unrelated task, event, or gateway.
+- Confirm that message flows do not cross one another. When several feedback
+  flows return to the same gateway, the lower source must use the inner
+  corridor and the upper source the outer corridor without crossing.
 - Confirm that `Vacation Request`, `Approval`, and `Denial` are visible as
   message flows between the matching send and receive tasks in the two pools.
   Each message name must appear exactly once next to its envelope marker in

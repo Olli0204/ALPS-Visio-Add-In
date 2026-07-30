@@ -348,6 +348,8 @@ public class BpmnDiagramGenerator
         IList<IBpmnShape> participantShapes = shapes
             .Where(shape => shape.BpmnElement is IParticipant)
             .ToList();
+        IList<IBpmnEdge> routedMessageEdges =
+            new List<IBpmnEdge>();
 
         int messageFlowCount = collaboration.MessageFlows.Count;
         double messageLaneSpacing = messageFlowCount <= 1
@@ -389,14 +391,16 @@ public class BpmnDiagramGenerator
                 messageFlow,
                 source,
                 target,
-                CreateVerticalCorridorRoute(
+                CreateMessageFlowRoute(
                     source,
                     target,
                     flowNodeShapes,
+                    routedMessageEdges,
                     corridorY));
             edge.MessageVisibleKind = MessageVisibleKind.initiating;
 
             bpmnPlane.DiagramElements.Add(edge);
+            routedMessageEdges.Add(edge);
         }
     }
 
@@ -441,10 +445,30 @@ public class BpmnDiagramGenerator
             diagramElements.Add(shape);
         }
 
+        IList<ISequenceFlow> sequenceFlows = elements
+            .Select(element => element.flowNode)
+            .SelectMany(flowNode => flowNode.Outgoing)
+            .ToList();
+        IEnumerable<ISequenceFlow> orderedSequenceFlows =
+            sequenceFlows
+                .Where(sequenceFlow => !IsLongBackEdge(
+                    sequenceFlow,
+                    bpmnShapes))
+                .Concat(
+                    sequenceFlows
+                        .Where(sequenceFlow => IsLongBackEdge(
+                            sequenceFlow,
+                            bpmnShapes))
+                        .OrderByDescending(sequenceFlow =>
+                            GetBoundsCenter(
+                                bpmnShapes.First(shape =>
+                                    ReferenceEquals(
+                                        shape.BpmnElement,
+                                        sequenceFlow.SourceRef))
+                                    .Bounds).Y));
+
         int backEdgeIndex = 0;
-        foreach (ISequenceFlow sequenceFlow in elements
-                     .Select(element => element.flowNode)
-                     .SelectMany(flowNode => flowNode.Outgoing))
+        foreach (ISequenceFlow sequenceFlow in orderedSequenceFlows)
         {
             IBpmnShape? source = bpmnShapes.FirstOrDefault(
                 bpmnShape => ReferenceEquals(
@@ -472,6 +496,25 @@ public class BpmnDiagramGenerator
         }
 
         return diagramElements;
+    }
+
+    private static bool IsLongBackEdge(
+        ISequenceFlow sequenceFlow,
+        IEnumerable<IBpmnShape> shapes)
+    {
+        IBpmnShape? source = shapes.FirstOrDefault(shape =>
+            ReferenceEquals(
+                shape.BpmnElement,
+                sequenceFlow.SourceRef));
+        IBpmnShape? target = shapes.FirstOrDefault(shape =>
+            ReferenceEquals(
+                shape.BpmnElement,
+                sequenceFlow.TargetRef));
+        return source != null
+               && target != null
+               && GetBoundsCenter(source.Bounds).X
+               - GetBoundsCenter(target.Bounds).X
+               > GridColumnSize * 1.25;
     }
 
     private static string GenerateDiagramIdentifier(IBaseElement baseElement)
@@ -611,7 +654,8 @@ public class BpmnDiagramGenerator
             }
             else
             {
-                double laneX = (sourceDock.X + targetDock.X) / 2;
+                double laneX =
+                    (sourceDock.X + targetDock.X) / 2;
                 waypoints = new List<IPoint>()
                 {
                     sourceDock,
@@ -645,22 +689,43 @@ public class BpmnDiagramGenerator
         }
         else
         {
+            int currentBackEdgeIndex = backEdgeIndex++;
             double corridorY = routeBackEdgesAbove
                 ? shapes.Min(shape => shape.Bounds.Y)
                   - BackEdgeClearance
-                  - backEdgeIndex * BackEdgeSpacing
+                  - currentBackEdgeIndex * BackEdgeSpacing
                 : shapes.Max(
                       shape => shape.Bounds.Y
                                + shape.Bounds.Height)
                   + BackEdgeClearance
-                  + backEdgeIndex * BackEdgeSpacing;
-            backEdgeIndex++;
+                  + currentBackEdgeIndex * BackEdgeSpacing;
             feedbackCorridorY = corridorY;
-            waypoints = CreateVerticalCorridorRoute(
-                source,
-                target,
-                shapes,
-                corridorY);
+            if (currentBackEdgeIndex == 0)
+            {
+                waypoints = CreateVerticalCorridorRoute(
+                    source,
+                    target,
+                    shapes,
+                    corridorY);
+            }
+            else
+            {
+                double sourceLaneX = shapes.Max(
+                    shape => shape.Bounds.X
+                             + shape.Bounds.Width)
+                    + EdgeClearance
+                    * (currentBackEdgeIndex + 1);
+                waypoints = CreateVerticalCorridorRoute(
+                    CreateOuterVerticalEscape(
+                        source,
+                        corridorY,
+                        shapes,
+                        sourceLaneX),
+                    CreateVerticalEscape(
+                        target,
+                        corridorY,
+                        shapes));
+            }
         }
 
         IBpmnEdge edge = CreateRoutedEdge(
@@ -710,6 +775,15 @@ public class BpmnDiagramGenerator
             corridorY,
             shapes);
 
+        return CreateVerticalCorridorRoute(
+            sourceEscape,
+            targetEscape);
+    }
+
+    private static List<IPoint> CreateVerticalCorridorRoute(
+        IList<IPoint> sourceEscape,
+        IList<IPoint> targetEscape)
+    {
         List<IPoint> waypoints = new List<IPoint>(sourceEscape);
         for (int index = targetEscape.Count - 1; index >= 0; index--)
         {
@@ -717,6 +791,332 @@ public class BpmnDiagramGenerator
         }
 
         return SimplifyWaypoints(waypoints);
+    }
+
+    private static List<IPoint> CreateOuterVerticalEscape(
+        IBpmnShape shape,
+        double corridorY,
+        IList<IBpmnShape> shapes,
+        double laneX)
+    {
+        IPoint center = GetBoundsCenter(shape.Bounds);
+        bool exitsRight = laneX >= center.X;
+        IPoint dock = exitsRight
+            ? GetRightDock(shape)
+            : GetLeftDock(shape);
+
+        if (IsHorizontalSegmentClear(
+                dock.Y,
+                dock.X,
+                laneX,
+                shapes,
+                shape)
+            && IsVerticalSegmentClear(
+                laneX,
+                dock.Y,
+                corridorY,
+                shapes,
+                shape,
+                null))
+        {
+            return new List<IPoint>()
+            {
+                dock,
+                new Point { X = laneX, Y = dock.Y },
+                new Point { X = laneX, Y = corridorY }
+            };
+        }
+
+        return CreateVerticalEscape(
+            shape,
+            corridorY,
+            shapes);
+    }
+
+    private static List<IPoint> CreateMessageFlowRoute(
+        IBpmnShape source,
+        IBpmnShape target,
+        IList<IBpmnShape> shapes,
+        IList<IBpmnEdge> routedMessageEdges,
+        double corridorY)
+    {
+        List<IPoint> defaultSourceEscape =
+            CreateVerticalEscape(
+                source,
+                corridorY,
+                shapes);
+        List<IPoint> defaultTargetEscape =
+            CreateVerticalEscape(
+                target,
+                corridorY,
+                shapes);
+        List<IPoint> defaultRoute =
+            CreateVerticalCorridorRoute(
+                defaultSourceEscape,
+                defaultTargetEscape);
+        if (routedMessageEdges.Count == 0
+            || CountEdgeConflicts(
+                defaultRoute,
+                routedMessageEdges) == 0)
+        {
+            return defaultRoute;
+        }
+
+        IList<List<IPoint>> targetCandidates =
+            CreateMessageEscapeCandidates(
+                target,
+                corridorY,
+                shapes);
+
+        List<IPoint> bestRoute = defaultRoute;
+        int bestConflictCount = CountEdgeConflicts(
+            bestRoute,
+            routedMessageEdges);
+        double bestLength = GetRouteLength(bestRoute);
+
+        foreach (List<IPoint> targetEscape in targetCandidates)
+        {
+            List<IPoint> route =
+                CreateVerticalCorridorRoute(
+                    defaultSourceEscape,
+                    targetEscape);
+            int conflictCount = CountEdgeConflicts(
+                route,
+                routedMessageEdges);
+            double length = GetRouteLength(route);
+            if (conflictCount < bestConflictCount
+                || (
+                    conflictCount == bestConflictCount
+                    && length < bestLength))
+            {
+                bestRoute = route;
+                bestConflictCount = conflictCount;
+                bestLength = length;
+            }
+        }
+
+        return bestRoute;
+    }
+
+    private static IList<List<IPoint>> CreateMessageEscapeCandidates(
+        IBpmnShape shape,
+        double corridorY,
+        IList<IBpmnShape> shapes)
+    {
+        List<List<IPoint>> candidates =
+            new List<List<IPoint>>();
+        IPoint center = GetBoundsCenter(shape.Bounds);
+        bool exitsDown = corridorY >= center.Y;
+        IPoint verticalDock = exitsDown
+            ? GetBottomDock(shape)
+            : GetTopDock(shape);
+
+        if (IsVerticalSegmentClear(
+                center.X,
+                verticalDock.Y,
+                corridorY,
+                shapes,
+                shape,
+                null))
+        {
+            candidates.Add(
+                new List<IPoint>()
+                {
+                    verticalDock,
+                    new Point
+                    {
+                        X = center.X,
+                        Y = corridorY
+                    }
+                });
+        }
+
+        const int maximumLaneMultiplier = 4;
+        for (int multiplier = 1;
+             multiplier <= maximumLaneMultiplier;
+             multiplier++)
+        {
+            double distance = EdgeClearance * multiplier;
+            AddMessageSideEscapeCandidate(
+                candidates,
+                shape,
+                corridorY,
+                shapes,
+                shape.Bounds.X
+                + shape.Bounds.Width
+                + distance,
+                exitsDown,
+                true);
+            AddMessageSideEscapeCandidate(
+                candidates,
+                shape,
+                corridorY,
+                shapes,
+                shape.Bounds.X - distance,
+                exitsDown,
+                false);
+        }
+
+        if (candidates.Count == 0)
+        {
+            candidates.Add(
+                CreateVerticalEscape(
+                    shape,
+                    corridorY,
+                    shapes));
+        }
+
+        return candidates;
+    }
+
+    private static void AddMessageSideEscapeCandidate(
+        ICollection<List<IPoint>> candidates,
+        IBpmnShape shape,
+        double corridorY,
+        IList<IBpmnShape> shapes,
+        double laneX,
+        bool exitsDown,
+        bool exitsRight)
+    {
+        IPoint dock = GetMessageSideDock(
+            shape,
+            exitsRight,
+            exitsDown);
+        if (!IsHorizontalSegmentClear(
+                dock.Y,
+                dock.X,
+                laneX,
+                shapes,
+                shape)
+            || !IsVerticalSegmentClear(
+                laneX,
+                dock.Y,
+                corridorY,
+                shapes,
+                shape,
+                null))
+        {
+            return;
+        }
+
+        candidates.Add(
+            new List<IPoint>()
+            {
+                dock,
+                new Point { X = laneX, Y = dock.Y },
+                new Point { X = laneX, Y = corridorY }
+            });
+    }
+
+    private static IPoint GetMessageSideDock(
+        IBpmnShape shape,
+        bool exitsRight,
+        bool exitsDown)
+    {
+        double inset = Math.Min(
+            10,
+            shape.Bounds.Height / 4);
+        return new Point()
+        {
+            X = exitsRight
+                ? shape.Bounds.X + shape.Bounds.Width
+                : shape.Bounds.X,
+            Y = exitsDown
+                ? shape.Bounds.Y + shape.Bounds.Height - inset
+                : shape.Bounds.Y + inset
+        };
+    }
+
+    private static int CountEdgeConflicts(
+        IList<IPoint> route,
+        IEnumerable<IBpmnEdge> routedEdges)
+    {
+        int conflictCount = 0;
+        for (int routeIndex = 1;
+             routeIndex < route.Count;
+             routeIndex++)
+        {
+            IPoint routeStart = route[routeIndex - 1];
+            IPoint routeEnd = route[routeIndex];
+
+            foreach (IBpmnEdge routedEdge in routedEdges)
+            {
+                for (int edgeIndex = 1;
+                     edgeIndex < routedEdge.Waypoints.Count;
+                     edgeIndex++)
+                {
+                    if (SegmentsConflict(
+                            routeStart,
+                            routeEnd,
+                            routedEdge.Waypoints[edgeIndex - 1],
+                            routedEdge.Waypoints[edgeIndex]))
+                    {
+                        conflictCount++;
+                    }
+                }
+            }
+        }
+
+        return conflictCount;
+    }
+
+    private static bool SegmentsConflict(
+        IPoint firstStart,
+        IPoint firstEnd,
+        IPoint secondStart,
+        IPoint secondEnd)
+    {
+        bool firstHorizontal =
+            NearlyEqual(firstStart.Y, firstEnd.Y);
+        bool secondHorizontal =
+            NearlyEqual(secondStart.Y, secondEnd.Y);
+
+        if (firstHorizontal == secondHorizontal)
+            return false;
+
+        IPoint horizontalStart = firstHorizontal
+            ? firstStart
+            : secondStart;
+        IPoint horizontalEnd = firstHorizontal
+            ? firstEnd
+            : secondEnd;
+        IPoint verticalStart = firstHorizontal
+            ? secondStart
+            : firstStart;
+        IPoint verticalEnd = firstHorizontal
+            ? secondEnd
+            : firstEnd;
+        return verticalStart.X
+                   >= Math.Min(
+                       horizontalStart.X,
+                       horizontalEnd.X)
+               && verticalStart.X
+                   <= Math.Max(
+                       horizontalStart.X,
+                       horizontalEnd.X)
+               && horizontalStart.Y
+                   >= Math.Min(
+                       verticalStart.Y,
+                       verticalEnd.Y)
+               && horizontalStart.Y
+                   <= Math.Max(
+                       verticalStart.Y,
+                       verticalEnd.Y);
+    }
+
+    private static double GetRouteLength(
+        IList<IPoint> route)
+    {
+        double length = 0;
+        for (int index = 1; index < route.Count; index++)
+        {
+            length += Math.Abs(route[index].X - route[index - 1].X)
+                      + Math.Abs(
+                          route[index].Y
+                          - route[index - 1].Y);
+        }
+
+        return length;
     }
 
     private static List<IPoint> CreateVerticalEscape(
