@@ -22,8 +22,11 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
         // ShapeSheet Result[""] values use Visio's internal inch units.
         private const double Margin = 0.8;
         private const double FeedbackCorridor = 0.65;
-        private const double FlowGap = 1.25;
-        private const double SiblingGap = 0.65;
+        // Connector labels in the PASS stencils are wider than their paths.
+        // These gaps reserve a readable label corridor between ranks and
+        // parallel alternatives instead of placing labels over sibling states.
+        private const double FlowGap = 1.45;
+        private const double SiblingGap = 1.25;
         private const double PortraitWidth = 8.2677;
         private const double PortraitHeight = 11.6929;
         private const double LandscapeWidth = PortraitHeight;

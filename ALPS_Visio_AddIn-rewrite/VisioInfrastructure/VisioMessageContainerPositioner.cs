@@ -101,12 +101,64 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
                         pageWidth - width / 2d - PageClearance);
                     y = Clamp(y, height / 2d + PageClearance,
                         pageHeight - height / 2d - PageClearance);
-                    VisioShapeSheet.SetNumber(
-                        placement.Container, "PinX", x);
-                    VisioShapeSheet.SetNumber(
-                        placement.Container, "PinY", y);
+                    MoveContainerWithListMembers(
+                        page, placement.Container, x, y);
                 }
             }
+        }
+
+        private static void MoveContainerWithListMembers(
+            Visio.IVPage page, Visio.Shape container, double x, double y)
+        {
+            double deltaX = x - GetNumber(container, "PinX");
+            double deltaY = y - GetNumber(container, "PinY");
+            List<MemberPosition> members =
+                CaptureListMemberPositions(page, container);
+
+            VisioShapeSheet.SetNumber(container, "PinX", x);
+            VisioShapeSheet.SetNumber(container, "PinY", y);
+
+            // List members are independent page shapes. Moving a container
+            // through ShapeSheet cells does not reliably move them with it.
+            // Explicit target positions also avoid applying the delta twice
+            // in Visio versions that already move members automatically.
+            foreach (MemberPosition member in members)
+            {
+                VisioShapeSheet.SetNumber(
+                    member.Shape, "PinX", member.X + deltaX);
+                VisioShapeSheet.SetNumber(
+                    member.Shape, "PinY", member.Y + deltaY);
+            }
+        }
+
+        private static List<MemberPosition> CaptureListMemberPositions(
+            Visio.IVPage page, Visio.Shape container)
+        {
+            List<MemberPosition> members = new List<MemberPosition>();
+            try
+            {
+                Array memberIds =
+                    container.ContainerProperties.GetListMembers();
+                if (memberIds == null) return members;
+
+                foreach (object memberIdValue in memberIds)
+                {
+                    int memberId = Convert.ToInt32(memberIdValue);
+                    if (memberId <= 0 || memberId == container.ID) continue;
+
+                    Visio.Shape member =
+                        page.Shapes.get_ItemFromID(memberId);
+                    members.Add(new MemberPosition(
+                        member, GetNumber(member, "PinX"),
+                        GetNumber(member, "PinY")));
+                }
+            }
+            catch (System.Runtime.InteropServices.COMException)
+            {
+                // A malformed or non-list container can still be positioned.
+            }
+
+            return members;
         }
 
         private static bool IsMessageContainer(Visio.Shape shape)
@@ -178,6 +230,21 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
             public Visio.Shape Source { get; private set; }
             public Visio.Shape Target { get; private set; }
             public string PairKey { get; private set; }
+        }
+
+        private sealed class MemberPosition
+        {
+            public MemberPosition(
+                Visio.Shape shape, double x, double y)
+            {
+                Shape = shape;
+                X = x;
+                Y = y;
+            }
+
+            public Visio.Shape Shape { get; private set; }
+            public double X { get; private set; }
+            public double Y { get; private set; }
         }
     }
 }
