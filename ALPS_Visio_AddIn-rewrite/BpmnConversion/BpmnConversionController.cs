@@ -157,6 +157,57 @@ namespace ALPS_Visio_AddIn_rewrite.BpmnConversion
                 }
             }
 
+            if (document
+                .Descendants(
+                    bpmnNamespace + "conditionalExpression")
+                .Any())
+            {
+                throw new InvalidDataException(
+                    "Der BPMN-Export verwendet den ungültigen "
+                    + "Elementnamen \"conditionalExpression\".");
+            }
+
+            IDictionary<string, XElement> elementsById = root
+                .DescendantsAndSelf()
+                .Where(element =>
+                    element.Attribute("id") != null)
+                .ToDictionary(
+                    element => element.Attribute("id")!.Value,
+                    StringComparer.Ordinal);
+
+            foreach (XElement gateway in document
+                .Descendants(
+                    bpmnNamespace + "exclusiveGateway"))
+            {
+                IList<string> outgoingIds = gateway
+                    .Elements(bpmnNamespace + "outgoing")
+                    .Select(element => element.Value)
+                    .ToList();
+                if (outgoingIds.Count < 2)
+                    continue;
+
+                string? defaultId =
+                    gateway.Attribute("default")?.Value;
+                foreach (string outgoingId in outgoingIds)
+                {
+                    if (outgoingId == defaultId)
+                        continue;
+
+                    if (!elementsById.TryGetValue(
+                            outgoingId,
+                            out XElement sequenceFlow)
+                        || sequenceFlow.Element(
+                            bpmnNamespace
+                            + "conditionExpression") == null)
+                    {
+                        throw new InvalidDataException(
+                            $"Der BPMN-Export enthält für die "
+                            + $"Abzweigung \"{outgoingId}\" keine "
+                            + "Bedingung.");
+                    }
+                }
+            }
+
             foreach (XAttribute coordinate in document
                 .Descendants()
                 .Attributes()

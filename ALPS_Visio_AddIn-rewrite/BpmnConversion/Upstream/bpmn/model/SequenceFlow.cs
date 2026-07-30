@@ -10,7 +10,7 @@ public interface ISequenceFlow : IFlowElement
 [BpmnType("sequenceFlow", BpmnModelConstants.BpmnNs)]
 public class SequenceFlow : FlowElement, ISequenceFlow
 {
-    [BpmnElement("conditionalExpression", BpmnModelConstants.BpmnNs)]
+    [BpmnElement("conditionExpression", BpmnModelConstants.BpmnNs)]
     public IExpression? Expression { get; set; }
 
     [BpmnAttribute("sourceRef")]
