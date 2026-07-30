@@ -175,6 +175,36 @@ namespace ALPS_Visio_AddIn_rewrite.BpmnConversion
                     element => element.Attribute("id")!.Value,
                     StringComparer.Ordinal);
 
+            foreach (XElement messageFlow in document
+                .Descendants(bpmnNamespace + "messageFlow"))
+            {
+                string? messageFlowName =
+                    messageFlow.Attribute("name")?.Value;
+                string? messageReference =
+                    messageFlow.Attribute("messageRef")?.Value;
+                if (string.IsNullOrWhiteSpace(messageFlowName)
+                    || string.IsNullOrWhiteSpace(messageReference)
+                    || !elementsById.TryGetValue(
+                        messageReference,
+                        out XElement message))
+                {
+                    continue;
+                }
+
+                string? messageName =
+                    message.Attribute("name")?.Value;
+                if (string.Equals(
+                        messageFlowName,
+                        messageName,
+                        StringComparison.Ordinal))
+                {
+                    throw new InvalidDataException(
+                        "Der BPMN-Export beschriftet einen "
+                        + "Nachrichtenfluss und seine Nachricht doppelt "
+                        + $"mit \"{messageFlowName}\".");
+                }
+            }
+
             foreach (XElement gateway in document
                 .Descendants(
                     bpmnNamespace + "exclusiveGateway"))

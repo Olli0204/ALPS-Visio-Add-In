@@ -10,7 +10,7 @@ public class BpmnDiagramGenerator
     private const double GridRowSize = 140;
     private const double ParticipantHorizontalPadding = 65;
     private const double ParticipantVerticalPadding = 55;
-    private const double ParticipantSpacing = 90;
+    private const double ParticipantSpacing = 120;
     private const double EdgeClearance = 25;
     private const double BackEdgeClearance = 50;
     private const double BackEdgeSpacing = 30;
@@ -171,13 +171,22 @@ public class BpmnDiagramGenerator
 
         double currentY = 0;
 
-        foreach (IParticipant participant in collaboration.Participants)
+        for (int participantIndex = 0;
+             participantIndex < collaboration.Participants.Count;
+             participantIndex++)
         {
+            IParticipant participant =
+                collaboration.Participants[participantIndex];
             IBounds participantBounds;
 
             if (participant.ProcessRef != null && _grids.TryGetValue(participant.ProcessRef, out Grid? grid) && grid != null)
             {
-                List<IDiagramElement> diagramElements = GenerateDiagram(grid);
+                bool routeBackEdgesAbove =
+                    participantIndex
+                    < collaboration.Participants.Count / 2d;
+                List<IDiagramElement> diagramElements = GenerateDiagram(
+                    grid,
+                    routeBackEdgesAbove);
                 if (diagramElements.OfType<IBpmnShape>().Any())
                 {
                     IBounds contentBounds = GetDiagramBounds(diagramElements);
@@ -214,6 +223,12 @@ public class BpmnDiagramGenerator
                             {
                                 waypoint.X += offsetX;
                                 waypoint.Y += offsetY;
+                            }
+
+                            if (bpmnEdge.BpmnLabel?.Bounds != null)
+                            {
+                                bpmnEdge.BpmnLabel.Bounds.X += offsetX;
+                                bpmnEdge.BpmnLabel.Bounds.Y += offsetY;
                             }
                         }
                         bpmnPlane.DiagramElements.Add(diagramElement);
@@ -380,16 +395,14 @@ public class BpmnDiagramGenerator
                     flowNodeShapes,
                     corridorY));
             edge.MessageVisibleKind = MessageVisibleKind.initiating;
-            edge.BpmnLabel = CreateMessageFlowLabel(
-                messageFlow.Name,
-                edge.Waypoints,
-                corridorY);
 
             bpmnPlane.DiagramElements.Add(edge);
         }
     }
 
-    private List<IDiagramElement> GenerateDiagram(Grid grid)
+    private List<IDiagramElement> GenerateDiagram(
+        Grid grid,
+        bool routeBackEdgesAbove)
     {
         List<IBpmnShape> bpmnShapes = new List<IBpmnShape>();
         List<IDiagramElement> diagramElements = new List<IDiagramElement>();
@@ -417,7 +430,9 @@ public class BpmnDiagramGenerator
             {
                 if (_grids.TryGetValue(flowElementsContainer, out Grid? subGrid) && subGrid != null)
                 {
-                    List<IDiagramElement> subElements = GenerateDiagram(subGrid);
+                    List<IDiagramElement> subElements = GenerateDiagram(
+                        subGrid,
+                        routeBackEdgesAbove);
                     diagramElements.AddRange(subElements);
                 }
             }
@@ -451,6 +466,7 @@ public class BpmnDiagramGenerator
                 source,
                 target,
                 bpmnShapes,
+                routeBackEdgesAbove,
                 ref backEdgeIndex);
             diagramElements.Add(edge);
         }
@@ -520,11 +536,13 @@ public class BpmnDiagramGenerator
         IBpmnShape source,
         IBpmnShape target,
         IList<IBpmnShape> shapes,
+        bool routeBackEdgesAbove,
         ref int backEdgeIndex)
     {
         IPoint sourceCenter = GetBoundsCenter(source.Bounds);
         IPoint targetCenter = GetBoundsCenter(target.Bounds);
         List<IPoint> waypoints;
+        double? feedbackCorridorY = null;
 
         if (ReferenceEquals(source, target))
         {
@@ -627,12 +645,17 @@ public class BpmnDiagramGenerator
         }
         else
         {
-            double corridorY = shapes.Max(
-                                   shape => shape.Bounds.Y
-                                            + shape.Bounds.Height)
-                               + BackEdgeClearance
-                               + backEdgeIndex * BackEdgeSpacing;
+            double corridorY = routeBackEdgesAbove
+                ? shapes.Min(shape => shape.Bounds.Y)
+                  - BackEdgeClearance
+                  - backEdgeIndex * BackEdgeSpacing
+                : shapes.Max(
+                      shape => shape.Bounds.Y
+                               + shape.Bounds.Height)
+                  + BackEdgeClearance
+                  + backEdgeIndex * BackEdgeSpacing;
             backEdgeIndex++;
+            feedbackCorridorY = corridorY;
             waypoints = CreateVerticalCorridorRoute(
                 source,
                 target,
@@ -640,11 +663,20 @@ public class BpmnDiagramGenerator
                 corridorY);
         }
 
-        return CreateRoutedEdge(
+        IBpmnEdge edge = CreateRoutedEdge(
             sequenceFlow,
             source,
             target,
             waypoints);
+        if (feedbackCorridorY.HasValue)
+        {
+            edge.BpmnLabel = CreateFeedbackFlowLabel(
+                sequenceFlow.Name,
+                edge.Waypoints,
+                feedbackCorridorY.Value);
+        }
+
+        return edge;
     }
 
     private static IBpmnEdge CreateRoutedEdge(
@@ -873,7 +905,7 @@ public class BpmnDiagramGenerator
                / 2;
     }
 
-    private static IBpmnLabel? CreateMessageFlowLabel(
+    private static IBpmnLabel? CreateFeedbackFlowLabel(
         string? name,
         IEnumerable<IPoint> waypoints,
         double corridorY)
@@ -881,15 +913,30 @@ public class BpmnDiagramGenerator
         if (string.IsNullOrWhiteSpace(name))
             return null;
 
-        List<IPoint> pointsOnCorridor = waypoints
-            .Where(waypoint => NearlyEqual(waypoint.Y, corridorY))
-            .ToList();
-        double centerX = pointsOnCorridor.Count > 0
-            ? pointsOnCorridor.Average(waypoint => waypoint.X)
-            : waypoints.Average(waypoint => waypoint.X);
+        List<IPoint> points = waypoints.ToList();
+        double longestSegmentLength = 0;
+        double centerX = points.Average(waypoint => waypoint.X);
+        for (int index = 1; index < points.Count; index++)
+        {
+            IPoint previous = points[index - 1];
+            IPoint current = points[index];
+            if (!NearlyEqual(previous.Y, corridorY)
+                || !NearlyEqual(current.Y, corridorY))
+            {
+                continue;
+            }
+
+            double segmentLength = Math.Abs(current.X - previous.X);
+            if (segmentLength > longestSegmentLength)
+            {
+                longestSegmentLength = segmentLength;
+                centerX = (previous.X + current.X) / 2;
+            }
+        }
+
         double width = Math.Min(
             180,
-            Math.Max(60, name.Length * 7));
+            Math.Max(90, name.Length * 7));
         const double height = 20;
 
         return new BpmnLabel()
@@ -897,7 +944,7 @@ public class BpmnDiagramGenerator
             Bounds = new Bounds()
             {
                 X = centerX - width / 2,
-                Y = corridorY - height / 2,
+                Y = corridorY - height - 6,
                 Width = width,
                 Height = height
             }

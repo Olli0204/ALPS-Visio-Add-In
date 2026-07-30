@@ -570,9 +570,7 @@ public class Converter
                     BpmnUtility.CreateMessageFlow(
                         sendEndpoint.Task,
                         receiveEndpoint.Task,
-                        message,
-                        name: PassUtility.GetElementName(
-                            sendEndpoint.Message)));
+                        message));
             }
         }
     }

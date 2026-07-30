@@ -18,6 +18,7 @@ The integration also contains correctness fixes required by the add-in:
 - process nodes follow the forward flow in compact rows while default and
   feedback branches remain secondary;
 - sequence and message flows use obstacle-aware orthogonal routing, with
-  message labels placed in staggered lanes between aligned pools;
+  feedback routes outside the stacked processes and each message name rendered
+  once at its envelope marker between aligned pools;
 - exclusive branches receive labeled, descriptive formal conditions;
 - only supported timer, conditional, and error events become boundary events.
