@@ -366,6 +366,7 @@
       <LastGenOutput>strings.Designer.cs</LastGenOutput>
       <SubType>Designer</SubType>
     </EmbeddedResource>
+    <None Include="ALPS_Visio_AddIn-rewrite_TemporaryKey.pfx" />
     <None Include="packages.config" />
     <Compile Include="OWLShapes\ExportFunctionality\SubjectExport.cs" />
     <Compile Include="OWLShapes\InteractionDescribing\VisioCommunicationRestriction.cs" />
@@ -433,9 +434,15 @@
   </PropertyGroup>
   <!-- A developer or release pipeline supplies its own ClickOnce certificate. -->
   <PropertyGroup>
-    <SignManifests>false</SignManifests>
+    <SignManifests>true</SignManifests>
   </PropertyGroup>
   <!-- Include the build rules for a C# project. -->
+  <PropertyGroup>
+    <ManifestKeyFile>ALPS_Visio_AddIn-rewrite_TemporaryKey.pfx</ManifestKeyFile>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ManifestCertificateThumbprint>A5C2A79AF97F17BE8C17C5A366A0EE10A9B23A6D</ManifestCertificateThumbprint>
+  </PropertyGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- Include additional build rules for an Office application add-in. -->
   <Import Project="$(VSToolsPath)\OfficeTools\Microsoft.VisualStudio.Tools.Office.targets" Condition="'$(VSToolsPath)' != ''" />
