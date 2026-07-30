@@ -44,9 +44,6 @@ namespace ALPS_Visio_AddIn_rewrite
             openStencilsButton.Click += new RibbonControlEventHandler(this.OpenStencils);
             standardGroup.Items.Add(openStencilsButton);
 
-            RibbonSplitButton autoArrangeButton = CreateAutoArrangeButton();
-            standardGroup.Items.Add(autoArrangeButton);
-
             RibbonGroup layerEditingGroup = this.Factory.CreateRibbonGroup();
             layerEditingGroup.Name = "layerEditingGroup";
             layerEditingGroup.Label = "ALPS Layer Editing";
@@ -76,6 +73,9 @@ namespace ALPS_Visio_AddIn_rewrite
             owlImporterButton.ControlSize = RibbonControlSize.RibbonControlSizeLarge;
             owlImporterButton.Click += new RibbonControlEventHandler(this.LoadOWLFile);
             owlGroup.Items.Add(owlImporterButton);
+
+            RibbonSplitButton autoArrangeButton = CreateAutoArrangeButton();
+            owlGroup.Items.Add(autoArrangeButton);
 
             RibbonButton verificationButton = this.Factory.CreateRibbonButton();
             verificationButton.Name = "verificationButton";

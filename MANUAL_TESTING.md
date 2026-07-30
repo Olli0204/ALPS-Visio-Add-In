@@ -18,10 +18,10 @@ with the **ALPS/PASS ADDIN** Ribbon tab.
 
 ## 2. Ribbon
 
-- **Standard Functions** contains **Open ALPS/PASS Stencils** and the
-  **Auto-Arrange** split button.
+- **Standard Functions** contains **Open ALPS/PASS Stencils**.
 - **ALPS Layer Editing** contains **Show layer Explorer**.
-- **OWL PASS Tools** contains **Import OWL** and **ALPS Verification**.
+- **OWL PASS Tools** contains **Import OWL**, the **Auto-Arrange** split button,
+  and **ALPS Verification**.
 - Click **ALPS Verification** and confirm that a single informational message
   explains that verification is not implemented. It must not start or stop VBA.
 

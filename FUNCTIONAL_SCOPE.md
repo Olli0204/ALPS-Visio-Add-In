@@ -15,8 +15,8 @@ commit is missing.
 | Auto-Arrange | Not available | Top-down and left-right |
 
 The Ribbon retains the three groups from main: **Standard Functions**, **ALPS
-Layer Editing**, and **OWL PASS Tools**. Auto-Arrange is added to Standard
-Functions.
+Layer Editing**, and **OWL PASS Tools**. Auto-Arrange is added to OWL PASS
+Tools.
 
 ## Non-Ribbon Code Removed from main
 
