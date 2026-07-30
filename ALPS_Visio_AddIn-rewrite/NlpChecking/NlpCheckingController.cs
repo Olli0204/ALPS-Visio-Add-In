@@ -11,8 +11,8 @@ namespace ALPS_Visio_AddIn_rewrite.NlpChecking
         private readonly Func<Visio.Document> documentProvider;
         private readonly NlpNameClassifier classifier =
             new NlpNameClassifier();
-        private readonly NlpApiKeyStore apiKeyStore =
-            new NlpApiKeyStore();
+        private readonly NlpProviderStore providerStore =
+            new NlpProviderStore();
         private readonly NlpSuggestionClient suggestionClient =
             new NlpSuggestionClient();
         private bool isRunning;
@@ -68,7 +68,10 @@ namespace ALPS_Visio_AddIn_rewrite.NlpChecking
                 progress.SetProgress(0, candidates.Count);
 
                 classifier.EnsureTrained();
-                string apiKey = apiKeyStore.Load();
+                NlpProviderConfiguration providerConfiguration =
+                    providerStore.Load();
+                NlpProviderSettings activeProvider =
+                    providerConfiguration.GetActiveProvider()?.Clone();
                 List<NlpCheckResult> results =
                     new List<NlpCheckResult>(candidates.Count);
 
@@ -80,13 +83,13 @@ namespace ALPS_Visio_AddIn_rewrite.NlpChecking
                     string suggestions = string.Empty;
 
                     if (!prediction.IsValid
-                        && !string.IsNullOrWhiteSpace(apiKey))
+                        && activeProvider?.CanRequestSuggestions == true)
                     {
                         try
                         {
                             suggestions =
                                 await suggestionClient.SuggestAsync(
-                                    candidate, apiKey);
+                                    candidate, activeProvider);
                         }
                         catch (Exception exception)
                         {
@@ -158,36 +161,45 @@ namespace ALPS_Visio_AddIn_rewrite.NlpChecking
             }
         }
 
-        public void ConfigureApiKey()
+        public void ConfigureProviders()
         {
-            using (NlpApiKeyDialog dialog =
-                new NlpApiKeyDialog(apiKeyStore.Load()))
+            try
             {
-                if (dialog.ShowDialog() != DialogResult.OK)
-                    return;
-
-                try
+                NlpProviderConfiguration configuration =
+                    providerStore.Load();
+                using (NlpProviderSettingsDialog dialog =
+                    new NlpProviderSettingsDialog(
+                        configuration, suggestionClient))
                 {
-                    apiKeyStore.Save(dialog.ApiKey);
+                    if (dialog.ShowDialog() != DialogResult.OK)
+                        return;
+
+                    providerStore.Save(dialog.Configuration);
+                    NlpProviderSettings active =
+                        dialog.Configuration.GetActiveProvider();
                     MessageBox.Show(
-                        string.IsNullOrWhiteSpace(dialog.ApiKey)
-                            ? "The API key was removed."
-                            : "The API key was stored securely.",
+                        "Provider settings were stored securely.\r\n\r\n"
+                            + "Active provider: "
+                            + (active?.DisplayName ?? "None")
+                            + "\r\nModel: "
+                            + (string.IsNullOrWhiteSpace(active?.Model)
+                                ? "Not selected"
+                                : active.Model),
                         "NLP PASS Checking",
                         MessageBoxButtons.OK,
                         MessageBoxIcon.Information);
                 }
-                catch (Exception exception)
-                {
-                    System.Diagnostics.Debug.WriteLine(
-                        "NLP API key storage failed: " + exception);
-                    MessageBox.Show(
-                        "The API key could not be stored.\r\n\r\n"
-                            + exception.Message,
-                        "NLP PASS Checking",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Error);
-                }
+            }
+            catch (Exception exception)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    "NLP provider storage failed: " + exception);
+                MessageBox.Show(
+                    "The provider settings could not be stored.\r\n\r\n"
+                        + exception.Message,
+                    "NLP PASS Checking",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
         }
     }

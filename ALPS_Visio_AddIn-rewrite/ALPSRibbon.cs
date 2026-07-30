@@ -141,7 +141,7 @@ namespace ALPS_Visio_AddIn_rewrite
             button.ScreenTip = "Check PASS model labels";
             button.SuperTip = "Checks supported PASS shape labels with "
                 + "the locally trained classifier. Optional naming "
-                + "suggestions can be enabled in API Settings.";
+                + "suggestions can be enabled in Provider Settings.";
             button.OfficeImageId = "Spelling";
             button.ShowLabel = true;
             button.ControlSize =
@@ -172,9 +172,9 @@ namespace ALPS_Visio_AddIn_rewrite
             RibbonButton apiSettingsButton =
                 this.Factory.CreateRibbonButton();
             apiSettingsButton.Name = "nlpApiSettingsButton";
-            apiSettingsButton.Label = "API Settings";
+            apiSettingsButton.Label = "Provider Settings";
             apiSettingsButton.ScreenTip =
-                "Configure optional label suggestions";
+                "Configure providers, API keys, and models";
             apiSettingsButton.Click += new RibbonControlEventHandler(
                 this.ConfigureNlpApi);
             button.Items.Add(apiSettingsButton);
@@ -268,7 +268,7 @@ namespace ALPS_Visio_AddIn_rewrite
         private void ConfigureNlpApi(
             object sender, RibbonControlEventArgs e)
         {
-            nlpCheckingController.ConfigureApiKey();
+            nlpCheckingController.ConfigureProviders();
         }
     }
 }

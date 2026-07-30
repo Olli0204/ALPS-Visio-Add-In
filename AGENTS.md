@@ -43,6 +43,11 @@ suggestion service is optional; its offline classifier must continue to work
 without a key or network connection. Any new external transmission must be
 explicitly disclosed in the UI and acceptance checklist.
 
+Provider integrations belong in `NlpChecking/NlpSuggestionClient.cs` and must
+retain both OpenAI-compatible and Anthropic-compatible request tests. Store
+provider profiles only through `NlpProviderStore`; preserve migration from the
+legacy DPAPI-protected UniGPT key.
+
 ## Testing Guidelines
 
 No automated suite or coverage threshold exists. Manually verify both `docs/[Test]_Vacation_Request_2D.owl` and `docs/[Test]_Vacation_Request.owl`, SID/SBD links, connectors, routing, both Auto-Arrange directions, snapping, and the layer explorer. Add regression OWL samples under `docs/`. New tests belong in a separate `*Tests` project; name methods `Method_Scenario_ExpectedResult`.

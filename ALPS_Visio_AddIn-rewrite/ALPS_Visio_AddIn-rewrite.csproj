@@ -257,12 +257,13 @@
     <Compile Include="Importing\OntologyResourceResolver.cs" />
     <Compile Include="Importing\OwlImportComposition.cs" />
     <Compile Include="Importing\OwlImportService.cs" />
-    <Compile Include="NlpChecking\NlpApiKeyDialog.cs" />
-    <Compile Include="NlpChecking\NlpApiKeyStore.cs" />
     <Compile Include="NlpChecking\NlpCheckingController.cs" />
     <Compile Include="NlpChecking\NlpModels.cs" />
     <Compile Include="NlpChecking\NlpNameClassifier.cs" />
     <Compile Include="NlpChecking\NlpProgressForm.cs" />
+    <Compile Include="NlpChecking\NlpProviderModels.cs" />
+    <Compile Include="NlpChecking\NlpProviderSettingsDialog.cs" />
+    <Compile Include="NlpChecking\NlpProviderStore.cs" />
     <Compile Include="NlpChecking\NlpResultsForm.cs" />
     <Compile Include="NlpChecking\NlpShapeCollector.cs" />
     <Compile Include="NlpChecking\NlpSuggestionClient.cs" />

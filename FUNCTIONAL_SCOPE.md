@@ -13,21 +13,24 @@ commit is missing.
 | Import OWL | Available | Available with refactored parser, multi-model export, and fallback layout |
 | ALPS Verification | Visible debug placeholder | Visible with an explicit not-implemented notice |
 | Auto-Arrange | Not available | Top-down and left-right |
-| NLP PASS Checking | Separate external add-in | Integrated local naming check with optional API suggestions |
+| NLP PASS Checking | Separate external add-in | Integrated local naming check with selectable suggestion providers and models |
 
 The Ribbon retains the three groups from main: **Standard Functions**, **ALPS
 Layer Editing**, and **OWL PASS Tools**. Auto-Arrange is added to OWL PASS
 Tools. **NLP PASS Checking** is an additional group whose split button provides
-the model check, classifier retraining, and API settings.
+the model check, classifier retraining, and provider settings.
 
 ## NLP Naming Check
 
 The branch integrates the behavior and training set from
 `MatthesElstermann/NLPPASSCheckingBackup`. The classifier trains lazily from an
 embedded TSV resource and checks supported PASS labels without network access.
-If the user explicitly configures an API key, only labels classified for review
-are sent to the University of Münster endpoint for optional suggestions. The
-key is protected with Windows DPAPI for the current user.
+If the user explicitly configures an active provider, only labels classified
+for review are sent for optional suggestions. OpenAI, Anthropic, and UniGPT are
+built in; users can add OpenAI-compatible or Anthropic-compatible endpoints.
+Available models are queried from the provider and selected from a dropdown.
+Provider profiles, selected models, and keys are stored together in a
+Windows-DPAPI-protected configuration for the current user.
 
 ## Non-Ribbon Code Removed from main
 
