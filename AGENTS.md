@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-`ALPS_Visio_Tools.sln` contains one .NET Framework 4.8 VSTO add-in under `ALPS_Visio_AddIn-rewrite/`. `ThisAddIn.cs` and `ALPSRibbon.cs` are UI/lifecycle entry points. OWL import orchestration lives in `Importing/`; ontology-to-Visio adapters and export logic live in `OWLShapes/`. Put reusable Visio COM concerns—ShapeSheet access, stencils, pages, routing, and layout application—in `VisioInfrastructure/`. `VisioHelper.cs` is a compatibility facade, not a home for new responsibilities.
+`ALPS_Visio_Tools.sln` contains a .NET Framework 4.8 VSTO add-in in `ALPS_Visio_AddIn-rewrite/`. `ThisAddIn.cs` and `ALPSRibbon.cs` are lifecycle/UI entry points. OWL import orchestration lives in `Importing/`; adapters and export logic live in `OWLShapes/`. Put reusable Visio COM concerns in `VisioInfrastructure/`. Keep `VisioHelper.cs` as a compatibility facade.
 
 `Snapping/` and `_old/UI/` contain active, compatibility-sensitive production
 code connected directly through `ThisAddIn`; preserve behavior unless Windows/Visio
@@ -10,6 +10,12 @@ characterization tests cover the change. The Model Explorer remains in `_old/UI/
 because moving its XAML sources breaks legacy WinFX markup compilation. Constants
 and helpers live in `Compatibility/`. Ontologies and images are in `Resources/`;
 documentation and sample OWL files are in `docs/`. There is no active test project.
+
+## Image Retention
+
+Never delete repository images or files in the adjacent `Troubleshooting IMGs/`
+folder. They support the bachelor thesis; report cleanup candidates without
+changing them.
 
 ## Build, Test, and Development Commands
 
