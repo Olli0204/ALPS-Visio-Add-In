@@ -32,12 +32,24 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
 
                 AutoArrangeConnector connector =
                     new AutoArrangeConnector(shape, source, target);
-                AssignConnectionSides(
-                    connector, direction, pageCenterX, pageCenterY);
                 connectors.Add(connector);
+            }
 
-                VisioRouting.TrySetCell(shape, "ConFixedCode", 0, false);
-                VisioRouting.TrySetCell(shape, "ShapeRouteStyle", 1, false);
+            int lowerSideCount = 0;
+            int upperSideCount = 0;
+            foreach (AutoArrangeConnector connector in connectors
+                .OrderBy(candidate => candidate.Shape.ID))
+            {
+                AssignConnectionSides(connector, direction,
+                    pageCenterX, pageCenterY,
+                    ref lowerSideCount, ref upperSideCount);
+
+                VisioRouting.TrySetCell(
+                    connector.Shape, "ConFixedCode", 0, false);
+                VisioRouting.TrySetCell(
+                    connector.Shape, "ShapeRouteStyle", 1, false);
+                VisioRouting.TrySetCell(
+                    connector.Shape, "ConLineJumpCode", 0, false);
             }
 
             List<ConnectorEndpoint> endpoints = connectors
@@ -67,7 +79,7 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
             }
         }
 
-        private static bool TryGetConnectedShapes(Visio.Shape connector,
+        internal static bool TryGetConnectedShapes(Visio.Shape connector,
             out Visio.Shape source, out Visio.Shape target)
         {
             source = null;
@@ -87,7 +99,8 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
         }
 
         private static void AssignConnectionSides(AutoArrangeConnector connector,
-            LayoutDirection direction, double pageCenterX, double pageCenterY)
+            LayoutDirection direction, double pageCenterX, double pageCenterY,
+            ref int lowerSideCount, ref int upperSideCount)
         {
             double sourceX =
                 VisioShapeSheet.GetNumber(connector.Source, "PinX");
@@ -101,11 +114,19 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
 
             if (connector.Source.ID == connector.Target.ID)
             {
-                ConnectionSide loopSide = direction == LayoutDirection.TopDown
-                    ? ConnectionSide.Right
-                    : ConnectionSide.Top;
+                bool useLowerSide = lowerSideCount <= upperSideCount;
+                ConnectionSide loopSide;
+                if (direction == LayoutDirection.TopDown)
+                    loopSide = useLowerSide
+                        ? ConnectionSide.Left : ConnectionSide.Right;
+                else
+                    loopSide = useLowerSide
+                        ? ConnectionSide.Bottom : ConnectionSide.Top;
+
                 connector.SourceSide = loopSide;
                 connector.TargetSide = loopSide;
+                IncrementSideCount(
+                    useLowerSide, ref lowerSideCount, ref upperSideCount);
                 return;
             }
 
@@ -118,12 +139,15 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
                 }
                 else if (sourceY < targetY - sameRankTolerance)
                 {
-                    ConnectionSide feedbackSide =
-                        (sourceX + targetX) / 2d <= pageCenterX
-                            ? ConnectionSide.Left
-                            : ConnectionSide.Right;
+                    bool useLeft = ChooseLowerSide(
+                        (sourceX + targetX) / 2d, pageCenterX,
+                        lowerSideCount, upperSideCount);
+                    ConnectionSide feedbackSide = useLeft
+                        ? ConnectionSide.Left : ConnectionSide.Right;
                     connector.SourceSide = feedbackSide;
                     connector.TargetSide = feedbackSide;
+                    IncrementSideCount(
+                        useLeft, ref lowerSideCount, ref upperSideCount);
                 }
                 else
                 {
@@ -137,17 +161,38 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
             }
             else if (sourceX > targetX + sameRankTolerance)
             {
-                ConnectionSide feedbackSide =
-                    (sourceY + targetY) / 2d <= pageCenterY
-                        ? ConnectionSide.Bottom
-                        : ConnectionSide.Top;
+                bool useBottom = ChooseLowerSide(
+                    (sourceY + targetY) / 2d, pageCenterY,
+                    lowerSideCount, upperSideCount);
+                ConnectionSide feedbackSide = useBottom
+                    ? ConnectionSide.Bottom : ConnectionSide.Top;
                 connector.SourceSide = feedbackSide;
                 connector.TargetSide = feedbackSide;
+                IncrementSideCount(
+                    useBottom, ref lowerSideCount, ref upperSideCount);
             }
             else
             {
                 AssignVerticalSides(connector, sourceY, targetY);
             }
+        }
+
+        private static bool ChooseLowerSide(double midpoint,
+            double pageCenter, int lowerSideCount, int upperSideCount)
+        {
+            const double centerTolerance = 0.25;
+            if (midpoint < pageCenter - centerTolerance) return true;
+            if (midpoint > pageCenter + centerTolerance) return false;
+            return lowerSideCount <= upperSideCount;
+        }
+
+        private static void IncrementSideCount(bool useLowerSide,
+            ref int lowerSideCount, ref int upperSideCount)
+        {
+            if (useLowerSide)
+                lowerSideCount++;
+            else
+                upperSideCount++;
         }
 
         private static void AssignHorizontalSides(AutoArrangeConnector connector,

@@ -33,6 +33,14 @@
             public const string UserCancelTransition = "UserCancelTransition";
         }
 
+        internal static class ShapeCategories
+        {
+            public const string SIDSubject = "alpsSIDactor";
+            public const string SIDSubjectWithSBD = "alpsSIDactorWithSBD";
+            public const string SIDMessageConnectorBox = "messageConnectorBox";
+            public const string SBDState = "alpsSBDstate";
+        }
+
         public static class Properties
         {
             public const string Label = "lable";

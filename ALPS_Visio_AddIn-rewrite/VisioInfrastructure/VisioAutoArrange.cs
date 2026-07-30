@@ -29,8 +29,15 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
                 shape.CellsU["ConFixedCode"].FormulaU = "0";
             }
 
-            page.Layout();
+            AlpsDiagramKind diagramKind = GetDiagramKind(page);
+            bool arranged = VisioGraphAutoArranger.TryArrange(
+                page, direction, diagramKind);
+            if (!arranged)
+                page.Layout();
+
             VisioConnectorRebinder.Rebind(page, direction);
+            if (diagramKind == AlpsDiagramKind.Sid)
+                VisioMessageContainerPositioner.Reposition(page, direction);
         }
 
         private static void ConfigureSpacing(Visio.Shape pageSheet,
@@ -59,5 +66,64 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
             VisioRouting.TrySetCell(pageSheet, "LineToLineY", 8, true);
         }
 
+        private static AlpsDiagramKind GetDiagramKind(Visio.IVPage page)
+        {
+            string pageTypeCell = "Prop." + Constants.Properties.PageType;
+            try
+            {
+                if (page.PageSheet.CellExistsU[pageTypeCell, 0] == 0)
+                    return InferDiagramKind(page);
+
+                string pageType =
+                    page.PageSheet.CellsU[pageTypeCell].ResultStr[""];
+                if (string.Equals(pageType, Constants.Properties.SIDPage,
+                    StringComparison.OrdinalIgnoreCase))
+                {
+                    return AlpsDiagramKind.Sid;
+                }
+
+                if (string.Equals(pageType, Constants.Properties.SBDPage,
+                    StringComparison.OrdinalIgnoreCase))
+                {
+                    return AlpsDiagramKind.Sbd;
+                }
+            }
+            catch (System.Runtime.InteropServices.COMException)
+            {
+                return InferDiagramKind(page);
+            }
+
+            return InferDiagramKind(page);
+        }
+
+        private static AlpsDiagramKind InferDiagramKind(Visio.IVPage page)
+        {
+            foreach (Visio.Shape shape in page.Shapes)
+            {
+                if (shape.OneD != 0) continue;
+                try
+                {
+                    if (shape.HasCategory(
+                        Constants.ShapeCategories.SBDState))
+                    {
+                        return AlpsDiagramKind.Sbd;
+                    }
+
+                    if (shape.HasCategory(
+                            Constants.ShapeCategories.SIDSubject)
+                        || shape.HasCategory(
+                            Constants.ShapeCategories.SIDSubjectWithSBD))
+                    {
+                        return AlpsDiagramKind.Sid;
+                    }
+                }
+                catch (System.Runtime.InteropServices.COMException)
+                {
+                    // Try the remaining shapes before using Visio's fallback.
+                }
+            }
+
+            return AlpsDiagramKind.Unknown;
+        }
     }
 }

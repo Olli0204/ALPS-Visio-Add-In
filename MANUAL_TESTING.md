@@ -74,6 +74,14 @@ Import `docs/[Test]_Vacation_Request.owl`.
 
 - On both SID and SBD pages, run **Auto-Arrange → Top-down** and **Left-right**.
   Connectors must remain glued to their original source and target.
+- On SBD pages, verify that the initial state starts the primary process axis,
+  alternatives share one rank, feedback transitions use the outer routing
+  corridors, and repeated Auto-Arrange runs do not keep moving the states.
+- On SID pages, verify that only subjects participate in the graph layout.
+  Message Boxes must stay next to the corresponding communication channel,
+  opposite directions and parallel Message Boxes must not overlap, and subjects
+  must remain within one compact portrait (Top-down) or landscape (Left-right)
+  page.
 - Move subjects and states; verify snapping and connector updates.
 - Create or edit SID/SBD pages with the stencil macros and confirm the layer
   explorer reflects changes.

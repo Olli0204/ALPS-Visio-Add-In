@@ -334,6 +334,8 @@
     <Compile Include="VisioInfrastructure\StencilFileLocator.cs" />
     <Compile Include="VisioInfrastructure\VisioAutoArrange.cs" />
     <Compile Include="VisioInfrastructure\VisioConnectorRebinder.cs" />
+    <Compile Include="VisioInfrastructure\VisioGraphAutoArranger.cs" />
+    <Compile Include="VisioInfrastructure\VisioMessageContainerPositioner.cs" />
     <Compile Include="VisioInfrastructure\VisioPageFactory.cs" />
     <Compile Include="VisioInfrastructure\VisioRouting.cs" />
     <Compile Include="VisioInfrastructure\VisioShapeSheet.cs" />
