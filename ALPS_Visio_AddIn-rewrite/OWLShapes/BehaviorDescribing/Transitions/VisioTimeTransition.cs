@@ -12,7 +12,7 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
         private const string shapeType = Constants.SBDMasters.TimeTransition;
         
         private readonly IShapeExport export;
-        public VisioTimeTransition(IState sourceState, IState targetState, string labelForID = null, ITimeTransitionCondition transitionCondition = null, ITransition.TransitionType transitionType = ITransition.TransitionType.Standard, ITimeTransition.TimeTransitionType timeTransitionType = ITimeTransition.TimeTransitionType.DayTimeTimer, string comment = null, string additionalLabel = null, IList<IIncompleteTriple> additionalAttribute = null) : base(sourceState, targetState, labelForID, transitionCondition, transitionType, timeTransitionType, comment, additionalLabel, additionalAttribute) { export = new TransitionExport(this); }
+        public VisioTimeTransition(IState sourceState, IState targetState, string labelForID = null, ITimeTransitionCondition transitionCondition = null, ITransition.TransitionType transitionType = ITransition.TransitionType.Standard, ITimeTransition.TimeTransitionType timeTransitionType = ITimeTransition.TimeTransitionType.DayTimeTimer, string comment = null, string additionalLabel = null, IList<IPASSTriple> additionalAttribute = null) : base(sourceState, targetState, labelForID, transitionCondition, transitionType, timeTransitionType, comment, additionalLabel, additionalAttribute) { export = new TransitionExport(this); }
         protected VisioTimeTransition() { export = new TransitionExport(this); }
 
         public void ExportToVisio(Visio.Page page)

@@ -11,7 +11,7 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
 {
     public class VisioModelLayer : ModelLayer, IVisioExportable
     {
-        public VisioModelLayer(IPASSProcessModel model, string labelForID = null, string comment = null, string additionalLabel = null, IList<IIncompleteTriple> additionalAttribute = null) : base(model, labelForID, comment, additionalLabel, additionalAttribute) { }
+        public VisioModelLayer(IPASSProcessModel model, string labelForID = null, string comment = null, string additionalLabel = null, IList<IPASSTriple> additionalAttribute = null) : base(model, labelForID, comment, additionalLabel, additionalAttribute) { }
         protected VisioModelLayer() { }
 
         public void ExportToVisio(Visio.Page page)

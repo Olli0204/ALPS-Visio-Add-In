@@ -13,7 +13,7 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
         private const string shapeType = Constants.SIDMasters.StandAloneMacro;
 
         private readonly IShapeExport export;
-        public VisioStandAloneMacroSubject(IModelLayer layer, string labelForID = null, ISet<IMessageExchange> incomingMessageExchange = null, IMacroBehavior subjectMacroBehavior = null, ISet<IMessageExchange> outgoingMessageExchange = null, int maxSubjectInstanceRestriction = 1, ISubjectDataDefinition subjectDataDefinition = null, ISet<IInputPoolConstraint> inputPoolConstraints = null, string comment = null, string additionalLabel = null, IList<IIncompleteTriple> additionalAttribute = null) : base(layer, labelForID, incomingMessageExchange, subjectMacroBehavior, outgoingMessageExchange, maxSubjectInstanceRestriction, comment, additionalLabel, additionalAttribute) { export = new SubjectExport(this); }
+        public VisioStandAloneMacroSubject(IModelLayer layer, string labelForID = null, ISet<IMessageExchange> incomingMessageExchange = null, IMacroBehavior subjectMacroBehavior = null, ISet<IMessageExchange> outgoingMessageExchange = null, int maxSubjectInstanceRestriction = 1, ISubjectDataDefinition subjectDataDefinition = null, ISet<IInputPoolConstraint> inputPoolConstraints = null, string comment = null, string additionalLabel = null, IList<IPASSTriple> additionalAttribute = null) : base(layer, labelForID, incomingMessageExchange, subjectMacroBehavior, outgoingMessageExchange, maxSubjectInstanceRestriction, comment, additionalLabel, additionalAttribute) { export = new SubjectExport(this); }
         protected VisioStandAloneMacroSubject() { export = new SubjectExport(this); }
 
         public void ExportToVisio(Visio.Page page)

@@ -13,7 +13,7 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
         private const string shapeType = Constants.SBDMasters.FlowRestrictor;
 
         private readonly IShapeExport export;
-        public VisioFlowRestrictor(IState sourceState, IState targetState, string labelForID = null, ITransitionCondition transitionCondition = null, ITransition.TransitionType transitionType = ITransition.TransitionType.Standard, string comment = null, string additionalLabel = null, IList<IIncompleteTriple> additionalAttribute = null) : base(sourceState, targetState, labelForID, transitionCondition, transitionType, comment, additionalLabel, additionalAttribute) { export = new TransitionExport(this); }
+        public VisioFlowRestrictor(IState sourceState, IState targetState, string labelForID = null, ITransitionCondition transitionCondition = null, ITransition.TransitionType transitionType = ITransition.TransitionType.Standard, string comment = null, string additionalLabel = null, IList<IPASSTriple> additionalAttribute = null) : base(sourceState, targetState, labelForID, transitionCondition, transitionType, comment, additionalLabel, additionalAttribute) { export = new TransitionExport(this); }
         protected VisioFlowRestrictor() { export = new TransitionExport(this); }
 
         public void ExportToVisio(Visio.Page page)
