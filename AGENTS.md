@@ -10,7 +10,9 @@ release COM events when refreshed. Preserve behavior unless Windows/Visio
 characterization tests cover changes. The Model Explorer remains in `_old/UI/`
 because moving its XAML sources breaks legacy WinFX markup compilation. Constants
 and helpers live in `Compatibility/`. Ontologies and images are in `Resources/`;
-documentation and sample OWL files are in `docs/`. There is no active test project.
+the integrated label checker lives in `NlpChecking/`, including its embedded
+training set under `NlpChecking/Resources/`. Documentation and sample OWL files
+are in `docs/`. There is no active test project.
 
 ## Image Retention
 
@@ -35,6 +37,11 @@ Restore `packages.config` dependencies before building. Run Debug from Visual St
 Use four spaces and braces on separate lines. Use PascalCase for types and public members, camelCase for locals and private fields, and `I` prefixes for interfaces. Keep ontology adapters named `Visio<Type>`.
 
 Centralize ShapeSheet names in `Constants` and access cells through `VisioInfrastructure`. Preserve .NET Framework 4.8/VSTO compatibility and existing public facade signatures. Document public APIs; comment only non-obvious Visio or ontology behavior.
+
+Never add API keys, model credentials, or unencrypted user settings. The NLP
+suggestion service is optional; its offline classifier must continue to work
+without a key or network connection. Any new external transmission must be
+explicitly disclosed in the UI and acceptance checklist.
 
 ## Testing Guidelines
 

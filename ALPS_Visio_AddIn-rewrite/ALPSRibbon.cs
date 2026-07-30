@@ -1,4 +1,5 @@
-﻿using Microsoft.Office.Tools.Ribbon;
+﻿using ALPS_Visio_AddIn_rewrite.NlpChecking;
+using Microsoft.Office.Tools.Ribbon;
 using Microsoft.Office.Core;
 using System.Windows.Forms;
 using Visio = Microsoft.Office.Interop.Visio;
@@ -8,6 +9,7 @@ namespace ALPS_Visio_AddIn_rewrite
     partial class ALPSRibbon : RibbonBase
     {
         private readonly OWLImporter owlImporter;
+        private readonly NlpCheckingController nlpCheckingController;
 
         /// <summary>
         /// Ribbon containing ALPS Menu
@@ -22,6 +24,8 @@ namespace ALPS_Visio_AddIn_rewrite
         {
             this.owlImporter = owlImporter
                 ?? throw new System.ArgumentNullException(nameof(owlImporter));
+            this.nlpCheckingController = new NlpCheckingController(
+                () => Globals.ThisAddIn.GetDrawingDocument());
             this.RibbonType = "Microsoft.Visio.Drawing";
 
             RibbonTab alpsTab = this.Factory.CreateRibbonTab();
@@ -87,6 +91,15 @@ namespace ALPS_Visio_AddIn_rewrite
             verificationButton.Click += new RibbonControlEventHandler(
                 this.ShowVerificationStatus);
             owlGroup.Items.Add(verificationButton);
+
+            RibbonGroup nlpGroup = this.Factory.CreateRibbonGroup();
+            nlpGroup.Name = "nlpPassCheckingGroup";
+            nlpGroup.Label = "NLP PASS Checking";
+            alpsTab.Groups.Add(nlpGroup);
+
+            RibbonSplitButton nlpCheckingButton =
+                CreateNlpCheckingButton();
+            nlpGroup.Items.Add(nlpCheckingButton);
         }
 
         private RibbonSplitButton CreateAutoArrangeButton()
@@ -117,6 +130,56 @@ namespace ALPS_Visio_AddIn_rewrite
             autoArrangeButton.Items.Add(leftRightButton);
 
             return autoArrangeButton;
+        }
+
+        private RibbonSplitButton CreateNlpCheckingButton()
+        {
+            RibbonSplitButton button =
+                this.Factory.CreateRibbonSplitButton();
+            button.Name = "nlpCheckingButton";
+            button.Label = "Check Model Naming";
+            button.ScreenTip = "Check PASS model labels";
+            button.SuperTip = "Checks supported PASS shape labels with "
+                + "the locally trained classifier. Optional naming "
+                + "suggestions can be enabled in API Settings.";
+            button.OfficeImageId = "Spelling";
+            button.ShowLabel = true;
+            button.ControlSize =
+                RibbonControlSize.RibbonControlSizeLarge;
+            button.ItemSize =
+                RibbonControlSize.RibbonControlSizeRegular;
+            button.Click += new RibbonControlEventHandler(
+                this.CheckModelNaming);
+
+            RibbonButton checkButton =
+                this.Factory.CreateRibbonButton();
+            checkButton.Name = "nlpCheckModelNamingButton";
+            checkButton.Label = "Check Model Naming";
+            checkButton.Click += new RibbonControlEventHandler(
+                this.CheckModelNaming);
+            button.Items.Add(checkButton);
+
+            RibbonButton retrainButton =
+                this.Factory.CreateRibbonButton();
+            retrainButton.Name = "nlpRetrainButton";
+            retrainButton.Label = "Retrain";
+            retrainButton.ScreenTip =
+                "Retrain from the bundled PASS examples";
+            retrainButton.Click += new RibbonControlEventHandler(
+                this.RetrainNlpClassifier);
+            button.Items.Add(retrainButton);
+
+            RibbonButton apiSettingsButton =
+                this.Factory.CreateRibbonButton();
+            apiSettingsButton.Name = "nlpApiSettingsButton";
+            apiSettingsButton.Label = "API Settings";
+            apiSettingsButton.ScreenTip =
+                "Configure optional label suggestions";
+            apiSettingsButton.Click += new RibbonControlEventHandler(
+                this.ConfigureNlpApi);
+            button.Items.Add(apiSettingsButton);
+
+            return button;
         }
 
         /// <summary>
@@ -188,6 +251,24 @@ namespace ALPS_Visio_AddIn_rewrite
                 "ALPS Verification",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Information);
+        }
+
+        private async void CheckModelNaming(
+            object sender, RibbonControlEventArgs e)
+        {
+            await nlpCheckingController.RunAsync();
+        }
+
+        private void RetrainNlpClassifier(
+            object sender, RibbonControlEventArgs e)
+        {
+            nlpCheckingController.Retrain();
+        }
+
+        private void ConfigureNlpApi(
+            object sender, RibbonControlEventArgs e)
+        {
+            nlpCheckingController.ConfigureApiKey();
         }
     }
 }

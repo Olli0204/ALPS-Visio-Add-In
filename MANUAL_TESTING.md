@@ -22,6 +22,8 @@ with the **ALPS/PASS ADDIN** Ribbon tab.
 - **ALPS Layer Editing** contains **Show layer Explorer**.
 - **OWL PASS Tools** contains **Import OWL**, the **Auto-Arrange** split button,
   and **ALPS Verification**.
+- **NLP PASS Checking** contains the **Check Model Naming** split button with
+  **Check Model Naming**, **Retrain**, and **API Settings** menu entries.
 - Click **ALPS Verification** and confirm that a single informational message
   explains that verification is not implemented. It must not start or stop VBA.
 
@@ -74,6 +76,26 @@ Import `docs/[Test]_Vacation_Request.owl`.
 - Create or edit SID/SBD pages with the stencil macros and confirm the layer
   explorer reflects changes.
 - Verify SID-to-SBD navigation and any `extends`/background-page relationships.
+
+## 6. NLP PASS Checking
+
+- Without configuring an API key, click **Check Model Naming**. Confirm that no
+  authentication prompt or network request occurs and that supported shapes
+  from all pages appear in the results table.
+- Verify that subjects, multi-subjects, message specifications, do/send/receive
+  states, and do transitions are recognized. Confirm that page, Shape ID, type,
+  label, result, and confidence are populated.
+- Open **API Settings**, save a test key, restart Visio, and verify the setting
+  remains available. Confirm `%LOCALAPPDATA%\ALPS Visio Add-In\nlp-api-key.dat`
+  does not contain the key as readable text.
+- With API suggestions enabled, confirm that only the shape type and label of
+  entries marked for review are sent to `gpt.uni-muenster.de`; invalid or
+  unavailable credentials must produce a per-row notice without aborting the
+  remaining check.
+- Clear the key by saving an empty value. Run the check again and confirm it
+  remains fully functional offline.
+- Click **Retrain** and confirm that 680 bundled examples are reported. Run the
+  check twice and verify the Ribbon and dialogs stay responsive.
 
 Record failures with the input OWL file, page name, action, exception text, and
 a before/after screenshot.
