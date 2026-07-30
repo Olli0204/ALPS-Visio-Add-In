@@ -54,91 +54,20 @@ namespace VisioAddIn
             treeViewDirectory.Items.Clear();
             modelController = ALPS_Visio_AddIn_rewrite.Globals.ThisAddIn.getModelController();
 
-            // In each TreeViewItem, the information about an object (Model, SIDPage or SBDPage) are saved inside the tag parameter.
-            // The maximum depth of this treeView is 3. It consists of the 3 layers processModels, SID-pages, SBD-pages.
-
-            if (checkPriorityValid(models))
+            LayerExplorerTreeBuilder builder =
+                new LayerExplorerTreeBuilder(modelController);
+            if (builder.TryBuild(models,
+                out IList<DirectoryTreeViewItem> rootItems))
             {
+                foreach (DirectoryTreeViewItem rootItem in rootItems)
+                    treeViewDirectory.Items.Add(rootItem);
 
-                foreach (var modelEntry in models)
-                {
-                    // layer 0, all the Model-entries are added
-                    DirectoryTreeViewItem treeItemModel = new DirectoryTreeViewItem(null);
-                    treeItemModel.Header = modelEntry.Key.getModelUri();
-                    treeItemModel.Tag = modelEntry.Key;
-                    treeItemModel.DirectoryParent = treeItemModel;
-
-
-                    foreach (var sidEntry in modelEntry.Value.OrderBy(i => i.Key.getPriorityOrder()))
-                    {
-                        // layer 1, all the SID-pages are added
-                        DirectoryTreeViewItem treeItemSID = new DirectoryTreeViewItem(treeItemModel)
-                        {
-                            Header = sidEntry.Key.getLayer(),
-                            Tag = sidEntry.Key,
-                            DirectoryParent = treeItemModel
-                        };
-
-
-                        foreach (SBDPage sbdEntry in sidEntry.Value)
-                        {
-                            // layer 3, all the SBD-pages are added
-                            DirectoryTreeViewItem treeItemSbd = new DirectoryTreeViewItem(treeItemSID)
-                            {
-                                Header = sbdEntry.getNameU(),
-                                Tag = sbdEntry,
-                                DirectoryParent = treeItemSID
-                            };
-
-                            // Add all items belonging to sidEntry as child-nodes to the current treeItemSID-node
-                            treeItemSID.Items.Add(treeItemSbd);
-                        }
-                        // Add all items belonging to modelEntry as child-nodes to the current treeItemModel-node
-                        treeItemModel.Items.Add(treeItemSID);
-
-                    }
-                    // Add all model-items as top layer to the treeView
-                    treeViewDirectory.Items.Add(treeItemModel);
-                }
                 expandTree();
             }
             else
             {
                 btnRefresh.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
             }
-        }
-
-        private bool checkPriorityValid(IDictionary<IVisioProcessModel, IDictionary<SIDPage, IList<SBDPage>>> models)
-        {
-            bool valid = true;
-            foreach (var modelEntry in models)
-            {
-                LinkedList<int> usedNumbers = new LinkedList<int>();
-                foreach (var sidEntry in modelEntry.Value.OrderBy(i => i.Key.getPriorityOrder()))
-                {
-                    SIDPage page = sidEntry.Key;
-                    int priority = page.getPriorityOrder();
-                    if (usedNumbers.Contains(priority))
-                    {
-                        valid = false;
-                        priority = usedNumbers.First() + 2;
-                        modelController.updatePagePriority(usedNumbers.First() + 2, page);
-                        usedNumbers.AddFirst(priority);
-                    }
-                    else
-                    {
-                        if (usedNumbers.Count == 0 || priority > usedNumbers.First())
-                        {
-                            usedNumbers.AddFirst(priority);
-                        }
-                        else
-                        {
-                            usedNumbers.AddLast(priority);
-                        }
-                    }
-                }
-            }
-            return valid;
         }
 
         /// <summary>

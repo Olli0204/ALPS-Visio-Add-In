@@ -2,7 +2,7 @@
 using alps.net.api.StandardPASS;
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using ALPS_Visio_AddIn_rewrite.OWLShapes.Layout;
 using ALPS_Visio_AddIn_rewrite.VisioInfrastructure;
 using Visio = Microsoft.Office.Interop.Visio;
 
@@ -14,6 +14,12 @@ namespace ALPS_Visio_AddIn_rewrite
             new VisioStencilRepository(
                 () => Globals.ThisAddIn.Application.Documents,
                 message => System.Windows.Forms.MessageBox.Show(message));
+
+        private static readonly VisioStencilSession StencilSession =
+            new VisioStencilSession(
+                () => Globals.ThisAddIn.Application,
+                () => Globals.ThisAddIn.GetDrawingDocument(),
+                StencilRepository);
 
         private static readonly VisioPageFactory PageFactory =
             new VisioPageFactory(() => Globals.ThisAddIn.Application);
@@ -48,7 +54,7 @@ namespace ALPS_Visio_AddIn_rewrite
         /// </summary>
         public static void OpenImportStencils()
         {
-            RestoreDrawingWindow(StencilRepository.OpenImportStencils, true);
+            StencilSession.OpenImportStencils();
         }
 
         /// <summary>
@@ -56,41 +62,7 @@ namespace ALPS_Visio_AddIn_rewrite
         /// </summary>
         public static void OpenInteractiveStencils()
         {
-            RestoreDrawingWindow(StencilRepository.OpenInteractiveStencils, false);
-        }
-
-        private static void RestoreDrawingWindow(System.Action openStencils,
-            bool createDrawingIfMissing)
-        {
-            Visio.Window drawingWindow = null;
-            try
-            {
-                Visio.Document drawing = Globals.ThisAddIn.GetDrawingDocument();
-                if (drawing == null && createDrawingIfMissing)
-                {
-                    drawing = Globals.ThisAddIn.Application.Documents.Add("");
-                }
-
-                Visio.Document activeDocument =
-                    Globals.ThisAddIn.Application.ActiveDocument;
-                if (drawing != null
-                    && activeDocument != null
-                    && activeDocument.Type == Visio.VisDocumentTypes.visTypeDrawing)
-                    drawingWindow = Globals.ThisAddIn.Application.ActiveWindow;
-
-                openStencils();
-            }
-            finally
-            {
-                try
-                {
-                    drawingWindow?.Activate();
-                }
-                catch (System.Runtime.InteropServices.COMException)
-                {
-                    // The drawing may have been closed while a stencil opened.
-                }
-            }
+            StencilSession.OpenInteractiveStencils();
         }
 
         public enum ShapeType
@@ -196,16 +168,7 @@ namespace ALPS_Visio_AddIn_rewrite
 
         public static List<ISimple2DVisualizationPoint> GetBounds(PASSProcessModelElement element)
         {
-            if (OWLShapes.VisioLayout.TryGetGeneratedBounds(element, out List<ISimple2DVisualizationPoint> generatedBounds))
-                return generatedBounds;
-
-            List<ISimple2DVisualizationPoint> bounds = new List<ISimple2DVisualizationPoint>(
-                element.getElementsWithUnspecifiedRelation().Values.OfType<ISimple2DVisualizationPoint>());
-
-            if (bounds.Count < 2)
-                throw new InvalidOperationException("Missing visualisation bounds for " + element.getModelComponentID() + ".");
-
-            return bounds;
+            return VisioBoundsProvider.GetBounds(element);
         }
     }
 }

@@ -1,7 +1,9 @@
 ﻿using Microsoft.Office.Interop.Visio;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Windows;
 using VisioAddIn;
 
@@ -12,15 +14,19 @@ namespace VisioAddIn.Snapping
     /// The entry class for the snapping module
     /// Keeps overview of the managed SID and SBD pages
     /// </summary>
-    public class ModelController
+    public class ModelController : IDisposable
     {
         private readonly ALPS_Visio_AddIn_rewrite.ThisAddIn addIn;
 
-        private ISet<IVisioProcessModel> models;
+        private readonly ISet<IVisioProcessModel> models;
 
-        private IDictionary<IVisioProcessModel, ISet<SIDPageController>> modelToSidController;
-        private IDictionary<SIDPage, ISet<SBDPageController>> sidPageToSbdController;
-        private IDictionary<int, Page> possibleSidOrSbdPages = new Dictionary<int, Page>();
+        private readonly IDictionary<IVisioProcessModel, ISet<SIDPageController>>
+            modelToSidController;
+        private readonly IDictionary<SIDPage, ISet<SBDPageController>>
+            sidPageToSbdController;
+        private readonly IDictionary<int, Page> possibleSidOrSbdPages =
+            new Dictionary<int, Page>();
+        private bool disposed;
 
         public ModelController(ALPS_Visio_AddIn_rewrite.ThisAddIn addIn)
         {
@@ -31,14 +37,6 @@ namespace VisioAddIn.Snapping
             this.sidPageToSbdController = new Dictionary<SIDPage, ISet<SBDPageController>>();
         }
 
-        private static readonly string[] sidPageCompleteIfCellsExists = {
-            ALPSConstants.cellValuePropertyPageModelURI,
-            ALPSConstants.cellValuePropertyPageType,
-            ALPSConstants.cellValuePropertyPageLayer,
-            ALPSConstants.cellValuePropertyPageModelVersion,
-            ALPSConstants.cellValuePropertyPriorityOrderNumber
-        };
-
         /// <summary>
         /// Called by Visio when a Page is added to the current document
         /// </summary>
@@ -46,7 +44,7 @@ namespace VisioAddIn.Snapping
         internal void pageAdded(Page page)
         {
             // Check if page is a fully functional SID page (all cells created correctly)
-            if (isSid(page))
+            if (DiagramPageClassifier.IsSid(page))
             {
                 registerNewSidPage(page);
                 if (!possibleSidOrSbdPages.ContainsKey(page.ID)) return;
@@ -54,7 +52,7 @@ namespace VisioAddIn.Snapping
                 page.CellChanged -= onCellChangedOnPossibleSidOrSbdPage;
             }
             // Check if page is a fully functional SBD page (all cells created correctly)
-            else if (isSbd(page))
+            else if (DiagramPageClassifier.IsSbd(page))
             {
                 registerNewSbdPage(page);
                 if (!possibleSidOrSbdPages.ContainsKey(page.ID)) return;
@@ -69,33 +67,6 @@ namespace VisioAddIn.Snapping
                 possibleSidOrSbdPages.Add(page.ID, page);
                 page.CellChanged += onCellChangedOnPossibleSidOrSbdPage;
             }
-        }
-
-        /// <summary>
-        /// Checks if a visio page is a SID page, meaning all the relevant cells exist in the PageSheet
-        /// and the type cell contains a value stating that it is a SID page
-        /// </summary>
-        /// <returns></returns>
-        private static bool isSid(Page page)
-        {
-            // If one of the specified cells does not exist, return false
-            if (sidPageCompleteIfCellsExists.Any(cell => page.PageSheet.CellExistsU[cell, 1] == 0))
-            {
-                return false;
-            }
-            string pageType = page.PageSheet.CellsU[ALPSConstants.cellValuePropertyPageType].Formula;
-            
-            return pageType.Contains("SubjectInteraction");
-        }
-
-        /// <summary>
-        /// Checks if a visio page is a SBD page, meaning all the relevant cells exist in the PageSheet
-        /// and the type cell contains a value stating that it is a SBD page
-        /// </summary>
-        /// <returns></returns>
-        private static bool isSbd(Page page)
-        {
-            return page.PageSheet.CellExistsU[ALPSConstants.cellValuePropertySBDLinkedSubjectID, 1] != 0;
         }
 
         /// <summary>
@@ -358,16 +329,13 @@ namespace VisioAddIn.Snapping
         /// <param name="pages"></param>
         internal void updateWholeController(Pages pages)
         {
-            models = new HashSet<IVisioProcessModel>();
+            ReleasePageControllers();
 
-            this.modelToSidController = new Dictionary<IVisioProcessModel, ISet<SIDPageController>>();
-            this.sidPageToSbdController = new Dictionary<SIDPage, ISet<SBDPageController>>();
-
-            foreach (var page in pages.Cast<Page>().Where(isSid))
+            foreach (var page in pages.Cast<Page>().Where(DiagramPageClassifier.IsSid))
             {
                 registerNewSidPage(page);
             }
-            foreach (var page in pages.Cast<Page>().Where(isSbd))
+            foreach (var page in pages.Cast<Page>().Where(DiagramPageClassifier.IsSbd))
             {
                 registerNewSbdPage(page);
             }
@@ -375,6 +343,48 @@ namespace VisioAddIn.Snapping
             {
                 sidPageC.updateExtends();
             }
+        }
+
+        public void Dispose()
+        {
+            if (disposed)
+                return;
+
+            disposed = true;
+            ReleasePageControllers();
+        }
+
+        private void ReleasePageControllers()
+        {
+            foreach (Page page in possibleSidOrSbdPages.Values)
+            {
+                try
+                {
+                    page.CellChanged -= onCellChangedOnPossibleSidOrSbdPage;
+                }
+                catch (COMException)
+                {
+                    // The page may already be closing with its document.
+                }
+            }
+
+            possibleSidOrSbdPages.Clear();
+
+            foreach (SIDPageController controller
+                in modelToSidController.Values.SelectMany(controllers => controllers))
+            {
+                controller.Dispose();
+            }
+
+            foreach (SBDPageController controller
+                in sidPageToSbdController.Values.SelectMany(controllers => controllers))
+            {
+                controller.Dispose();
+            }
+
+            models.Clear();
+            modelToSidController.Clear();
+            sidPageToSbdController.Clear();
         }
 
 

@@ -92,7 +92,7 @@ namespace VisioAddIn.Snapping
                 visioPage.Layers.ItemU[ALPSConstants.backgroundSeparatorLayerName].CellsC[7].Formula = "1";
 
             }
-            catch (COMException e)
+            catch (COMException)
             {
                 // Happens when the visioRectMaster cannot be retrieved properly
             }

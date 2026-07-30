@@ -2,11 +2,12 @@
 
 ## Project Structure & Module Organization
 
-`ALPS_Visio_Tools.sln` contains a .NET Framework 4.8 VSTO add-in in `ALPS_Visio_AddIn-rewrite/`. `ThisAddIn.cs` and `ALPSRibbon.cs` are lifecycle/UI entry points. OWL import orchestration lives in `Importing/`; adapters and export logic live in `OWLShapes/`. Put reusable Visio COM concerns in `VisioInfrastructure/`. Keep `VisioHelper.cs` as a compatibility facade.
+`ALPS_Visio_Tools.sln` contains the .NET Framework 4.8 VSTO add-in in `ALPS_Visio_AddIn-rewrite/`. `ThisAddIn.cs` and `ALPSRibbon.cs` are lifecycle/UI entry points. Import orchestration lives in `Importing/`; adapters and export logic live in `OWLShapes/`, with fallback layout under `OWLShapes/Layout/`. Put reusable Visio COM concerns in `VisioInfrastructure/`. Keep `VisioHelper.cs` as a compatibility facade.
 
-`Snapping/` and `_old/UI/` contain active, compatibility-sensitive production
-code connected directly through `ThisAddIn`; preserve behavior unless Windows/Visio
-characterization tests cover the change. The Model Explorer remains in `_old/UI/`
+`Snapping/` and `_old/UI/` contain compatibility-sensitive production code
+connected through `ThisAddIn`; controllers must remain document-scoped and
+release COM events when refreshed. Preserve behavior unless Windows/Visio
+characterization tests cover changes. The Model Explorer remains in `_old/UI/`
 because moving its XAML sources breaks legacy WinFX markup compilation. Constants
 and helpers live in `Compatibility/`. Ontologies and images are in `Resources/`;
 documentation and sample OWL files are in `docs/`. There is no active test project.
@@ -19,7 +20,7 @@ changing them.
 
 ## Build, Test, and Development Commands
 
-Development requires Windows, Microsoft Visio, and Visual Studio 2022 with the Office/VSTO workload.
+Development requires Windows, Visio, and Visual Studio 2022 with Office/VSTO.
 
 ```powershell
 nuget restore ALPS_Visio_Tools.sln
@@ -41,7 +42,7 @@ No automated suite or coverage threshold exists. Manually verify both `docs/[Tes
 
 ## Commit & Pull Request Guidelines
 
-Use focused Conventional Commit-style messages (`fix:`, `feat:`, `refactor:`, `chore:`), for example `refactor: isolate Visio stencil access`. Pull requests should describe affected model elements, manual test steps, known limitations, and linked issues. Include before/after screenshots for visual changes.
+Use Conventional Commit messages (`fix:`, `feat:`, `refactor:`, `chore:`), for example `refactor: isolate Visio stencil access`. Pull requests should describe affected model elements, manual test steps, known limitations, and linked issues. Include before/after screenshots for visual changes.
 
 Push through the configured SSH remote
 `git@github.com:Olli0204/ALPS-Visio-Add-In.git`. The available SSH key

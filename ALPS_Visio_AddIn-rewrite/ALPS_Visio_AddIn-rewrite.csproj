@@ -299,6 +299,8 @@
     <Compile Include="OWLShapes\VisioClassFactory.cs" />
     <Compile Include="OWLShapes\Layout\FallbackLayoutRanker.cs" />
     <Compile Include="OWLShapes\Layout\FallbackLayoutState.cs" />
+    <Compile Include="OWLShapes\Layout\FallbackTransitionPortPlanner.cs" />
+    <Compile Include="OWLShapes\Layout\VisioBoundsProvider.cs" />
     <Compile Include="OWLShapes\VisioLayout.cs" />
     <Compile Include="OWLShapes\VisioPASSProcessModel.cs" />
     <Compile Include="OWLShapes\VisioSubjectBehavior.cs" />
@@ -308,13 +310,16 @@
     <Compile Include="ShapeFinder.cs" />
     <Compile Include="VisioInfrastructure\StencilFileLocator.cs" />
     <Compile Include="VisioInfrastructure\VisioAutoArrange.cs" />
+    <Compile Include="VisioInfrastructure\VisioConnectorRebinder.cs" />
     <Compile Include="VisioInfrastructure\VisioPageFactory.cs" />
     <Compile Include="VisioInfrastructure\VisioRouting.cs" />
     <Compile Include="VisioInfrastructure\VisioShapeSheet.cs" />
     <Compile Include="VisioInfrastructure\VisioShapePositioner.cs" />
     <Compile Include="VisioInfrastructure\VisioStencilRepository.cs" />
+    <Compile Include="VisioInfrastructure\VisioStencilSession.cs" />
     <Compile Include="VisioHelper.cs" />
     <Compile Include="Snapping\Core\DiagramPage.cs" />
+    <Compile Include="Snapping\Core\DiagramPageClassifier.cs" />
     <Compile Include="Snapping\Core\DiagramPageController.cs" />
     <Compile Include="Snapping\Core\ModelController.cs" />
     <Compile Include="Snapping\Core\SBDPage.cs" />
@@ -328,6 +333,7 @@
     <Compile Include="_old\UI\AnchorBarsUsage.cs" />
     <Compile Include="_old\UI\DirectoryTreeViewItem.cs" />
     <Compile Include="_old\UI\IDialogCallback.cs" />
+    <Compile Include="_old\UI\LayerExplorerTreeBuilder.cs" />
     <Compile Include="_old\UI\WindowChangeLayerName.xaml.cs">
       <DependentUpon>WindowChangeLayerName.xaml</DependentUpon>
     </Compile>

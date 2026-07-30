@@ -10,12 +10,9 @@ namespace VisioAddIn
     public partial class WindowSnapConfirmation : System.Windows.Window
     {
 
-        private static WindowSnapConfirmation inst;
-
-        private SnapHandler snapHandler;
-
-        private Shape snappingShape;
-        private Shape referenceBackgroundShape;
+        private readonly SnapHandler snapHandler;
+        private readonly Shape snappingShape;
+        private readonly Shape referenceBackgroundShape;
 
         /// <summary>
         /// constructor.

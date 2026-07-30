@@ -1,61 +1,48 @@
 ﻿using Microsoft.Office.Interop.Visio;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.InteropServices;
 using VisioAddIn;
 
 
 namespace VisioAddIn.Snapping
 {
-    public class SIDPageController : DiagramPageController
+    public class SIDPageController : DiagramPageController, IDisposable
     {
         /// <summary>
         /// reference to main class for different calls
         /// </summary>
         private readonly ALPS_Visio_AddIn_rewrite.ThisAddIn addIn;
 
-        private static readonly IList<SIDPageController> controllers = new List<SIDPageController>();
-
-        private ModelController modelController;
-        private string modelURri;
+        private readonly ModelController modelController;
+        private readonly SIDPage controlledSidPage;
+        private readonly SidSnapHandler snapHandler;
+        private string modelUri;
+        private bool disposed;
 
         /// <summary>
         /// To save the current x-coordinate of the moved shape
         /// </summary>
         private string xCoordinate = "";
 
-        /// <summary>
-        /// Controlled controlledSidPage
-        /// </summary>
-        private SIDPage controlledSidPage;
-
-        private SidSnapHandler snapHandler;
-
         private SIDPageController(ALPS_Visio_AddIn_rewrite.ThisAddIn addIn, ModelController modelController, string modelUri, Page page) : base(page)
         {
             Debug.Print("Creating SIDPageController for " + page.NameU);
             this.addIn = addIn;
-            modelURri = modelUri;
+            this.modelController = modelController;
+            this.modelUri = modelUri;
 
-            refresh(modelController);
-        }
+            controlledSidPage = createSidPage();
 
-        private void refresh(ModelController controller)
-        {
-            this.modelController = controller;
-
-            createSidPage();
-
-            snapHandler = new SidSnapHandler(controller, controlledSidPage);
+            snapHandler = new SidSnapHandler(modelController, controlledSidPage);
 
             visioPage.CellChanged += onCellChanged;
         }
 
 
         /// <summary>
-        /// Factory method to obtain a controller for a SID page.
-        /// Only creates a new controller if no controller exists for the requested page.
+        /// Creates the controller owned by the current document model controller.
         /// </summary>
         /// <param name="addIn">The instance of the current addIn</param>
         /// <param name="modelController">the model controller</param>
@@ -64,25 +51,29 @@ namespace VisioAddIn.Snapping
         /// <returns></returns>
         public static SIDPageController getController(ALPS_Visio_AddIn_rewrite.ThisAddIn addIn, ModelController modelController, string modelUri, Page page)
         {
-            // Check if a controller for the page exists
-            foreach (SIDPageController controller in controllers)
-            {
-                if (!controller.modelURri.Equals(modelUri) || !controller.visioPage.Equals(page)) continue;
-                // TODO why refresh here?
-                controller.refresh(modelController);
-                return controller;
-            }
+            return new SIDPageController(addIn, modelController, modelUri, page);
+        }
 
-            // If not, create a new one
-            SIDPageController newController = new SIDPageController(addIn, modelController, modelUri, page);
-            controllers.Add(newController);
-            return newController;
+        public void Dispose()
+        {
+            if (disposed)
+                return;
+
+            disposed = true;
+            try
+            {
+                visioPage.CellChanged -= onCellChanged;
+            }
+            catch (COMException)
+            {
+                // The page may already be closing with its document.
+            }
         }
 
         /// <summary>
         /// creates the actual sid page in the model for the visio page.
         /// </summary>
-        private void createSidPage()
+        private SIDPage createSidPage()
         {
             string layer = visioPage.PageSheet.CellsU[ALPSConstants.cellValuePropertyPageLayer].Formula;
             string nameU = visioPage.NameU;
@@ -90,12 +81,12 @@ namespace VisioAddIn.Snapping
             int priority = readOutPriority();
             if (priority == -1)
             {
-                priority = modelController.getCurrentPriority(modelURri);
+                priority = modelController.getCurrentPriority(modelUri);
                 Cell cell = visioPage.PageSheet.CellsU[ALPSConstants.cellValuePropertyPriorityOrderNumber];
                 cell.Formula = priority.ToString();
             }
 
-            controlledSidPage = new SIDPage(layer, nameU, modelURri, priority);
+            return new SIDPage(layer, nameU, modelUri, priority);
         }
 
 
@@ -158,7 +149,7 @@ namespace VisioAddIn.Snapping
                     string trimmed = newModelURI.Trim('\\', '"');
                     if (string.IsNullOrWhiteSpace(trimmed))
                     {
-                        setModelUri(modelURri);
+                        setModelUri(modelUri);
                     }
                     else
                     {
@@ -407,7 +398,7 @@ namespace VisioAddIn.Snapping
         {
             visioPage.PageSheet.CellsU[ALPSConstants.cellValuePropertyPageModelURI].Formula = newModelURI;
             controlledSidPage.setModelUri(newModelURI);
-            this.modelURri = newModelURI;
+            this.modelUri = newModelURI;
 
             snapHandler.setModelUri(newModelURI);
         }
@@ -448,7 +439,7 @@ namespace VisioAddIn.Snapping
 
         public string getModelUri()
         {
-            return modelURri;
+            return modelUri;
         }
 
         public SidSnapHandler getSidSnapHandler()

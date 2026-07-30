@@ -16,7 +16,7 @@ namespace VisioAddIn.Snapping
     /// </summary>
     public class SbdSnapHandler : SnapHandler
     {
-        private SBDPage foregroundPage;
+        private readonly SBDPage foregroundPage;
         private SBDPage referencedBackgroundPage;
 
         private readonly ModelController modelController;
@@ -38,8 +38,13 @@ namespace VisioAddIn.Snapping
         /// <returns>true if snappable, false otherwise</returns>
         protected override bool isShapeSnappable(IVShape shape)
         {
-            Debug.Print("testing shape: " + shape.NameU + " - is snappable: " + shape.HasCategory(ALPSConstants.alpsShapeCategoryStateExtension) +
-                 " on: " + this.foregroundPage.getNameU() + " with background: " + this.referencedBackgroundPage.getNameU());
+            Debug.Print("testing shape: " + shape.NameU + " - is snappable: "
+                + shape.HasCategory(ALPSConstants.alpsShapeCategoryStateExtension)
+                + " on: " + foregroundPage.getNameU()
+                + " with background: "
+                + (referencedBackgroundPage == null
+                    ? "<none>"
+                    : referencedBackgroundPage.getNameU()));
             return shape.HasCategory(ALPSConstants.alpsShapeCategoryStateExtension);
         }
 

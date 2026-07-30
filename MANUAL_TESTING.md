@@ -29,6 +29,9 @@ with the **ALPS/PASS ADDIN** Ribbon tab.
   additional security prompt when the SBD stencil is reopened interactively.
 - Open **Show layer Explorer**. Switch pages/documents and confirm the tree
   refreshes, and verify that refresh, navigation, and editing remain responsive.
+- Trigger the explorer refresh repeatedly, then move one snappable shape. Each
+  action and confirmation dialog must occur once; old document controllers must
+  not keep reacting.
 
 - The Output window must not stop in `ThisDocument.restartMarkos`; OWL import no
   longer stops and restarts the active VBA listener collection.

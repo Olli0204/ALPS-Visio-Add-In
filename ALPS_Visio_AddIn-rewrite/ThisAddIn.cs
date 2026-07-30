@@ -40,11 +40,21 @@ namespace ALPS_Visio_AddIn_rewrite
             Application.PageAdded += Application_PageAdded;
             Application.WindowActivated += Application_WindowActivated;
             Application.DocumentOpened += Application_DocumentOpened;
+            this.Shutdown += ThisAddIn_Shutdown;
 
             // Set the current active document
             Visio.Document document = Application.ActiveDocument;
             if (IsDrawingDocument(document))
                 activeDoc = document;
+        }
+
+        private void ThisAddIn_Shutdown(object sender, System.EventArgs e)
+        {
+            Application.DocumentCreated -= Application_DocumentCreated;
+            Application.PageAdded -= Application_PageAdded;
+            Application.WindowActivated -= Application_WindowActivated;
+            Application.DocumentOpened -= Application_DocumentOpened;
+            modelManager?.Dispose();
         }
 
         /// <summary>
@@ -159,7 +169,9 @@ namespace ALPS_Visio_AddIn_rewrite
             Visio.Document document = GetDrawingDocument();
             if (document == null) return;
 
-            this.modelManager = new ModelController(this);
+            if (modelManager == null)
+                modelManager = new ModelController(this);
+
             modelManager.updateWholeController(document.Pages);
             layerExplorer?.displayTreeView(modelManager.getTreeView());
         }

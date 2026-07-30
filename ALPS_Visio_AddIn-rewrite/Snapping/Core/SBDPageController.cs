@@ -1,17 +1,19 @@
 ﻿using Microsoft.Office.Interop.Visio;
 using System;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using VisioAddIn;
 
 namespace VisioAddIn.Snapping
 {
-    public class SBDPageController : DiagramPageController
+    public class SBDPageController : DiagramPageController, IDisposable
     {
         private readonly ModelController modelController;
         private readonly SIDPageController sidController;
         private readonly SbdSnapHandler snapHandler;
 
-        private SBDPage sbdPage;
+        private readonly SBDPage sbdPage;
+        private bool disposed;
 
         public SBDPageController(ModelController modelController, SIDPageController sidController, Page page) : base(page)
         {
@@ -19,7 +21,10 @@ namespace VisioAddIn.Snapping
             this.modelController = modelController;
             this.sidController = sidController;
 
-            createSbdPage();
+            string pageLayer = visioPage.PageSheet.CellsU[
+                ALPSConstants.cellValuePropertyPageLayer].Formula;
+            sbdPage = new SBDPage(
+                pageLayer, visioPage.NameU, sidController.getModelUri());
 
             snapHandler = new SbdSnapHandler(sbdPage, this.modelController);
 
@@ -32,12 +37,22 @@ namespace VisioAddIn.Snapping
             return visioPage;
         }
 
-        private void createSbdPage()
+        public void Dispose()
         {
-            string pageLayer = visioPage.PageSheet.CellsU[ALPSConstants.cellValuePropertyPageLayer].Formula;
-            sbdPage = new SBDPage(pageLayer, visioPage.NameU, sidController.getModelUri());
-        }
+            if (disposed)
+                return;
 
+            disposed = true;
+            try
+            {
+                visioPage.CellChanged -= onCellChanged;
+                visioPage.ShapeAdded -= shapeAdded;
+            }
+            catch (COMException)
+            {
+                // The page may already be closing with its document.
+            }
+        }
 
         private void shapeAdded(Shape shape)
         {

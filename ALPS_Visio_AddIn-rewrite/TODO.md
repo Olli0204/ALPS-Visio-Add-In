@@ -8,9 +8,10 @@ wie das AddIn aufgebaut ist und funktioniert.
 ### Entrypoint
 ![ThisAddIn.svg](../docs/ThisAddIn.svg)
 Beim Start wird `ThisAddIn#ThisAddIn_Startup` ausgeführt. Das initialisiert vor allem den Model Explorer und die Snap Handler.
-Die produktiven Komponenten liegen in `_old/UI/` und `Snapping/`; ihr Verhalten ist kompatibilitätssensitiv und soll
-erst mit Windows-/Visio-Charakterisierungstests weiter zerlegt werden. Der WPF-Pfad `_old/UI/` bleibt wegen der
-Pfadabhängigkeit des alten WinFX-Markup-Compilers vorerst bestehen.
+Die produktiven Komponenten liegen in `_old/UI/` und `Snapping/`; weitere
+verhaltensnahe Änderungen benötigen Windows-/Visio-Charakterisierungstests. Der
+WPF-Pfad `_old/UI/` bleibt wegen der Pfadabhängigkeit des alten
+WinFX-Markup-Compilers bestehen.
 
 Außerdem werden die Buttons erzeugt, siehe dazu `ALPSRibbon`.
 
@@ -47,8 +48,16 @@ Fassade erhalten und delegiert die Dateisystemsuche sowie die Auswahl der neuest
 `VisioInfrastructure/StencilFileLocator`.
 
 Das deterministische Ersatzlayout bleibt über `OWLShapes/VisioLayout` erreichbar.
-Graph-Rangberechnung und schwach referenzierter Laufzeitzustand liegen getrennt
-unter `OWLShapes/Layout/`.
+Graph-Rangberechnung, Connector-Portplanung, Bounds-Auflösung und schwach
+referenzierter Laufzeitzustand liegen getrennt unter `OWLShapes/Layout/`.
+
+`ModelController` besitzt die Snapping-Controller eines Dokuments. Beim Refresh,
+Dokumentwechsel und Add-in-Shutdown werden deren Visio-Events explizit abgemeldet;
+es gibt keinen globalen SID-Controller-Cache mehr.
+
+Der Model Explorer verbleibt aus Build-Kompatibilitätsgründen in `_old/UI/`.
+Baumaufbau und Prioritätsnormalisierung sind jedoch aus dem WPF-Code-behind in
+`LayerExplorerTreeBuilder` ausgelagert.
 
 ## nächste Schritte
 Jetzt da du dich hoffentlich in angemessenerer Zeit einarbeiten konntest, kommen die nächsten Aufgaben auf dich zu.
@@ -72,8 +81,9 @@ Eine Dokumentation der API wäre sehr von Vorteil.
 	- Bei manchen Eigenschaften habe ich einen Kommentar `// alps.net.api` dazugeschrieben, diese habe ich zwar nicht
 gefunden, konnte aber auch nicht verifizieren, dass sie nicht in der API existieren.
 - Alle Eigenschaften aus der Ontologie sollten implementiert werden.
-- `Snapping/` und der Model Explorer in `_old/UI/` funktionieren produktiv, benötigen aber Charakterisierungstests und
-  eine schrittweise interne Zerlegung.
+- `Snapping/` und der Model Explorer in `_old/UI/` funktionieren produktiv.
+  Weitere Verhaltensänderungen benötigen Windows-/Visio-Charakterisierungstests;
+  der XAML-Pfad muss wegen des alten WinFX-Compilers erhalten bleiben.
 
 ## Empfehlungen und persönliche Hinweise
 Ich habe im Laufe meiner Entwicklung mehrere *Mini-Dokumentationen* geschrieben, diese habe ich alle mit in den `docs`
