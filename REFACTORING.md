@@ -3,6 +3,7 @@
 The behavior-preserving source refactoring is complete. Remaining work listed in
 `ALPS_Visio_AddIn-rewrite/TODO.md` concerns ontology coverage, automated Windows
 tests, packaging, or changes that first require Visio characterization tests.
+`FUNCTIONAL_SCOPE.md` records the user-facing comparison with `main`.
 
 ## Goals and Boundaries
 

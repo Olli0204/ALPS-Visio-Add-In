@@ -25,11 +25,46 @@ namespace ALPS_Visio_AddIn_rewrite
             this.RibbonType = "Microsoft.Visio.Drawing";
 
             RibbonTab alpsTab = this.Factory.CreateRibbonTab();
+            alpsTab.Name = "alpsPassTab";
             alpsTab.Label = "ALPS/PASS ADDIN";
             this.Tabs.Add(alpsTab);
 
+            RibbonGroup standardGroup = this.Factory.CreateRibbonGroup();
+            standardGroup.Name = "standardFunctionsGroup";
+            standardGroup.Label = "Standard Functions";
+            alpsTab.Groups.Add(standardGroup);
+
+            RibbonButton openStencilsButton = this.Factory.CreateRibbonButton();
+            openStencilsButton.Name = "openStencilsButton";
+            openStencilsButton.Label = "Open ALPS/PASS Stencils";
+            openStencilsButton.SuperTip = "Tries to open the necessary ALPS Visio stencils if they are available on the system.";
+            openStencilsButton.Image = Properties.Resources.document_open_7;
+            openStencilsButton.ShowImage = true;
+            openStencilsButton.ControlSize = RibbonControlSize.RibbonControlSizeLarge;
+            openStencilsButton.Click += new RibbonControlEventHandler(this.OpenStencils);
+            standardGroup.Items.Add(openStencilsButton);
+
+            RibbonSplitButton autoArrangeButton = CreateAutoArrangeButton();
+            standardGroup.Items.Add(autoArrangeButton);
+
+            RibbonGroup layerEditingGroup = this.Factory.CreateRibbonGroup();
+            layerEditingGroup.Name = "layerEditingGroup";
+            layerEditingGroup.Label = "ALPS Layer Editing";
+            alpsTab.Groups.Add(layerEditingGroup);
+
+            RibbonButton layerExplorerButton = this.Factory.CreateRibbonButton();
+            layerExplorerButton.Name = "layerExplorerButton";
+            layerExplorerButton.Label = "Show layer Explorer";
+            layerExplorerButton.SuperTip = "Open the layer explorer for advanced multi-layered ALPS editing.";
+            layerExplorerButton.OfficeImageId = "LayersMenu";
+            layerExplorerButton.ShowImage = true;
+            layerExplorerButton.ControlSize = RibbonControlSize.RibbonControlSizeLarge;
+            layerExplorerButton.Click += new RibbonControlEventHandler(this.ShowLayerExplorer);
+            layerEditingGroup.Items.Add(layerExplorerButton);
+
             RibbonGroup owlGroup = this.Factory.CreateRibbonGroup();
-            owlGroup.Label = "ALPS Tools";
+            owlGroup.Name = "owlPassToolsGroup";
+            owlGroup.Label = "OWL PASS Tools";
             alpsTab.Groups.Add(owlGroup);
 
             RibbonButton owlImporterButton = this.Factory.CreateRibbonButton();
@@ -42,6 +77,20 @@ namespace ALPS_Visio_AddIn_rewrite
             owlImporterButton.Click += new RibbonControlEventHandler(this.LoadOWLFile);
             owlGroup.Items.Add(owlImporterButton);
 
+            RibbonButton verificationButton = this.Factory.CreateRibbonButton();
+            verificationButton.Name = "verificationButton";
+            verificationButton.Label = "ALPS Verification";
+            verificationButton.SuperTip = "The verification command is retained from main. The original implementation is only a debug placeholder; model verification is not implemented yet.";
+            verificationButton.OfficeImageId = "AdpDiagramArrangeTables";
+            verificationButton.ShowImage = true;
+            verificationButton.ControlSize = RibbonControlSize.RibbonControlSizeLarge;
+            verificationButton.Click += new RibbonControlEventHandler(
+                this.ShowVerificationStatus);
+            owlGroup.Items.Add(verificationButton);
+        }
+
+        private RibbonSplitButton CreateAutoArrangeButton()
+        {
             RibbonSplitButton autoArrangeButton = this.Factory.CreateRibbonSplitButton();
             autoArrangeButton.Name = "autoArrangeButton";
             autoArrangeButton.Label = "Auto-Arrange";
@@ -67,31 +116,7 @@ namespace ALPS_Visio_AddIn_rewrite
             leftRightButton.Click += new RibbonControlEventHandler(this.AutoArrangeLeftRight);
             autoArrangeButton.Items.Add(leftRightButton);
 
-            owlGroup.Items.Add(autoArrangeButton);
-
-            RibbonButton openStencilsButton = this.Factory.CreateRibbonButton();
-            openStencilsButton.Name = "openStencilsButton";
-            openStencilsButton.Label = "Open ALPS/PASS Stencils";
-            openStencilsButton.SuperTip = "Tries to open the (necessary) ALPS Visio stencils if they are available on the system.";
-            openStencilsButton.Image = Properties.Resources.document_open_7;
-            openStencilsButton.ShowImage = true;
-            openStencilsButton.ControlSize = RibbonControlSize.RibbonControlSizeLarge;
-            openStencilsButton.Click += new RibbonControlEventHandler(this.OpenStencils);
-            owlGroup.Items.Add(openStencilsButton);
-
-            RibbonButton layerExplorerButton = this.Factory.CreateRibbonButton();
-            layerExplorerButton.Name = "layerExplorerButton";
-            layerExplorerButton.Label = "Show layer Explorer";
-            layerExplorerButton.SuperTip = "Open a the layer explorer, a tool for advanced multi-layered ALPS (Abstract Layered PASS editing)";
-            layerExplorerButton.Image = Properties.Resources.pageSetup;
-            layerExplorerButton.ShowImage = true;
-            layerExplorerButton.ControlSize = RibbonControlSize.RibbonControlSizeLarge;
-            layerExplorerButton.Click += new RibbonControlEventHandler(this.ShowLayerExplorer);
-            owlGroup.Items.Add(layerExplorerButton);
-
-            // FEAT: ALPS verification tool
-            // FEAT: PASS natural language checker
-            // FEAT: PASS BPMN converter
+            return autoArrangeButton;
         }
 
         /// <summary>
@@ -153,6 +178,16 @@ namespace ALPS_Visio_AddIn_rewrite
         private void ShowLayerExplorer(object sender, RibbonControlEventArgs e)
         {
             Globals.ThisAddIn.showDirectoryClicked();
+        }
+
+        private void ShowVerificationStatus(
+            object sender, RibbonControlEventArgs e)
+        {
+            MessageBox.Show(
+                "Die ALPS-Verifikation ist im main-Branch nur als Debug-Platzhalter vorhanden und enthält noch keine Prüfungslogik.",
+                "ALPS Verification",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
         }
     }
 }

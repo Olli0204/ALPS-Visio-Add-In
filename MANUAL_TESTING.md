@@ -16,7 +16,16 @@ Both builds must finish without warnings newly introduced by this refactoring.
 Start the Debug configuration from Visual Studio and confirm that Visio opens
 with the **ALPS/PASS ADDIN** Ribbon tab.
 
-## 2. Lifecycle and Stencils
+## 2. Ribbon
+
+- **Standard Functions** contains **Open ALPS/PASS Stencils** and the
+  **Auto-Arrange** split button.
+- **ALPS Layer Editing** contains **Show layer Explorer**.
+- **OWL PASS Tools** contains **Import OWL** and **ALPS Verification**.
+- Click **ALPS Verification** and confirm that a single informational message
+  explains that verification is not implemented. It must not start or stop VBA.
+
+## 3. Lifecycle and Stencils
 
 - Create a blank document, open another document, switch between windows, and
   close one document. No exception dialog should appear.
@@ -36,7 +45,7 @@ with the **ALPS/PASS ADDIN** Ribbon tab.
 - The Output window must not stop in `ThisDocument.restartMarkos`; OWL import no
   longer stops and restarts the active VBA listener collection.
 
-## 3. OWL Import
+## 4. OWL Import
 
 Import `docs/[Test]_Vacation_Request_2D.owl`.
 
@@ -57,7 +66,7 @@ Import `docs/[Test]_Vacation_Request.owl`.
 - Repeating either import creates unique page names and does not reuse routing
   state from the previous model.
 
-## 4. Editing and Layout
+## 5. Editing and Layout
 
 - On both SID and SBD pages, run **Auto-Arrange → Top-down** and **Left-right**.
   Connectors must remain glued to their original source and target.
