@@ -30,6 +30,8 @@ and legacy callers do not need a risky all-at-once migration.
 - [x] Replace Ribbon singleton use with lifecycle-owned importer composition.
 - [x] Consolidate shared behavior export and SID page sizing.
 - [x] Replace ID-keyed/static layout dictionaries with weak, object-keyed state.
+- [x] Separate fallback graph ranking and weak layout state from the
+  `VisioLayout` facade.
 
 - [x] Promote active snapping and compatibility code out of `_old`.
 

@@ -297,6 +297,8 @@
     <Compile Include="OWLShapes\IVisioExportable.cs" />
     <Compile Include="OWLShapes\IVisioExportableWithShape.cs" />
     <Compile Include="OWLShapes\VisioClassFactory.cs" />
+    <Compile Include="OWLShapes\Layout\FallbackLayoutRanker.cs" />
+    <Compile Include="OWLShapes\Layout\FallbackLayoutState.cs" />
     <Compile Include="OWLShapes\VisioLayout.cs" />
     <Compile Include="OWLShapes\VisioPASSProcessModel.cs" />
     <Compile Include="OWLShapes\VisioSubjectBehavior.cs" />

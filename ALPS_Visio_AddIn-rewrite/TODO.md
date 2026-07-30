@@ -46,6 +46,10 @@ Positionierung, Routing und Auto-Arrange liegen in `VisioInfrastructure/`. `Shap
 Fassade erhalten und delegiert die Dateisystemsuche sowie die Auswahl der neuesten installierten Stencil-Version an
 `VisioInfrastructure/StencilFileLocator`.
 
+Das deterministische Ersatzlayout bleibt über `OWLShapes/VisioLayout` erreichbar.
+Graph-Rangberechnung und schwach referenzierter Laufzeitzustand liegen getrennt
+unter `OWLShapes/Layout/`.
+
 ## nächste Schritte
 Jetzt da du dich hoffentlich in angemessenerer Zeit einarbeiten konntest, kommen die nächsten Aufgaben auf dich zu.
 

@@ -3,7 +3,11 @@ using alps.net.api.StandardPASS;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
+using ALPS_Visio_AddIn_rewrite.OWLShapes.Layout;
+using LayoutBounds =
+    ALPS_Visio_AddIn_rewrite.OWLShapes.Layout.FallbackLayoutState.LayoutBounds;
+using TransitionPorts =
+    ALPS_Visio_AddIn_rewrite.OWLShapes.Layout.FallbackLayoutState.TransitionPorts;
 
 namespace ALPS_Visio_AddIn_rewrite.OWLShapes
 {
@@ -23,16 +27,15 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
         private const double StateConnectionPitch = 0.015;
         private const double StateRowGap = 0.10;
         private const double PortMargin = 0.25;
-        private static ConditionalWeakTable<IPASSProcessModelElement, LayoutBounds> GeneratedBounds =
-            new ConditionalWeakTable<IPASSProcessModelElement, LayoutBounds>();
-        private static ConditionalWeakTable<ITransition, TransitionPorts> PortsByTransition =
-            new ConditionalWeakTable<ITransition, TransitionPorts>();
+        private static readonly FallbackLayoutState LayoutState =
+            new FallbackLayoutState();
 
         public static bool ArrangeModelLayer(IEnumerable<IPASSProcessModelElement> elements)
         {
-            GeneratedBounds = new ConditionalWeakTable<IPASSProcessModelElement, LayoutBounds>();
+            LayoutState.ResetBounds();
             List<ISubject> subjects = elements.OfType<ISubject>().ToList();
-            Dictionary<ISubject, int> ranks = DetermineSubjectRanks(subjects);
+            Dictionary<ISubject, int> ranks =
+                FallbackLayoutRanker.DetermineSubjectRanks(subjects);
             return ArrangeSubjects(subjects, ranks);
         }
 
@@ -40,9 +43,12 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
         {
             List<IState> states = components.OfType<IState>().ToList();
             List<ITransition> transitions = components.OfType<ITransition>().ToList();
-            PortsByTransition = new ConditionalWeakTable<ITransition, TransitionPorts>();
-            Dictionary<IState, int> ranks = DetermineStateRanks(states, transitions);
-            Dictionary<IState, int> verticalOrder = DetermineStateVerticalOrder(states, transitions, ranks);
+            LayoutState.ResetTransitionPorts();
+            Dictionary<IState, int> ranks =
+                FallbackLayoutRanker.DetermineStateRanks(states, transitions);
+            Dictionary<IState, int> verticalOrder =
+                FallbackLayoutRanker.DetermineStateVerticalOrder(
+                    states, transitions, ranks);
             PrepareTransitionPorts(states, transitions, ranks, verticalOrder);
             bool fallbackApplied = ArrangeStates(states, transitions, ranks, verticalOrder);
             MarkFallbackTransitions(transitions);
@@ -58,7 +64,8 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             useFallbackRouting = false;
             if (transition == null || string.IsNullOrEmpty(transition.getModelComponentID())) return;
 
-            if (PortsByTransition.TryGetValue(transition, out TransitionPorts ports)
+            if (LayoutState.TryGetTransitionPorts(
+                    transition, out TransitionPorts ports)
                 && ports.UseFallbackRouting)
             {
                 sourceY = ports.SourceY;
@@ -92,7 +99,7 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             {
                 List<ISubject> missingSubjects = rankGroup
                     .Where(subject => NeedsFallbackBounds(subject as IVisioExportableWithShape))
-                    .OrderByDescending(GetMessageExchangeCount)
+                    .OrderByDescending(FallbackLayoutRanker.GetMessageExchangeCount)
                     .ThenBy(subject => subject.getModelComponentID())
                     .ToList();
 
@@ -142,56 +149,6 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             }
 
             return fallbackApplied;
-        }
-
-        private static Dictionary<ISubject, int> DetermineSubjectRanks(IEnumerable<ISubject> subjects)
-        {
-            List<ISubject> subjectList = subjects.ToList();
-            Dictionary<ISubject, int> ranks = subjectList.ToDictionary(subject => subject, subject => 0);
-            Dictionary<ISubject, int> incomingCounts = subjectList.ToDictionary(subject => subject, subject => 0);
-
-            foreach (ISubject subject in subjectList)
-                foreach (IMessageExchange exchange in subject.getOutgoingMessageExchanges().Values)
-                    if (exchange.getReceiver() != null && incomingCounts.ContainsKey(exchange.getReceiver()))
-                        incomingCounts[exchange.getReceiver()]++;
-
-            Queue<ISubject> queue = new Queue<ISubject>(incomingCounts
-                .Where(pair => pair.Value == 0)
-                .Select(pair => pair.Key)
-                .OrderBy(candidate => candidate.getModelComponentID()));
-            HashSet<ISubject> processed = new HashSet<ISubject>();
-            while (processed.Count < subjectList.Count)
-            {
-                // A bidirectional exchange produces a cycle and has no natural
-                // root. Pick a stable root so connected subjects receive
-                // separate columns instead of being stacked on top of each other.
-                if (queue.Count == 0)
-                {
-                    ISubject cycleRoot = subjectList
-                        .Where(candidate => !processed.Contains(candidate))
-                        .OrderByDescending(GetMessageExchangeCount)
-                        .ThenBy(candidate => candidate.getModelComponentID())
-                        .First();
-                    queue.Enqueue(cycleRoot);
-                }
-
-                ISubject subject = queue.Dequeue();
-                if (!processed.Add(subject)) continue;
-                foreach (IMessageExchange exchange in subject.getOutgoingMessageExchanges().Values)
-                {
-                    ISubject receiver = exchange.getReceiver();
-                    if (receiver == null || processed.Contains(receiver) || !incomingCounts.ContainsKey(receiver)) continue;
-
-                    ranks[receiver] = Math.Max(ranks[receiver], ranks[subject] + 1);
-                    incomingCounts[receiver]--;
-                    if (incomingCounts[receiver] == 0)
-                    {
-                        queue.Enqueue(receiver);
-                    }
-                }
-            }
-
-            return ranks;
         }
 
         private static void PrepareTransitionPorts(IEnumerable<IState> states, IEnumerable<ITransition> transitions,
@@ -250,7 +207,7 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
 
         private static TransitionPorts GetOrCreateTransitionPorts(ITransition transition)
         {
-            return PortsByTransition.GetValue(transition, ignored => new TransitionPorts());
+            return LayoutState.GetOrCreateTransitionPorts(transition);
         }
 
         private static void MarkFallbackTransitions(IEnumerable<ITransition> transitions)
@@ -268,99 +225,6 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             if (count <= 1) return 0.5;
             return PortMargin
                 + index * ((1.0 - 2.0 * PortMargin) / (count - 1.0));
-        }
-
-        private static Dictionary<IState, int> DetermineStateVerticalOrder(IEnumerable<IState> states,
-            IEnumerable<ITransition> transitions, IDictionary<IState, int> ranks)
-        {
-            List<IState> stateList = states.ToList();
-            List<ITransition> transitionList = transitions.ToList();
-            Dictionary<IState, int> result = new Dictionary<IState, int>();
-            Dictionary<int, List<IState>> statesByRank = stateList
-                .GroupBy(state => ranks[state])
-                .ToDictionary(group => group.Key,
-                    group => group.OrderBy(state => state.getModelComponentID()).ToList());
-
-            foreach (List<IState> rankStates in statesByRank.Values)
-                UpdateVerticalOrder(rankStates, result);
-
-            int maxRank = ranks.Count == 0 ? 0 : ranks.Values.Max();
-            for (int iteration = 0; iteration < 4; iteration++)
-            {
-                for (int rank = 1; rank <= maxRank; rank++)
-                {
-                    if (!statesByRank.TryGetValue(rank, out List<IState> rankStates)) continue;
-                    rankStates.Sort((left, right) => CompareByBarycenter(left, right, true,
-                        transitionList, ranks, statesByRank, result));
-                    UpdateVerticalOrder(rankStates, result);
-                }
-
-                for (int rank = maxRank - 1; rank >= 0; rank--)
-                {
-                    if (!statesByRank.TryGetValue(rank, out List<IState> rankStates)) continue;
-                    rankStates.Sort((left, right) => CompareByBarycenter(left, right, false,
-                        transitionList, ranks, statesByRank, result));
-                    UpdateVerticalOrder(rankStates, result);
-                }
-            }
-
-            return result;
-        }
-
-        private static int CompareByBarycenter(IState left, IState right, bool usePredecessors,
-            IEnumerable<ITransition> transitions, IDictionary<IState, int> ranks,
-            IDictionary<int, List<IState>> statesByRank, IDictionary<IState, int> verticalOrder)
-        {
-            double leftBarycenter = GetNeighborBarycenter(left, usePredecessors, transitions, ranks,
-                statesByRank, verticalOrder);
-            double rightBarycenter = GetNeighborBarycenter(right, usePredecessors, transitions, ranks,
-                statesByRank, verticalOrder);
-            int comparison = leftBarycenter.CompareTo(rightBarycenter);
-            if (comparison != 0) return comparison;
-
-            comparison = verticalOrder[left].CompareTo(verticalOrder[right]);
-            return comparison != 0
-                ? comparison
-                : string.CompareOrdinal(left.getModelComponentID(), right.getModelComponentID());
-        }
-
-        private static double GetNeighborBarycenter(IState state, bool usePredecessors,
-            IEnumerable<ITransition> transitions, IDictionary<IState, int> ranks,
-            IDictionary<int, List<IState>> statesByRank, IDictionary<IState, int> verticalOrder)
-        {
-            IEnumerable<IState> neighbors = usePredecessors
-                ? transitions.Where(transition => transition.getTargetState() == state
-                    && transition.getSourceState() != null
-                    && ranks.ContainsKey(transition.getSourceState())
-                    && ranks[transition.getSourceState()] < ranks[state])
-                    .Select(transition => transition.getSourceState())
-                : transitions.Where(transition => transition.getSourceState() == state
-                    && transition.getTargetState() != null
-                    && ranks.ContainsKey(transition.getTargetState())
-                    && ranks[transition.getTargetState()] > ranks[state])
-                    .Select(transition => transition.getTargetState());
-
-            List<IState> neighborList = neighbors.Distinct().ToList();
-            if (neighborList.Count == 0)
-                return GetNormalizedVerticalOrder(state, ranks, statesByRank, verticalOrder);
-
-            return neighborList.Average(neighbor =>
-                GetNormalizedVerticalOrder(neighbor, ranks, statesByRank, verticalOrder));
-        }
-
-        private static double GetNormalizedVerticalOrder(IState state, IDictionary<IState, int> ranks,
-            IDictionary<int, List<IState>> statesByRank, IDictionary<IState, int> verticalOrder)
-        {
-            int count = statesByRank[ranks[state]].Count;
-            return (verticalOrder[state] + 0.5) / Math.Max(1, count);
-        }
-
-        private static void UpdateVerticalOrder(IEnumerable<IState> states,
-            IDictionary<IState, int> verticalOrder)
-        {
-            int index = 0;
-            foreach (IState state in states)
-                verticalOrder[state] = index++;
         }
 
         private static int GetVerticalOrder(IState state, IDictionary<IState, int> verticalOrder)
@@ -392,60 +256,6 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
                 heights[index] *= scale;
         }
 
-        private static Dictionary<IState, int> DetermineStateRanks(IEnumerable<IState> states, IEnumerable<ITransition> transitions)
-        {
-            List<IState> stateList = states.ToList();
-            Dictionary<IState, int> ranks = stateList.ToDictionary(state => state, state => 0);
-            Dictionary<IState, int> incomingCounts = stateList.ToDictionary(state => state, state => 0);
-            Dictionary<IState, List<IState>> successors = stateList.ToDictionary(state => state, state => new List<IState>());
-
-            foreach (ITransition transition in transitions)
-            {
-                IState source = transition.getSourceState();
-                IState target = transition.getTargetState();
-                if (source != null && target != null && successors.ContainsKey(source) && incomingCounts.ContainsKey(target))
-                {
-                    successors[source].Add(target);
-                    incomingCounts[target]++;
-                }
-            }
-
-            Queue<IState> queue = new Queue<IState>(incomingCounts
-                .Where(pair => pair.Value == 0)
-                .Select(pair => pair.Key)
-                .OrderBy(candidate => candidate.getModelComponentID()));
-            HashSet<IState> processed = new HashSet<IState>();
-            while (processed.Count < stateList.Count)
-            {
-                if (queue.Count == 0)
-                {
-                    IState cycleRoot = stateList
-                        .Where(candidate => !processed.Contains(candidate))
-                        .OrderBy(candidate => candidate.getModelComponentID())
-                        .First();
-                    queue.Enqueue(cycleRoot);
-                }
-
-                IState currentState = queue.Dequeue();
-                if (!processed.Add(currentState)) continue;
-                foreach (IState target in successors[currentState])
-                {
-                    if (processed.Contains(target)) continue;
-
-                    ranks[target] = Math.Max(ranks[target], ranks[currentState] + 1);
-                    incomingCounts[target]--;
-                    if (incomingCounts[target] == 0) queue.Enqueue(target);
-                }
-            }
-
-            return ranks;
-        }
-
-        private static int GetMessageExchangeCount(ISubject subject)
-        {
-            return subject.getIncomingMessageExchanges().Count + subject.getOutgoingMessageExchanges().Count;
-        }
-
         private static bool NeedsFallbackBounds(IVisioExportableWithShape exportable)
         {
             IPASSProcessModelElement element = exportable as IPASSProcessModelElement;
@@ -455,7 +265,7 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
 
         internal static bool TryGetGeneratedBounds(IPASSProcessModelElement element, out List<ISimple2DVisualizationPoint> bounds)
         {
-            if (element != null && GeneratedBounds.TryGetValue(element, out LayoutBounds generatedBounds))
+            if (LayoutState.TryGetBounds(element, out LayoutBounds generatedBounds))
             {
                 bounds = new List<ISimple2DVisualizationPoint>
                 {
@@ -471,8 +281,7 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
 
         private static bool HasGeneratedBounds(IPASSProcessModelElement element)
         {
-            return element != null
-                && GeneratedBounds.TryGetValue(element, out LayoutBounds ignored);
+            return LayoutState.HasBounds(element);
         }
 
         private static bool PrepareUsableBounds(IVisioExportableWithShape exportable, IPASSProcessModelElement element)
@@ -528,8 +337,7 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
 
         private static void SetBounds(IPASSProcessModelElement element, double x, double y, double width, double height)
         {
-            GeneratedBounds.Remove(element);
-            GeneratedBounds.Add(element, new LayoutBounds(x, y, width, height));
+            LayoutState.SetBounds(element, x, y, width, height);
         }
 
         private static Simple2DVisualizationPoint CreatePoint(double x, double y)
@@ -540,28 +348,5 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             return point;
         }
 
-        private sealed class LayoutBounds
-        {
-            public LayoutBounds(double x, double y, double width, double height)
-            {
-                X = x;
-                Y = y;
-                Width = width;
-                Height = height;
-            }
-
-            public double X { get; private set; }
-            public double Y { get; private set; }
-            public double Width { get; private set; }
-            public double Height { get; private set; }
-        }
-
-        private sealed class TransitionPorts
-        {
-            public double SourceY { get; set; } = 0.5;
-            public double TargetY { get; set; } = 0.5;
-            public bool IsFeedback { get; set; }
-            public bool UseFallbackRouting { get; set; }
-        }
     }
 }
