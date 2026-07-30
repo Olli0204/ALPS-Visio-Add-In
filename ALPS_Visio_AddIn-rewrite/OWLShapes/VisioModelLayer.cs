@@ -42,6 +42,12 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
 
                 exportable.ExportToVisio(page);
             }
+
+            if (usesFallbackLayout)
+            {
+                VH.AutoArrangePage(
+                    page, VH.GraphLayoutDirection.TopDown);
+            }
         }
 
         private static int GetExportOrder(IPASSProcessModelElement element)

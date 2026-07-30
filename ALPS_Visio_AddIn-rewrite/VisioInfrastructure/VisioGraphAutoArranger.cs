@@ -27,6 +27,9 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
         // parallel alternatives instead of placing labels over sibling states.
         private const double FlowGap = 1.45;
         private const double SiblingGap = 1.25;
+        private const double ConnectorLabelPadding = 0.45;
+        private const double EstimatedCharacterWidth = 0.055;
+        private const double MaximumConnectorLabelWidth = 3.1;
         private const double PortraitWidth = 8.2677;
         private const double PortraitHeight = 11.6929;
         private const double LandscapeWidth = PortraitHeight;
@@ -89,7 +92,7 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
                     continue;
                 }
 
-                GraphEdge edge = new GraphEdge(source, target);
+                GraphEdge edge = new GraphEdge(shape, source, target);
                 source.Outgoing.Add(edge);
                 target.Incoming.Add(edge);
             }
@@ -251,9 +254,10 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
                 .Select(group => new RankBand(
                     group.OrderBy(node => node.Order).ToList(), direction))
                 .ToList();
+            ConfigureFlowGaps(bands, direction);
 
             double contentFlow = bands.Sum(band => band.FlowSize)
-                + Math.Max(0, bands.Count - 1) * FlowGap;
+                + bands.Sum(band => band.GapAfter);
             double contentCross = bands.Max(band => band.CrossSize);
             double reservedCross = contentCross
                 + 2d * (Margin + FeedbackCorridor);
@@ -282,6 +286,60 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
                 PlaceLeftRight(bands, pageWidth, pageHeight, contentFlow);
         }
 
+        private static void ConfigureFlowGaps(
+            IList<RankBand> bands, LayoutDirection direction)
+        {
+            for (int index = 0; index < bands.Count - 1; index++)
+            {
+                RankBand current = bands[index];
+                RankBand next = bands[index + 1];
+                current.GapAfter = direction == LayoutDirection.LeftRight
+                    ? GetLeftRightFlowGap(current, next)
+                    : FlowGap;
+            }
+        }
+
+        private static double GetLeftRightFlowGap(
+            RankBand current, RankBand next)
+        {
+            ISet<int> nextNodeIds = new HashSet<int>(
+                next.Nodes.Select(node => node.Shape.ID));
+            double widestLabel = current.Nodes
+                .SelectMany(node => node.Outgoing)
+                .Where(edge => nextNodeIds.Contains(edge.Target.Shape.ID))
+                .Select(edge => EstimateConnectorLabelWidth(edge.Connector))
+                .DefaultIfEmpty(0d)
+                .Max();
+
+            return Math.Max(
+                FlowGap, widestLabel + ConnectorLabelPadding);
+        }
+
+        private static double EstimateConnectorLabelWidth(
+            Visio.Shape connector)
+        {
+            try
+            {
+                string text = connector.Text;
+                if (string.IsNullOrWhiteSpace(text)) return 0d;
+
+                int longestLine = text
+                    .Replace("\r\n", "\n")
+                    .Replace('\r', '\n')
+                    .Split('\n')
+                    .Select(line => line.Trim().Length)
+                    .DefaultIfEmpty(0)
+                    .Max();
+                return Math.Min(
+                    MaximumConnectorLabelWidth,
+                    longestLine * EstimatedCharacterWidth);
+            }
+            catch (System.Runtime.InteropServices.COMException)
+            {
+                return 0d;
+            }
+        }
+
         private static void PlaceTopDown(IEnumerable<RankBand> bands,
             double pageWidth, double pageHeight, double contentFlow)
         {
@@ -297,7 +355,7 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
                     left += node.Width + SiblingGap;
                 }
 
-                top -= band.FlowSize + FlowGap;
+                top -= band.FlowSize + band.GapAfter;
             }
         }
 
@@ -316,7 +374,7 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
                     top -= node.Height + SiblingGap;
                 }
 
-                left += band.FlowSize + FlowGap;
+                left += band.FlowSize + band.GapAfter;
             }
         }
 
@@ -459,12 +517,15 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
 
         private sealed class GraphEdge
         {
-            public GraphEdge(GraphNode source, GraphNode target)
+            public GraphEdge(
+                Visio.Shape connector, GraphNode source, GraphNode target)
             {
+                Connector = connector;
                 Source = source;
                 Target = target;
             }
 
+            public Visio.Shape Connector { get; private set; }
             public GraphNode Source { get; private set; }
             public GraphNode Target { get; private set; }
         }
@@ -483,11 +544,13 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
                         + Math.Max(0, nodes.Count - 1) * SiblingGap
                     : nodes.Sum(node => node.Height)
                         + Math.Max(0, nodes.Count - 1) * SiblingGap;
+                GapAfter = 0d;
             }
 
             public IList<GraphNode> Nodes { get; private set; }
             public double FlowSize { get; private set; }
             public double CrossSize { get; private set; }
+            public double GapAfter { get; set; }
         }
     }
 }

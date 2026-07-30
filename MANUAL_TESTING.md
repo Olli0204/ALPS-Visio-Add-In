@@ -64,7 +64,9 @@ Import `docs/[Test]_Vacation_Request_2D.owl`.
 
 Import `docs/[Test]_Vacation_Request.owl`.
 
-- Missing coordinates trigger deterministic fallback placement.
+- Missing coordinates trigger the same deterministic Top-down graph layout,
+  connector rebinding, feedback routing, and SID Message Box positioning as the
+  Auto-Arrange command.
 - SID/SBD page sizes remain readable; shapes do not overlap unexpectedly.
 - Forward, feedback, parallel, and self-loop transitions route visibly.
 - Repeating either import creates unique page names and does not reuse routing
@@ -74,6 +76,9 @@ Import `docs/[Test]_Vacation_Request.owl`.
 
 - On both SID and SBD pages, run **Auto-Arrange → Top-down** and **Left-right**.
   Connectors must remain glued to their original source and target.
+- In **Left-right**, long message labels must reserve enough horizontal space
+  between ranks, and the print page must switch to landscape without an
+  internal portrait page break.
 - On SBD pages, verify that the initial state starts the primary process axis,
   alternatives share one rank, feedback transitions use the outer routing
   corridors, and repeated Auto-Arrange runs do not keep moving the states.

@@ -35,6 +35,7 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
             if (!arranged)
                 page.Layout();
 
+            ConfigurePrintLayout(page.PageSheet, direction);
             VisioConnectorRebinder.Rebind(page, direction);
             if (diagramKind == AlpsDiagramKind.Sid)
                 VisioMessageContainerPositioner.Reposition(page, direction);
@@ -64,6 +65,17 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
             VisioRouting.TrySetCell(pageSheet, "LineToNodeY", 12, true);
             VisioRouting.TrySetCell(pageSheet, "LineToLineX", 8, true);
             VisioRouting.TrySetCell(pageSheet, "LineToLineY", 8, true);
+        }
+
+        private static void ConfigurePrintLayout(
+            Visio.Shape pageSheet, LayoutDirection direction)
+        {
+            VisioShapeSheet.SetNumber(
+                pageSheet, "PrintPageOrientation",
+                direction == LayoutDirection.LeftRight ? 2d : 1d);
+            VisioShapeSheet.SetNumber(pageSheet, "OnPage", 1d);
+            VisioShapeSheet.SetNumber(pageSheet, "PagesX", 1d);
+            VisioShapeSheet.SetNumber(pageSheet, "PagesY", 1d);
         }
 
         private static AlpsDiagramKind GetDiagramKind(Visio.IVPage page)

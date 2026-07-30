@@ -47,6 +47,12 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
                 if (exportable is IState || exportable is ITransition)
                     exportable.ExportToVisio(page);
             }
+
+            if (usesFallbackLayout)
+            {
+                VH.AutoArrangePage(
+                    page, VH.GraphLayoutDirection.TopDown);
+            }
         }
     }
 }
