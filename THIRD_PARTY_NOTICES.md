@@ -15,6 +15,6 @@ revision. The repository owner's permission and the applicable terms must be
 confirmed before redistributing the adapted implementation or training data.
 This notice records provenance and is not itself a license grant.
 
-The implementation uses Microsoft.ML 4.0.2 and its NuGet dependencies.
-Microsoft.ML is distributed under the MIT license; see the package metadata at
-<https://www.nuget.org/packages/Microsoft.ML/4.0.2>.
+The source project used Microsoft.ML. The integrated implementation replaces
+that runtime dependency with a deterministic in-process text classifier so
+retraining remains compatible with Visio's .NET Framework VSTO host.

@@ -1,5 +1,3 @@
-using Microsoft.ML.Data;
-
 namespace ALPS_Visio_AddIn_rewrite.NlpChecking
 {
     internal sealed class NlpTrainingExample
@@ -11,10 +9,8 @@ namespace ALPS_Visio_AddIn_rewrite.NlpChecking
 
     internal sealed class NlpNamePrediction
     {
-        [ColumnName("PredictedLabel")]
         public bool IsValid { get; set; }
 
-        [ColumnName("Probability")]
         public float Probability { get; set; }
     }
 

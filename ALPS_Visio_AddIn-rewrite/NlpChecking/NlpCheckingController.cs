@@ -116,6 +116,8 @@ namespace ALPS_Visio_AddIn_rewrite.NlpChecking
             }
             catch (Exception exception)
             {
+                System.Diagnostics.Debug.WriteLine(
+                    "NLP model naming check failed: " + exception);
                 MessageBox.Show(
                     "The model naming check failed.\r\n\r\n"
                         + exception.Message,
@@ -145,6 +147,8 @@ namespace ALPS_Visio_AddIn_rewrite.NlpChecking
             }
             catch (Exception exception)
             {
+                System.Diagnostics.Debug.WriteLine(
+                    "NLP classifier retraining failed: " + exception);
                 MessageBox.Show(
                     "The naming classifier could not be retrained.\r\n\r\n"
                         + exception.Message,
@@ -175,6 +179,8 @@ namespace ALPS_Visio_AddIn_rewrite.NlpChecking
                 }
                 catch (Exception exception)
                 {
+                    System.Diagnostics.Debug.WriteLine(
+                        "NLP API key storage failed: " + exception);
                     MessageBox.Show(
                         "The API key could not be stored.\r\n\r\n"
                             + exception.Message,
