@@ -13,6 +13,8 @@ public class Converter
     private readonly Dictionary<IMessageSpecification, IMessage> _messages;
     private readonly Dictionary<IMacroBehavior, IEscalation> _macroCallEscalations;
     private readonly Dictionary<IMacroBehavior, ISignal> _macroReturnToOriginSignals;
+    private readonly List<(ISubject Sender, ISubject Receiver, IMessageSpecification Message, ISendTask Task)> _sendMessageEndpoints;
+    private readonly List<(ISubject Sender, ISubject Receiver, IMessageSpecification Message, IReceiveTask Task)> _receiveMessageEndpoints;
 
     public Converter()
     {
@@ -20,6 +22,10 @@ public class Converter
         _macroCallEscalations = new Dictionary<IMacroBehavior, IEscalation>();
         _macroReturnToOriginSignals =
             new Dictionary<IMacroBehavior, ISignal>();
+        _sendMessageEndpoints =
+            new List<(ISubject, ISubject, IMessageSpecification, ISendTask)>();
+        _receiveMessageEndpoints =
+            new List<(ISubject, ISubject, IMessageSpecification, IReceiveTask)>();
     }
 
     /// <summary>
@@ -63,6 +69,7 @@ public class Converter
         ProcessDoTransitions();
         ProcessSendTransitions();
         ProcessReceiveTransitions();
+        ProcessMessageFlows();
 
         ProcessMacroStates();
         ProcessDoStates();
@@ -76,6 +83,7 @@ public class Converter
         ProcessRedundantGateways<IExclusiveGateway>();
 
         ProcessEdges();
+        ProcessConditionalSequenceFlows();
     }
 
     private IBpmnModel Export()
@@ -90,7 +98,8 @@ public class Converter
     {
         IBpmnModel bpmnModel = BpmnUtility.CreateModel();
 
-        IDefinitions definitions = BpmnUtility.CreateDefinitions(PassUtility.GetElementName(passModel));
+        IDefinitions definitions = BpmnUtility.CreateDefinitions();
+        definitions.Name = PassUtility.GetElementName(passModel);
 
         bpmnModel.Definitions = definitions;
 
@@ -349,7 +358,12 @@ public class Converter
             };
             InsertNodeAfter(exclusiveGatewayNode, node);
 
-            IEndEvent endEvent = BpmnUtility.CreateEndEvent();
+            string endEventName =
+                PassUtility.GetElementName(node.State);
+            IEndEvent endEvent = BpmnUtility.CreateEndEvent(
+                name: string.IsNullOrWhiteSpace(endEventName)
+                    ? "End"
+                    : endEventName);
             INode endEventNode = new Node()
             {
                 FlowNode = endEvent
@@ -454,26 +468,42 @@ public class Converter
     // Rule: Process Send Transitions
     private void ProcessSendTransitions()
     {
-        foreach (IEdge edge in Query<IEdge>())
+        foreach ((IEdge edge, IGraph graph) in QueryWithGraph<IEdge>())
         {
             if (!(edge.Transition is ISendTransition sendTransition))
                 continue;
 
-            IMessageSpecification messageSpecification = sendTransition.getTransitionCondition().getRequiresSendingOfMessage();
+            ISendTransitionCondition sendCondition =
+                sendTransition.getTransitionCondition();
+            IMessageSpecification messageSpecification =
+                sendCondition.getRequiresSendingOfMessage();
 
+            ISendTask sendTask = BpmnUtility.CreateSendTask(
+                name: $"Send {PassUtility.GetElementName(messageSpecification)}",
+                message: GetOrCreateMessage(messageSpecification));
             INode sendTaskNode = new Node()
             {
-                FlowNode = BpmnUtility.CreateSendTask(name: $"Send {PassUtility.GetElementName(messageSpecification)}",
-                                                      message: GetOrCreateMessage(messageSpecification)),
+                FlowNode = sendTask,
             };
             InsertNodeAfter(sendTaskNode, edge);
+
+            if (graph.PassElement is ISubjectBehavior subjectBehavior)
+            {
+                ISubject sender = subjectBehavior.getSubject();
+                ISubject receiver = sendCondition.getRequiresMessageSentTo();
+                if (sender != null && receiver != null)
+                {
+                    _sendMessageEndpoints.Add(
+                        (sender, receiver, messageSpecification, sendTask));
+                }
+            }
         }
     }
 
     // Rule: Process Send Transitions
     private void ProcessReceiveTransitions()
     {
-        foreach (IEdge edge in Query<IEdge>())
+        foreach ((IEdge edge, IGraph graph) in QueryWithGraph<IEdge>())
         {
             if (!(edge.Transition is IReceiveTransition receiveTransition))
                 continue;
@@ -484,14 +514,66 @@ public class Converter
                     continue;
             }
 
-            IMessageSpecification messageSpecification = receiveTransition.getTransitionCondition().getReceptionOfMessage();
+            IReceiveTransitionCondition receiveCondition =
+                receiveTransition.getTransitionCondition();
+            IMessageSpecification messageSpecification =
+                receiveCondition.getReceptionOfMessage();
 
+            IReceiveTask receiveTask = BpmnUtility.CreateReceiveTask(
+                name: $"Receive {PassUtility.GetElementName(messageSpecification)}",
+                message: GetOrCreateMessage(messageSpecification));
             INode receiveTaskNode = new Node()
             {
-                FlowNode = BpmnUtility.CreateReceiveTask(name: $"Receive {PassUtility.GetElementName(messageSpecification)}",
-                                                         message: GetOrCreateMessage(messageSpecification)),
+                FlowNode = receiveTask,
             };
             InsertNodeAfter(receiveTaskNode, edge);
+
+            if (graph.PassElement is ISubjectBehavior subjectBehavior)
+            {
+                ISubject sender = receiveCondition.getMessageSentFrom();
+                ISubject receiver = subjectBehavior.getSubject();
+                if (sender != null && receiver != null)
+                {
+                    _receiveMessageEndpoints.Add(
+                        (sender, receiver, messageSpecification, receiveTask));
+                }
+            }
+        }
+    }
+
+    private void ProcessMessageFlows()
+    {
+        ICollaboration? collaboration = GetCollaboration();
+        if (collaboration == null)
+            return;
+
+        foreach (var sendEndpoint in _sendMessageEndpoints)
+        {
+            foreach (var receiveEndpoint in _receiveMessageEndpoints)
+            {
+                if (!AreSamePassElements(
+                        sendEndpoint.Sender,
+                        receiveEndpoint.Sender)
+                    || !AreSamePassElements(
+                        sendEndpoint.Receiver,
+                        receiveEndpoint.Receiver)
+                    || !AreSamePassElements(
+                        sendEndpoint.Message,
+                        receiveEndpoint.Message))
+                {
+                    continue;
+                }
+
+                IMessage? message =
+                    GetOrCreateMessage(sendEndpoint.Message);
+                collaboration.MessageFlows.Add(
+                    BpmnUtility.CreateMessageFlow(
+                        sendEndpoint.Task,
+                        receiveEndpoint.Task,
+                        message,
+                        name: PassUtility.GetElementName(
+                            sendEndpoint.Message)));
+            }
         }
     }
 
@@ -627,16 +709,16 @@ public class Converter
                 continue;
 
             ICollection<IEdge> incomingEdges = GetIncomingEdges(node);
-            if (incomingEdges.Count > 1)
-                throw new InvalidOperationException();
+            if (incomingEdges.Count != 1)
+                continue;
 
             if (incomingEdges.First().Source.FlowNode is not ITask sourceTask)
                 continue;
 
             IEventDefinition? eventDefinition = intermediateCatchEvent.EventDefinitions.FirstOrDefault();
-            if (!(eventDefinition is not ITimerEventDefinition
-                || eventDefinition is not IConditionalEventDefinition
-                || eventDefinition is not IErrorEventDefinition))
+            if (eventDefinition is not ITimerEventDefinition
+                && eventDefinition is not IConditionalEventDefinition
+                && eventDefinition is not IErrorEventDefinition)
                 continue;
 
             node.FlowNode = BpmnUtility.CreateBoundaryEvent(sourceTask, eventDefinition);
@@ -674,6 +756,40 @@ public class Converter
 
             edge.Source.FlowNode.Outgoing.Add(sequenceFlow);
             edge.Target.FlowNode.Incoming.Add(sequenceFlow);
+        }
+    }
+
+    private void ProcessConditionalSequenceFlows()
+    {
+        foreach (INode node in Query<INode>())
+        {
+            if (!(node.FlowNode is IExclusiveGateway gateway)
+                || gateway.Outgoing.Count < 2)
+            {
+                continue;
+            }
+
+            if (string.IsNullOrWhiteSpace(gateway.Name))
+                gateway.Name = "Decision";
+
+            int alternativeNumber = 1;
+            foreach (ISequenceFlow sequenceFlow in gateway.Outgoing)
+            {
+                if (ReferenceEquals(gateway.Default, sequenceFlow))
+                    continue;
+
+                string conditionText = sequenceFlow.Name;
+                if (string.IsNullOrWhiteSpace(conditionText))
+                {
+                    conditionText =
+                        $"Alternative {alternativeNumber}";
+                    sequenceFlow.Name = conditionText;
+                }
+
+                sequenceFlow.Expression =
+                    BpmnUtility.CreateFormalExpression(conditionText);
+                alternativeNumber++;
+            }
         }
     }
 
@@ -772,6 +888,22 @@ public class Converter
         }
 
         return _startSignal;
+    }
+
+    private static bool AreSamePassElements(
+        IPASSProcessModelElement first,
+        IPASSProcessModelElement second)
+    {
+        if (ReferenceEquals(first, second) || first.Equals(second))
+            return true;
+
+        string firstId = PassUtility.GetElementId(first);
+        string secondId = PassUtility.GetElementId(second);
+        return !string.IsNullOrEmpty(firstId)
+            && string.Equals(
+                firstId,
+                secondId,
+                StringComparison.Ordinal);
     }
 
     private IMessage? GetOrCreateMessage(IMessageSpecification? messageSpecification)

@@ -22,8 +22,7 @@ public static class BpmnUtility
         IDefinitions definitions = new Definitions()
         {
             Id = id ?? GenerateUniqueIdentifier(),
-            // TODO: change TargetNamespace to something useful
-            TargetNamespace = "PassBpmnConverter",
+            TargetNamespace = "urn:alps-visio-add-in:bpmn",
         };
         return definitions;
     }
@@ -246,6 +245,15 @@ public static class BpmnUtility
         return conditionalEventDefinition;
     }
 
+    public static IFormalExpression CreateFormalExpression(
+        string body)
+    {
+        return new FormalExpression()
+        {
+            Body = body
+        };
+    }
+
     public static ITimerEventDefinition CreateTimerEventDefinition(string? id = null)
     {
         ITimerEventDefinition timerEventDefinition = new TimerEventDefinition()
@@ -317,5 +325,23 @@ public static class BpmnUtility
             Name = name
         };
         return message;
+    }
+
+    public static IMessageFlow CreateMessageFlow(
+        IInteractionNode source,
+        IInteractionNode target,
+        IMessage? message = null,
+        string? id = null,
+        string? name = null)
+    {
+        IMessageFlow messageFlow = new MessageFlow()
+        {
+            Id = id ?? GenerateUniqueIdentifier(),
+            Name = name,
+            SourceRef = source,
+            TargetRef = target,
+            MessageRef = message
+        };
+        return messageFlow;
     }
 }

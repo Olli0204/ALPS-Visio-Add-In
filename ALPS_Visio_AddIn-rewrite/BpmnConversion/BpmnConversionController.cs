@@ -5,9 +5,12 @@ using PassBpmnConverter.Bpmn;
 using PassBpmnConverter.Conversion;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
+using System.Xml;
+using System.Xml.Linq;
 
 namespace ALPS_Visio_AddIn_rewrite.BpmnConversion
 {
@@ -69,6 +72,165 @@ namespace ALPS_Visio_AddIn_rewrite.BpmnConversion
                 Converter.ConvertPassToBpmn(passModel);
             BpmnDiagramGenerator.GenerateDiagram(bpmnModel);
             BpmnSerializer.Serialize(bpmnModel, outputFilePath);
+            ValidateSerializedBpmn(outputFilePath);
+        }
+
+        private static void ValidateSerializedBpmn(
+            string outputFilePath)
+        {
+            XDocument document = XDocument.Load(outputFilePath);
+            XElement? root = document.Root;
+            XNamespace bpmnNamespace =
+                BpmnModelConstants.BpmnNs;
+
+            if (root == null
+                || root.Name != bpmnNamespace + "definitions")
+            {
+                throw new InvalidDataException(
+                    "Der Export enthält kein gültiges BPMN-definitions-Element.");
+            }
+
+            HashSet<string> ids =
+                new HashSet<string>(StringComparer.Ordinal);
+            foreach (XAttribute idAttribute in root
+                .DescendantsAndSelf()
+                .Attributes("id"))
+            {
+                string id = idAttribute.Value;
+                try
+                {
+                    XmlConvert.VerifyNCName(id);
+                }
+                catch (XmlException exception)
+                {
+                    throw new InvalidDataException(
+                        $"Der BPMN-Export enthält die ungültige ID \"{id}\".",
+                        exception);
+                }
+
+                if (!ids.Add(id))
+                {
+                    throw new InvalidDataException(
+                        $"Der BPMN-Export enthält die ID \"{id}\" mehrfach.");
+                }
+            }
+
+            HashSet<string> referenceAttributeNames =
+                new HashSet<string>(
+                    new[]
+                    {
+                        "attachedToRef",
+                        "bpmnElement",
+                        "default",
+                        "escalationRef",
+                        "messageRef",
+                        "processRef",
+                        "signalRef",
+                        "sourceElement",
+                        "sourceRef",
+                        "targetElement",
+                        "targetRef"
+                    },
+                    StringComparer.Ordinal);
+            IEnumerable<string> references = document
+                .Descendants()
+                .Attributes()
+                .Where(attribute =>
+                    referenceAttributeNames.Contains(
+                        attribute.Name.LocalName))
+                .Select(attribute => attribute.Value)
+                .Concat(document
+                    .Descendants()
+                    .Where(element =>
+                        element.Name.LocalName == "incoming"
+                        || element.Name.LocalName == "outgoing")
+                    .Select(element => element.Value));
+
+            foreach (string reference in references)
+            {
+                if (!reference.Contains(":")
+                    && !ids.Contains(reference))
+                {
+                    throw new InvalidDataException(
+                        $"Der BPMN-Export verweist auf die unbekannte "
+                        + $"ID \"{reference}\".");
+                }
+            }
+
+            foreach (XAttribute coordinate in document
+                .Descendants()
+                .Attributes()
+                .Where(attribute =>
+                    attribute.Name.LocalName == "x"
+                    || attribute.Name.LocalName == "y"
+                    || attribute.Name.LocalName == "width"
+                    || attribute.Name.LocalName == "height"))
+            {
+                if (!double.TryParse(
+                        coordinate.Value,
+                        NumberStyles.Float,
+                        CultureInfo.InvariantCulture,
+                        out double value)
+                    || double.IsNaN(value)
+                    || double.IsInfinity(value))
+                {
+                    throw new InvalidDataException(
+                        $"Der BPMN-Export enthält die ungültige "
+                        + $"Diagrammkoordinate \"{coordinate.Value}\".");
+                }
+            }
+
+            XNamespace dcNamespace =
+                BpmnModelConstants.OmgDcNs;
+            XNamespace diNamespace =
+                BpmnModelConstants.OmgDiNs;
+            double maximumShapeExtent = document
+                .Descendants(dcNamespace + "Bounds")
+                .SelectMany(bounds =>
+                {
+                    double x = ReadCoordinate(bounds, "x");
+                    double y = ReadCoordinate(bounds, "y");
+                    double width = ReadCoordinate(bounds, "width");
+                    double height = ReadCoordinate(bounds, "height");
+                    return new[]
+                    {
+                        Math.Abs(x),
+                        Math.Abs(y),
+                        Math.Abs(x + width),
+                        Math.Abs(y + height)
+                    };
+                })
+                .DefaultIfEmpty(0)
+                .Max();
+            double maximumWaypointCoordinate =
+                Math.Max(10000, maximumShapeExtent * 10);
+
+            foreach (XElement waypoint in document
+                .Descendants(diNamespace + "waypoint"))
+            {
+                double x = ReadCoordinate(waypoint, "x");
+                double y = ReadCoordinate(waypoint, "y");
+                if (Math.Abs(x) > maximumWaypointCoordinate
+                    || Math.Abs(y) > maximumWaypointCoordinate)
+                {
+                    throw new InvalidDataException(
+                        "Der BPMN-Export enthält eine Diagrammkante "
+                        + "außerhalb des sichtbaren Modellbereichs.");
+                }
+            }
+        }
+
+        private static double ReadCoordinate(
+            XElement element,
+            string attributeName)
+        {
+            XAttribute? attribute = element.Attribute(attributeName);
+            return attribute == null
+                ? 0
+                : double.Parse(
+                    attribute.Value,
+                    NumberStyles.Float,
+                    CultureInfo.InvariantCulture);
         }
 
         private static string? SelectInputFile()

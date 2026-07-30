@@ -1,6 +1,5 @@
 namespace PassBpmnConverter.Bpmn;
 
-// TODO: add messageRef if necessary
 public interface IMessageFlow : IBaseElement
 {
     string? Name { get; set; }
@@ -8,6 +7,8 @@ public interface IMessageFlow : IBaseElement
     IInteractionNode SourceRef { get; set; }
 
     IInteractionNode TargetRef { get; set; }
+
+    IMessage? MessageRef { get; set; }
 }
 
 [BpmnType("messageFlow", BpmnModelConstants.BpmnNs)]
@@ -21,4 +22,7 @@ public class MessageFlow : BaseElement, IMessageFlow
 
     [BpmnAttribute("targetRef")]
     public IInteractionNode TargetRef { get; set; }
+
+    [BpmnAttribute("messageRef")]
+    public IMessage? MessageRef { get; set; }
 }

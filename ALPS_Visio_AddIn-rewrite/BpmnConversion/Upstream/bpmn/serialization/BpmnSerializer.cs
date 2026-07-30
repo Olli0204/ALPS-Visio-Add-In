@@ -34,6 +34,7 @@ public class BpmnSerializer
             // TODO: only include used namespaces
             _document.Root.Add(
                 new XAttribute("xmlns", BpmnModelConstants.BpmnNs),
+                new XAttribute(XNamespace.Xmlns + "bpmn", BpmnModelConstants.BpmnNs),
                 new XAttribute(XNamespace.Xmlns + "bpmndi", BpmnModelConstants.BpmnDiNs),
                 new XAttribute(XNamespace.Xmlns + "omgdc", BpmnModelConstants.OmgDcNs),
                 new XAttribute(XNamespace.Xmlns + "omgdi", BpmnModelConstants.OmgDiNs),
@@ -82,6 +83,13 @@ public class BpmnSerializer
 
             element = new XElement(name ?? CreateXName(bpmnType.Name, bpmnType.Namespace));
 
+            if (name != null && obj is IFormalExpression)
+            {
+                element.SetAttributeValue(
+                    XName.Get("type", BpmnModelConstants.Xsi),
+                    "bpmn:tFormalExpression");
+            }
+
             PropertyInfo[] properties = GetProperties(type);
 
             foreach (PropertyInfo property in properties)
@@ -118,6 +126,12 @@ public class BpmnSerializer
                         }
                     }
                 }
+            }
+
+            if (obj is IExpression expression
+                && expression.Body != null)
+            {
+                element.Add(new XText(expression.Body));
             }
         }
 

@@ -10,3 +10,11 @@ sources from `pass-bpmn-converter/pass-bpmn-converter`.
 Compatibility-only changes were made for the Visio add-in's .NET Framework 4.8
 target: collection expressions and required members were replaced, and
 `Queue.TryDequeue`/`Stack.TryPop` loops were rewritten for the framework API.
+
+The integration also contains correctness fixes required by the add-in:
+
+- model labels are kept as BPMN names instead of being emitted as invalid IDs;
+- message flows and their diagram edges connect matching send/receive tasks;
+- edge docking remains finite for horizontal and cyclic layouts;
+- exclusive branches receive labeled, descriptive formal conditions;
+- only supported timer, conditional, and error events become boundary events.

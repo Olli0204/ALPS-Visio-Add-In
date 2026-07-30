@@ -143,9 +143,15 @@ implementation respectively.
   `docs/[Test]_Vacation_Request.owl`.
 - Save the proposed output as a `.bpmn` file and confirm that the success
   dialog shows its complete path.
-- Open the output in a BPMN 2.0 viewer and confirm that participants, processes,
-  flow nodes, message flows, sequence flows, and BPMN diagram coordinates are
-  present.
+- Open the output in [bpmn.io](https://demo.bpmn.io/) or another BPMN 2.0
+  viewer. It must load without an invalid-ID warning even though the source
+  model name begins with `[Test]`.
+- Confirm that participants, processes, flow nodes, sequence flows, and BPMN
+  diagram coordinates are present. All coordinates must be finite and remain
+  within the visible participant area; no edge may jump to an extremely large
+  X or Y position.
+- Confirm that `Vacation Request`, `Approval`, and `Denial` are visible as
+  message flows between the matching send and receive tasks in the two pools.
 - Cancel the input dialog and then the output dialog in separate runs. Neither
   cancellation may show an error.
 - Select a malformed OWL/RDF file and confirm that one error dialog is shown

@@ -200,13 +200,64 @@ public class BpmnDiagramGenerator
                 Id = GenerateDiagramIdentifier(participant),
                 BpmnElement = participant,
                 Bounds = participantBounds,
+                IsHorizontal = true,
             };
             bpmnPlane.DiagramElements.Add(participantBpmnShape);
 
             currentY = participantBounds.Y + participantBounds.Height + ParticipantSpacing;
         }
 
+        GenerateMessageFlowDiagramElements(
+            collaboration,
+            bpmnPlane);
+
         return bpmnPlane;
+    }
+
+    private static void GenerateMessageFlowDiagramElements(
+        ICollaboration collaboration,
+        IBpmnPlane bpmnPlane)
+    {
+        IList<IBpmnShape> shapes =
+            bpmnPlane.DiagramElements.OfType<IBpmnShape>().ToList();
+
+        foreach (IMessageFlow messageFlow in collaboration.MessageFlows)
+        {
+            IBpmnShape? source = shapes.FirstOrDefault(
+                shape => ReferenceEquals(
+                    shape.BpmnElement,
+                    messageFlow.SourceRef));
+            IBpmnShape? target = shapes.FirstOrDefault(
+                shape => ReferenceEquals(
+                    shape.BpmnElement,
+                    messageFlow.TargetRef));
+
+            if (source == null || target == null)
+            {
+                Console.WriteLine(
+                    $"Warning: Cannot create a diagram edge for "
+                    + $"{nameof(IMessageFlow)} {messageFlow.Id} because "
+                    + "its source or target shape is missing.");
+                continue;
+            }
+
+            IBpmnEdge edge = CreateEdge(
+                messageFlow,
+                source,
+                target);
+            edge.MessageVisibleKind = MessageVisibleKind.initiating;
+
+            if (messageFlow.SourceRef is IFlowNode sourceNode
+                && messageFlow.TargetRef is IFlowNode targetNode)
+            {
+                FixEdgeDockingPoints(
+                    edge,
+                    sourceNode,
+                    targetNode);
+            }
+
+            bpmnPlane.DiagramElements.Add(edge);
+        }
     }
 
     private List<IDiagramElement> GenerateDiagram(Grid grid)
@@ -322,12 +373,15 @@ public class BpmnDiagramGenerator
         return (100, 80);
     }
 
-    private static IBpmnEdge CreateEdge(ISequenceFlow sequenceFlow, IBpmnShape source, IBpmnShape target)
+    private static IBpmnEdge CreateEdge(
+        IBaseElement bpmnElement,
+        IBpmnShape source,
+        IBpmnShape target)
     {
         IBpmnEdge bpmnEdge = new BpmnEdge()
         {
-            Id = GenerateDiagramIdentifier(sequenceFlow),
-            BpmnElement = sequenceFlow,
+            Id = GenerateDiagramIdentifier(bpmnElement),
+            BpmnElement = bpmnElement,
             SourceElement = source,
             TargetElement = target,
             Waypoints = new List<IPoint>()
@@ -357,6 +411,12 @@ public class BpmnDiagramGenerator
         double deltaY = to.Y - from.Y;
 
         double distance = Math.Sqrt(deltaX * deltaX + deltaY * deltaY);
+        if (distance <= double.Epsilon
+            || double.IsNaN(distance)
+            || double.IsInfinity(distance))
+        {
+            return;
+        }
 
         double directionX = deltaX / distance;
         double directionY = deltaY / distance;
@@ -399,38 +459,22 @@ public class BpmnDiagramGenerator
         return (offsetX, offsetY);
     }
 
-    // adapted from: https://stackoverflow.com/questions/4061576/finding-points-on-a-rectangle-at-a-given-angle
     private static (double, double) GetRectangleOffset(double angleInDegrees, double width, double height)
     {
         double angle = DegToRad(angleInDegrees);
-        double diag = Math.Atan2(height, width);
-        double tangent = Math.Tan(angle);
+        double directionX = Math.Cos(angle);
+        double directionY = Math.Sin(angle);
+        double scaleX = Math.Abs(directionX) <= double.Epsilon
+            ? double.MaxValue
+            : width / 2d / Math.Abs(directionX);
+        double scaleY = Math.Abs(directionY) <= double.Epsilon
+            ? double.MaxValue
+            : height / 2d / Math.Abs(directionY);
+        double scale = Math.Min(scaleX, scaleY);
 
-        double x;
-        double y;
-
-        if (angle > -diag && angle <= diag)
-        {
-            x = width / 2f;
-            y = width / 2f * tangent;
-        }
-        else if (angle > diag && angle <= Math.PI - diag)
-        {
-            x = height / 2f / tangent;
-            y = height / 2f;
-        }
-        else if (angle > Math.PI - diag && angle <= Math.PI + diag)
-        {
-            x = -width / 2f;
-            y = -width / 2f * tangent;
-        }
-        else
-        {
-            x = -height / 2f / tangent;
-            y = -height / 2f;
-        }
-
-        return (x, y);
+        return (
+            directionX * scale,
+            directionY * scale);
     }
 
     // adapted from: https://stackoverflow.com/questions/13695317/rotate-a-point-around-another-point
@@ -444,11 +488,6 @@ public class BpmnDiagramGenerator
 
     private static double DegToRad(double degrees)
     {
-        if (degrees > 360)
-            degrees -= 360;
-        if (degrees < 0)
-            degrees += 360;
-
         return Math.PI / 180 * degrees;
     }
 }
