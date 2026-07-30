@@ -36,15 +36,19 @@ public class Grid
         }
         else
         {
-            InsertBelow(newElement, row, col + 1);
+            AddBelow(newElement, row, col + 1);
         }
     }
 
-    private void InsertBelow(IFlowNode element, int row, int col)
+    private void AddBelow(IFlowNode element, int row, int col)
     {
-        _grid.Insert(row + 1, new List<IFlowNode?>());
+        int targetRow = row + 1;
+        while (Get(targetRow, col) != null)
+        {
+            targetRow++;
+        }
 
-        Set(element, row + 1, col);
+        Set(element, targetRow, col);
     }
 
     public IFlowNode? Get(int row, int col)

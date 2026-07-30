@@ -6,9 +6,14 @@ namespace PassBpmnConverter.Bpmn;
 
 public class BpmnDiagramGenerator
 {
-    private const double GridCellSize = 175;
-    private const double ParticipantPadding = 75;
-    private const double ParticipantSpacing = 75;
+    private const double GridColumnSize = 150;
+    private const double GridRowSize = 140;
+    private const double ParticipantHorizontalPadding = 65;
+    private const double ParticipantVerticalPadding = 55;
+    private const double ParticipantSpacing = 90;
+    private const double EdgeClearance = 25;
+    private const double BackEdgeClearance = 50;
+    private const double BackEdgeSpacing = 30;
 
     private readonly Dictionary<IFlowElementsContainer, Grid?> _grids = new Dictionary<IFlowElementsContainer, Grid?>();
 
@@ -47,7 +52,7 @@ public class BpmnDiagramGenerator
         {
             if (participant.ProcessRef != null)
             {
-                _grids.Add(participant.ProcessRef, GenerateLayout(participant.ProcessRef));
+                _grids[participant.ProcessRef] = GenerateLayout(participant.ProcessRef);
             }
         }
     }
@@ -56,36 +61,52 @@ public class BpmnDiagramGenerator
     {
         Grid grid = new Grid();
 
-        Queue<(IFlowNode current, IFlowNode? previous)> stack = new Queue<(IFlowNode current, IFlowNode? previous)>();
+        Queue<(IFlowNode current, IFlowNode? previous)> queue = new Queue<(IFlowNode current, IFlowNode? previous)>();
 
-        Dictionary<IFlowNode, List<IBoundaryEvent>> _boundaryEvents = new Dictionary<IFlowNode, List<IBoundaryEvent>>();
+        Dictionary<IFlowNode, List<IBoundaryEvent>> boundaryEventsByHost =
+            new Dictionary<IFlowNode, List<IBoundaryEvent>>();
 
-        IEnumerable<IFlowNode> initialFlowNodes = flowElementsContainer.FlowElements.OfType<IFlowNode>().Where(flowNode => flowNode.Incoming.Count == 0 && flowNode is not IBoundaryEvent);
+        List<IFlowNode> flowNodes = flowElementsContainer.FlowElements
+            .OfType<IFlowNode>()
+            .Where(flowNode => flowNode is not IBoundaryEvent)
+            .ToList();
 
         // make sure event sub processes are added below base process
-        initialFlowNodes = initialFlowNodes.OrderBy(flowNode => flowNode is ISubProcess);
+        IEnumerable<IFlowNode> initialFlowNodes = flowNodes
+            .Where(flowNode => flowNode.Incoming.Count == 0)
+            .OrderBy(flowNode => flowNode is ISubProcess);
 
         foreach (IFlowNode flowNode in initialFlowNodes)
         {
-            stack.Enqueue((flowNode, null));
+            queue.Enqueue((flowNode, null));
         }
 
         foreach (IBoundaryEvent boundaryEvent in flowElementsContainer.FlowElements.OfType<IBoundaryEvent>())
         {
-            if (_boundaryEvents.TryGetValue(boundaryEvent.AttachedToRef, out List<IBoundaryEvent>? boundaryEvents))
+            if (boundaryEventsByHost.TryGetValue(
+                boundaryEvent.AttachedToRef,
+                out List<IBoundaryEvent>? boundaryEvents))
             {
                 boundaryEvents.Add(boundaryEvent);
             }
             else
             {
-                _boundaryEvents[boundaryEvent.AttachedToRef] =
+                boundaryEventsByHost[boundaryEvent.AttachedToRef] =
                     new List<IBoundaryEvent> { boundaryEvent };
             }
         }
 
-        while (stack.Count > 0)
+        while (queue.Count > 0 || flowNodes.Any(flowNode => !grid.Contains(flowNode)))
         {
-            var elements = stack.Dequeue();
+            // A valid process normally has a start node. This fallback also lays
+            // out disconnected components and processes that only consist of a cycle.
+            if (queue.Count == 0)
+            {
+                IFlowNode nextComponent = flowNodes.First(flowNode => !grid.Contains(flowNode));
+                queue.Enqueue((nextComponent, null));
+            }
+
+            var elements = queue.Dequeue();
             (IFlowNode current, IFlowNode? previous) = elements;
 
             if (grid.Contains(current))
@@ -98,29 +119,42 @@ public class BpmnDiagramGenerator
             else
             {
                 grid.Add(current);
+            }
 
-                if (current is IFlowElementsContainer subFlowElementsContainer)
+            if (current is IFlowElementsContainer subFlowElementsContainer)
+            {
+                if (!_grids.ContainsKey(subFlowElementsContainer))
                 {
                     Grid? subGrid = GenerateLayout(subFlowElementsContainer);
-                    _grids.Add(subFlowElementsContainer, subGrid);
+                    _grids[subFlowElementsContainer] = subGrid;
                 }
             }
 
-            if (_boundaryEvents.TryGetValue(current, out List<IBoundaryEvent>? boundaryEvents))
+            if (boundaryEventsByHost.TryGetValue(
+                current,
+                out List<IBoundaryEvent>? boundaryEventsForCurrent))
             {
-                foreach (IBoundaryEvent boundaryEvent in boundaryEvents)
+                foreach (IBoundaryEvent boundaryEvent in boundaryEventsForCurrent)
                 {
-                    stack.Enqueue((boundaryEvent, current));
+                    queue.Enqueue((boundaryEvent, current));
                 }
             }
 
-            foreach (ISequenceFlow sequenceFlow in current.Outgoing)
+            IEnumerable<ISequenceFlow> outgoing = current.Outgoing;
+            if (current is IExclusiveGateway exclusiveGateway
+                && exclusiveGateway.Default != null)
             {
-                stack.Enqueue((sequenceFlow.TargetRef, current));
+                // The conditioned path is the visual main path. A default branch
+                // becomes a secondary row instead of displacing the main flow.
+                outgoing = outgoing.OrderBy(
+                    sequenceFlow => ReferenceEquals(
+                        sequenceFlow,
+                        exclusiveGateway.Default));
             }
-            foreach (ISequenceFlow sequenceFlow in current.Incoming)
+
+            foreach (ISequenceFlow sequenceFlow in outgoing)
             {
-                stack.Enqueue((sequenceFlow.SourceRef, current));
+                queue.Enqueue((sequenceFlow.TargetRef, current));
             }
         }
 
@@ -144,43 +178,57 @@ public class BpmnDiagramGenerator
             if (participant.ProcessRef != null && _grids.TryGetValue(participant.ProcessRef, out Grid? grid) && grid != null)
             {
                 List<IDiagramElement> diagramElements = GenerateDiagram(grid);
-
-                IEnumerable<IBpmnShape> bpmnShapes = diagramElements.OfType<IBpmnShape>();
-                double minX = bpmnShapes.Min(bpmnShape => bpmnShape.Bounds.X);
-                double minY = bpmnShapes.Min(bpmnShape => bpmnShape.Bounds.Y);
-                double maxX = bpmnShapes.Max(bpmnShape => bpmnShape.Bounds.X + bpmnShape.Bounds.Width);
-                double maxY = bpmnShapes.Max(bpmnShape => bpmnShape.Bounds.Y + bpmnShape.Bounds.Height);
-
-                double offsetX = -minX + ParticipantPadding;
-                double offsetY = currentY - minY + ParticipantPadding;
-
-                participantBounds = new Bounds()
+                if (diagramElements.OfType<IBpmnShape>().Any())
                 {
-                    X = 0,
-                    Y = currentY,
-                    Width = maxX - minX + ParticipantPadding * 2,
-                    Height = maxY - minY + ParticipantPadding * 2
-                };
+                    IBounds contentBounds = GetDiagramBounds(diagramElements);
+                    double offsetX =
+                        -contentBounds.X + ParticipantHorizontalPadding;
+                    double offsetY =
+                        currentY - contentBounds.Y + ParticipantVerticalPadding;
 
-                // shift contained elements
-                foreach (IDiagramElement diagramElement in diagramElements)
-                {
-                    if (diagramElement is IBpmnShape bpmnShape)
+                    participantBounds = new Bounds()
                     {
-                        IBounds bounds = bpmnShape.Bounds;
-                        bounds.X += offsetX;
-                        bounds.Y += offsetY;
-                        bpmnShape.Bounds = bounds;
-                    }
-                    if (diagramElement is IBpmnEdge bpmnEdge)
+                        X = 0,
+                        Y = currentY,
+                        Width =
+                            contentBounds.Width
+                            + ParticipantHorizontalPadding * 2,
+                        Height =
+                            contentBounds.Height
+                            + ParticipantVerticalPadding * 2
+                    };
+
+                    // Shift contained nodes and all routed edge waypoints together.
+                    foreach (IDiagramElement diagramElement in diagramElements)
                     {
-                        foreach (IPoint waypoint in bpmnEdge.Waypoints)
+                        if (diagramElement is IBpmnShape bpmnShape)
                         {
-                            waypoint.X += offsetX;
-                            waypoint.Y += offsetY;
+                            IBounds bounds = bpmnShape.Bounds;
+                            bounds.X += offsetX;
+                            bounds.Y += offsetY;
+                            bpmnShape.Bounds = bounds;
                         }
+                        if (diagramElement is IBpmnEdge bpmnEdge)
+                        {
+                            foreach (IPoint waypoint in bpmnEdge.Waypoints)
+                            {
+                                waypoint.X += offsetX;
+                                waypoint.Y += offsetY;
+                            }
+                        }
+                        bpmnPlane.DiagramElements.Add(diagramElement);
                     }
-                    bpmnPlane.DiagramElements.Add(diagramElement);
+                }
+                else
+                {
+                    (int width, int height) = GetDefaultShapeSize(participant);
+                    participantBounds = new Bounds()
+                    {
+                        X = 0,
+                        Y = currentY,
+                        Width = width,
+                        Height = height
+                    };
                 }
             }
             else
@@ -207,11 +255,70 @@ public class BpmnDiagramGenerator
             currentY = participantBounds.Y + participantBounds.Height + ParticipantSpacing;
         }
 
+        // Stacked pools should form one clean column. Individual processes can
+        // still use different heights, but unequal widths make message flows and
+        // the overall collaboration unnecessarily jagged.
+        List<IBpmnShape> participantShapes = bpmnPlane.DiagramElements
+            .OfType<IBpmnShape>()
+            .Where(shape => shape.BpmnElement is IParticipant)
+            .ToList();
+        if (participantShapes.Count > 0)
+        {
+            double commonParticipantWidth =
+                participantShapes.Max(shape => shape.Bounds.Width);
+            foreach (IBpmnShape participantShape in participantShapes)
+            {
+                participantShape.Bounds.Width = commonParticipantWidth;
+            }
+        }
+
         GenerateMessageFlowDiagramElements(
             collaboration,
             bpmnPlane);
 
         return bpmnPlane;
+    }
+
+    private static IBounds GetDiagramBounds(
+        IEnumerable<IDiagramElement> diagramElements)
+    {
+        double minX = double.PositiveInfinity;
+        double minY = double.PositiveInfinity;
+        double maxX = double.NegativeInfinity;
+        double maxY = double.NegativeInfinity;
+
+        foreach (IDiagramElement diagramElement in diagramElements)
+        {
+            if (diagramElement is IBpmnShape shape)
+            {
+                minX = Math.Min(minX, shape.Bounds.X);
+                minY = Math.Min(minY, shape.Bounds.Y);
+                maxX = Math.Max(
+                    maxX,
+                    shape.Bounds.X + shape.Bounds.Width);
+                maxY = Math.Max(
+                    maxY,
+                    shape.Bounds.Y + shape.Bounds.Height);
+            }
+            else if (diagramElement is IBpmnEdge edge)
+            {
+                foreach (IPoint waypoint in edge.Waypoints)
+                {
+                    minX = Math.Min(minX, waypoint.X);
+                    minY = Math.Min(minY, waypoint.Y);
+                    maxX = Math.Max(maxX, waypoint.X);
+                    maxY = Math.Max(maxY, waypoint.Y);
+                }
+            }
+        }
+
+        return new Bounds()
+        {
+            X = minX,
+            Y = minY,
+            Width = maxX - minX,
+            Height = maxY - minY
+        };
     }
 
     private static void GenerateMessageFlowDiagramElements(
@@ -220,9 +327,22 @@ public class BpmnDiagramGenerator
     {
         IList<IBpmnShape> shapes =
             bpmnPlane.DiagramElements.OfType<IBpmnShape>().ToList();
+        IList<IBpmnShape> flowNodeShapes = shapes
+            .Where(shape => shape.BpmnElement is IFlowNode)
+            .ToList();
+        IList<IBpmnShape> participantShapes = shapes
+            .Where(shape => shape.BpmnElement is IParticipant)
+            .ToList();
+
+        int messageFlowCount = collaboration.MessageFlows.Count;
+        double messageLaneSpacing = messageFlowCount <= 1
+            ? 0
+            : Math.Min(24, 60d / (messageFlowCount - 1));
+        int messageFlowIndex = 0;
 
         foreach (IMessageFlow messageFlow in collaboration.MessageFlows)
         {
+            int currentMessageFlowIndex = messageFlowIndex++;
             IBpmnShape? source = shapes.FirstOrDefault(
                 shape => ReferenceEquals(
                     shape.BpmnElement,
@@ -241,20 +361,29 @@ public class BpmnDiagramGenerator
                 continue;
             }
 
-            IBpmnEdge edge = CreateEdge(
+            double corridorY = GetMessageCorridorY(
+                source,
+                target,
+                participantShapes)
+                + (
+                      currentMessageFlowIndex
+                      - (messageFlowCount - 1) / 2d)
+                * messageLaneSpacing;
+
+            IBpmnEdge edge = CreateRoutedEdge(
                 messageFlow,
                 source,
-                target);
+                target,
+                CreateVerticalCorridorRoute(
+                    source,
+                    target,
+                    flowNodeShapes,
+                    corridorY));
             edge.MessageVisibleKind = MessageVisibleKind.initiating;
-
-            if (messageFlow.SourceRef is IFlowNode sourceNode
-                && messageFlow.TargetRef is IFlowNode targetNode)
-            {
-                FixEdgeDockingPoints(
-                    edge,
-                    sourceNode,
-                    targetNode);
-            }
+            edge.BpmnLabel = CreateMessageFlowLabel(
+                messageFlow.Name,
+                edge.Waypoints,
+                corridorY);
 
             bpmnPlane.DiagramElements.Add(edge);
         }
@@ -297,10 +426,19 @@ public class BpmnDiagramGenerator
             diagramElements.Add(shape);
         }
 
-        foreach (ISequenceFlow sequenceFlow in elements.Select(elements => elements.flowNode).SelectMany(flowNodes => flowNodes.Outgoing))
+        int backEdgeIndex = 0;
+        foreach (ISequenceFlow sequenceFlow in elements
+                     .Select(element => element.flowNode)
+                     .SelectMany(flowNode => flowNode.Outgoing))
         {
-            IBpmnShape? source = bpmnShapes.FirstOrDefault(diagramElement => diagramElement is IBpmnShape bpmnShape && bpmnShape.BpmnElement == sequenceFlow.SourceRef) as IBpmnShape;
-            IBpmnShape? target = bpmnShapes.FirstOrDefault(diagramElement => diagramElement is IBpmnShape bpmnShape && bpmnShape.BpmnElement == sequenceFlow.TargetRef) as IBpmnShape;
+            IBpmnShape? source = bpmnShapes.FirstOrDefault(
+                bpmnShape => ReferenceEquals(
+                    bpmnShape.BpmnElement,
+                    sequenceFlow.SourceRef));
+            IBpmnShape? target = bpmnShapes.FirstOrDefault(
+                bpmnShape => ReferenceEquals(
+                    bpmnShape.BpmnElement,
+                    sequenceFlow.TargetRef));
 
             if (source == null || target == null)
             {
@@ -308,8 +446,12 @@ public class BpmnDiagramGenerator
                 continue;
             }
 
-            IBpmnEdge edge = CreateEdge(sequenceFlow, source, target);
-            FixEdgeDockingPoints(edge, sequenceFlow.SourceRef, sequenceFlow.TargetRef);
+            IBpmnEdge edge = CreateSequenceFlowEdge(
+                sequenceFlow,
+                source,
+                target,
+                bpmnShapes,
+                ref backEdgeIndex);
             diagramElements.Add(edge);
         }
 
@@ -327,8 +469,8 @@ public class BpmnDiagramGenerator
 
         IBounds bounds = new Bounds()
         {
-            X = (col * GridCellSize) - width / 2,
-            Y = (row * GridCellSize) - height / 2,
+            X = (col * GridColumnSize) - width / 2,
+            Y = (row * GridRowSize) - height / 2,
             Width = width,
             Height = height
         };
@@ -373,121 +515,501 @@ public class BpmnDiagramGenerator
         return (100, 80);
     }
 
-    private static IBpmnEdge CreateEdge(
+    private static IBpmnEdge CreateSequenceFlowEdge(
+        ISequenceFlow sequenceFlow,
+        IBpmnShape source,
+        IBpmnShape target,
+        IList<IBpmnShape> shapes,
+        ref int backEdgeIndex)
+    {
+        IPoint sourceCenter = GetBoundsCenter(source.Bounds);
+        IPoint targetCenter = GetBoundsCenter(target.Bounds);
+        List<IPoint> waypoints;
+
+        if (ReferenceEquals(source, target))
+        {
+            double loopX = source.Bounds.X
+                           + source.Bounds.Width
+                           + EdgeClearance;
+            double loopY = source.Bounds.Y - EdgeClearance;
+            waypoints = new List<IPoint>()
+            {
+                GetRightDock(source),
+                new Point { X = loopX, Y = sourceCenter.Y },
+                new Point { X = loopX, Y = loopY },
+                new Point { X = sourceCenter.X, Y = loopY },
+                GetTopDock(target)
+            };
+        }
+        else if (NearlyEqual(sourceCenter.X, targetCenter.X))
+        {
+            if (IsVerticalSegmentClear(
+                    sourceCenter.X,
+                    sourceCenter.Y,
+                    targetCenter.Y,
+                    shapes,
+                    source,
+                    target))
+            {
+                waypoints = targetCenter.Y > sourceCenter.Y
+                    ? new List<IPoint>()
+                    {
+                        GetBottomDock(source),
+                        GetTopDock(target)
+                    }
+                    : new List<IPoint>()
+                    {
+                        GetTopDock(source),
+                        GetBottomDock(target)
+                    };
+            }
+            else
+            {
+                double laneX = Math.Max(
+                                   source.Bounds.X + source.Bounds.Width,
+                                   target.Bounds.X + target.Bounds.Width)
+                               + EdgeClearance;
+                waypoints = new List<IPoint>()
+                {
+                    GetRightDock(source),
+                    new Point { X = laneX, Y = sourceCenter.Y },
+                    new Point { X = laneX, Y = targetCenter.Y },
+                    GetRightDock(target)
+                };
+            }
+        }
+        else if (targetCenter.X > sourceCenter.X)
+        {
+            IPoint sourceDock = GetRightDock(source);
+            IPoint targetDock = GetLeftDock(target);
+
+            if (NearlyEqual(sourceCenter.Y, targetCenter.Y))
+            {
+                waypoints = new List<IPoint>()
+                {
+                    sourceDock,
+                    targetDock
+                };
+            }
+            else
+            {
+                double laneX = (sourceDock.X + targetDock.X) / 2;
+                waypoints = new List<IPoint>()
+                {
+                    sourceDock,
+                    new Point { X = laneX, Y = sourceCenter.Y },
+                    new Point { X = laneX, Y = targetCenter.Y },
+                    targetDock
+                };
+            }
+        }
+        else if (sourceCenter.X - targetCenter.X
+                 <= GridColumnSize * 1.25)
+        {
+            // A short return to the preceding column is clearer as a compact
+            // dogleg than as a loop around the complete process.
+            IPoint sourceDock = GetLeftDock(source);
+            IPoint targetDock = GetRightDock(target);
+            double laneX = (sourceDock.X + targetDock.X) / 2;
+            waypoints = NearlyEqual(sourceCenter.Y, targetCenter.Y)
+                ? new List<IPoint>()
+                {
+                    sourceDock,
+                    targetDock
+                }
+                : new List<IPoint>()
+                {
+                    sourceDock,
+                    new Point { X = laneX, Y = sourceCenter.Y },
+                    new Point { X = laneX, Y = targetCenter.Y },
+                    targetDock
+                };
+        }
+        else
+        {
+            double corridorY = shapes.Max(
+                                   shape => shape.Bounds.Y
+                                            + shape.Bounds.Height)
+                               + BackEdgeClearance
+                               + backEdgeIndex * BackEdgeSpacing;
+            backEdgeIndex++;
+            waypoints = CreateVerticalCorridorRoute(
+                source,
+                target,
+                shapes,
+                corridorY);
+        }
+
+        return CreateRoutedEdge(
+            sequenceFlow,
+            source,
+            target,
+            waypoints);
+    }
+
+    private static IBpmnEdge CreateRoutedEdge(
         IBaseElement bpmnElement,
         IBpmnShape source,
-        IBpmnShape target)
+        IBpmnShape target,
+        IEnumerable<IPoint> waypoints)
     {
-        IBpmnEdge bpmnEdge = new BpmnEdge()
+        return new BpmnEdge()
         {
             Id = GenerateDiagramIdentifier(bpmnElement),
             BpmnElement = bpmnElement,
             SourceElement = source,
             TargetElement = target,
-            Waypoints = new List<IPoint>()
+            Waypoints = SimplifyWaypoints(waypoints)
+        };
+    }
+
+    private static List<IPoint> CreateVerticalCorridorRoute(
+        IBpmnShape source,
+        IBpmnShape target,
+        IList<IBpmnShape> shapes,
+        double corridorY)
+    {
+        List<IPoint> sourceEscape = CreateVerticalEscape(
+            source,
+            corridorY,
+            shapes);
+        List<IPoint> targetEscape = CreateVerticalEscape(
+            target,
+            corridorY,
+            shapes);
+
+        List<IPoint> waypoints = new List<IPoint>(sourceEscape);
+        for (int index = targetEscape.Count - 1; index >= 0; index--)
+        {
+            waypoints.Add(targetEscape[index]);
+        }
+
+        return SimplifyWaypoints(waypoints);
+    }
+
+    private static List<IPoint> CreateVerticalEscape(
+        IBpmnShape shape,
+        double corridorY,
+        IList<IBpmnShape> shapes)
+    {
+        IPoint center = GetBoundsCenter(shape.Bounds);
+        bool exitsDown = corridorY >= center.Y;
+        IPoint verticalDock = exitsDown
+            ? GetBottomDock(shape)
+            : GetTopDock(shape);
+
+        if (IsVerticalSegmentClear(
+                center.X,
+                verticalDock.Y,
+                corridorY,
+                shapes,
+                shape,
+                null))
+        {
+            return new List<IPoint>()
             {
-                GetBoundsCenter(source.Bounds) ,
-                GetBoundsCenter(target.Bounds)
+                verticalDock,
+                new Point { X = center.X, Y = corridorY }
+            };
+        }
+
+        for (int multiplier = 1; multiplier <= 4; multiplier++)
+        {
+            double distance = EdgeClearance * multiplier;
+            (double laneX, IPoint dock)[] candidates =
+            {
+                (
+                    shape.Bounds.X + shape.Bounds.Width + distance,
+                    GetRightDock(shape)),
+                (
+                    shape.Bounds.X - distance,
+                    GetLeftDock(shape))
+            };
+
+            foreach ((double laneX, IPoint dock) in candidates)
+            {
+                if (!IsHorizontalSegmentClear(
+                        dock.Y,
+                        dock.X,
+                        laneX,
+                        shapes,
+                        shape))
+                {
+                    continue;
+                }
+
+                if (IsVerticalSegmentClear(
+                        laneX,
+                        dock.Y,
+                        corridorY,
+                        shapes,
+                        shape,
+                        null))
+                {
+                    return new List<IPoint>()
+                    {
+                        dock,
+                        new Point { X = laneX, Y = dock.Y },
+                        new Point { X = laneX, Y = corridorY }
+                    };
+                }
+            }
+        }
+
+        double fallbackLaneX =
+            shape.Bounds.X + shape.Bounds.Width + EdgeClearance * 5;
+        IPoint fallbackDock = GetRightDock(shape);
+        return new List<IPoint>()
+        {
+            fallbackDock,
+            new Point { X = fallbackLaneX, Y = fallbackDock.Y },
+            new Point { X = fallbackLaneX, Y = corridorY }
+        };
+    }
+
+    private static bool IsVerticalSegmentClear(
+        double x,
+        double fromY,
+        double toY,
+        IEnumerable<IBpmnShape> shapes,
+        IBpmnShape ignoredShape,
+        IBpmnShape? secondIgnoredShape)
+    {
+        const double obstaclePadding = 10;
+        double minY = Math.Min(fromY, toY);
+        double maxY = Math.Max(fromY, toY);
+
+        foreach (IBpmnShape shape in shapes)
+        {
+            if (ReferenceEquals(shape, ignoredShape)
+                || ReferenceEquals(shape, secondIgnoredShape)
+                || shape.BpmnElement is not IFlowNode)
+            {
+                continue;
+            }
+
+            IBounds bounds = shape.Bounds;
+            bool intersectsX =
+                x >= bounds.X - obstaclePadding
+                && x <= bounds.X + bounds.Width + obstaclePadding;
+            bool intersectsY =
+                maxY >= bounds.Y - obstaclePadding
+                && minY <= bounds.Y + bounds.Height + obstaclePadding;
+            if (intersectsX && intersectsY)
+                return false;
+        }
+
+        return true;
+    }
+
+    private static bool IsHorizontalSegmentClear(
+        double y,
+        double fromX,
+        double toX,
+        IEnumerable<IBpmnShape> shapes,
+        IBpmnShape ignoredShape)
+    {
+        const double obstaclePadding = 10;
+        double minX = Math.Min(fromX, toX);
+        double maxX = Math.Max(fromX, toX);
+
+        foreach (IBpmnShape shape in shapes)
+        {
+            if (ReferenceEquals(shape, ignoredShape)
+                || shape.BpmnElement is not IFlowNode)
+            {
+                continue;
+            }
+
+            IBounds bounds = shape.Bounds;
+            bool intersectsX =
+                maxX >= bounds.X - obstaclePadding
+                && minX <= bounds.X + bounds.Width + obstaclePadding;
+            bool intersectsY =
+                y >= bounds.Y - obstaclePadding
+                && y <= bounds.Y + bounds.Height + obstaclePadding;
+            if (intersectsX && intersectsY)
+                return false;
+        }
+
+        return true;
+    }
+
+    private static double GetMessageCorridorY(
+        IBpmnShape source,
+        IBpmnShape target,
+        IList<IBpmnShape> participantShapes)
+    {
+        IBpmnShape? sourceParticipant = FindContainingParticipant(
+            source,
+            participantShapes);
+        IBpmnShape? targetParticipant = FindContainingParticipant(
+            target,
+            participantShapes);
+
+        if (sourceParticipant == null
+            || targetParticipant == null
+            || ReferenceEquals(sourceParticipant, targetParticipant))
+        {
+            return (
+                       GetBoundsCenter(source.Bounds).Y
+                       + GetBoundsCenter(target.Bounds).Y)
+                   / 2;
+        }
+
+        if (sourceParticipant.Bounds.Y < targetParticipant.Bounds.Y)
+        {
+            return (
+                       sourceParticipant.Bounds.Y
+                       + sourceParticipant.Bounds.Height
+                       + targetParticipant.Bounds.Y)
+                   / 2;
+        }
+
+        return (
+                   targetParticipant.Bounds.Y
+                   + targetParticipant.Bounds.Height
+                   + sourceParticipant.Bounds.Y)
+               / 2;
+    }
+
+    private static IBpmnLabel? CreateMessageFlowLabel(
+        string? name,
+        IEnumerable<IPoint> waypoints,
+        double corridorY)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return null;
+
+        List<IPoint> pointsOnCorridor = waypoints
+            .Where(waypoint => NearlyEqual(waypoint.Y, corridorY))
+            .ToList();
+        double centerX = pointsOnCorridor.Count > 0
+            ? pointsOnCorridor.Average(waypoint => waypoint.X)
+            : waypoints.Average(waypoint => waypoint.X);
+        double width = Math.Min(
+            180,
+            Math.Max(60, name.Length * 7));
+        const double height = 20;
+
+        return new BpmnLabel()
+        {
+            Bounds = new Bounds()
+            {
+                X = centerX - width / 2,
+                Y = corridorY - height / 2,
+                Width = width,
+                Height = height
             }
         };
+    }
 
-        return bpmnEdge;
+    private static IBpmnShape? FindContainingParticipant(
+        IBpmnShape elementShape,
+        IEnumerable<IBpmnShape> participantShapes)
+    {
+        IPoint center = GetBoundsCenter(elementShape.Bounds);
+        return participantShapes.FirstOrDefault(participantShape =>
+            center.X >= participantShape.Bounds.X
+            && center.X <= participantShape.Bounds.X
+                + participantShape.Bounds.Width
+            && center.Y >= participantShape.Bounds.Y
+            && center.Y <= participantShape.Bounds.Y
+                + participantShape.Bounds.Height);
+    }
+
+    private static List<IPoint> SimplifyWaypoints(
+        IEnumerable<IPoint> waypoints)
+    {
+        List<IPoint> simplified = new List<IPoint>();
+
+        foreach (IPoint waypoint in waypoints)
+        {
+            if (simplified.Count > 0)
+            {
+                IPoint previous = simplified[simplified.Count - 1];
+                if (NearlyEqual(previous.X, waypoint.X)
+                    && NearlyEqual(previous.Y, waypoint.Y))
+                {
+                    continue;
+                }
+            }
+
+            simplified.Add(
+                new Point
+                {
+                    X = waypoint.X,
+                    Y = waypoint.Y
+                });
+
+            while (simplified.Count >= 3)
+            {
+                IPoint first = simplified[simplified.Count - 3];
+                IPoint middle = simplified[simplified.Count - 2];
+                IPoint last = simplified[simplified.Count - 1];
+                bool vertical =
+                    NearlyEqual(first.X, middle.X)
+                    && NearlyEqual(middle.X, last.X);
+                bool horizontal =
+                    NearlyEqual(first.Y, middle.Y)
+                    && NearlyEqual(middle.Y, last.Y);
+                if (!vertical && !horizontal)
+                    break;
+
+                simplified.RemoveAt(simplified.Count - 2);
+            }
+        }
+
+        return simplified;
+    }
+
+    private static bool NearlyEqual(double first, double second)
+    {
+        return Math.Abs(first - second) < 0.001;
     }
 
     private static IPoint GetBoundsCenter(IBounds bounds)
     {
-        return new Point { X = bounds.X + bounds.Width / 2, Y = bounds.Y + bounds.Height / 2 };
-    }
-
-    private static void FixEdgeDockingPoints(IBpmnEdge bpmnEdge, IFlowNode source, IFlowNode target)
-    {
-        if (bpmnEdge.Waypoints.Count != 2)
-            return;
-
-        IPoint from = bpmnEdge.Waypoints[0];
-        IPoint to = bpmnEdge.Waypoints[1];
-
-        double deltaX = to.X - from.X;
-        double deltaY = to.Y - from.Y;
-
-        double distance = Math.Sqrt(deltaX * deltaX + deltaY * deltaY);
-        if (distance <= double.Epsilon
-            || double.IsNaN(distance)
-            || double.IsInfinity(distance))
+        return new Point()
         {
-            return;
-        }
-
-        double directionX = deltaX / distance;
-        double directionY = deltaY / distance;
-
-        double angleInRadians = Math.Atan2(directionY, directionX);
-        double angleInDegrees = angleInRadians * (180.0 / Math.PI);
-
-        (double offsetX, double offsetY) = GetOffset(angleInDegrees, source, true);
-        from.X += offsetX;
-        from.Y += offsetY;
-
-        (offsetX, offsetY) = GetOffset(angleInDegrees, target, false);
-        to.X += offsetX;
-        to.Y += offsetY;
+            X = bounds.X + bounds.Width / 2,
+            Y = bounds.Y + bounds.Height / 2
+        };
     }
 
-    private static (double, double) GetOffset(double angleInDegrees, IFlowNode flowNode, bool isSource)
+    private static IPoint GetLeftDock(IBpmnShape shape)
     {
-        if (!isSource)
-            angleInDegrees += 180;
-
-        double offsetX = 0;
-        double offsetY = 0;
-
-        if (flowNode is IEvent)
+        return new Point()
         {
-            offsetX = Math.Cos(DegToRad(angleInDegrees)) * 18;
-            offsetY = Math.Sin(DegToRad(angleInDegrees)) * 18;
-        }
-        else if (flowNode is IGateway)
+            X = shape.Bounds.X,
+            Y = shape.Bounds.Y + shape.Bounds.Height / 2
+        };
+    }
+
+    private static IPoint GetRightDock(IBpmnShape shape)
+    {
+        return new Point()
         {
-            (offsetX, offsetY) = GetRectangleOffset(angleInDegrees + 45, 36, 36);
-            (offsetX, offsetY) = RotatePoint(offsetX, offsetY, -45);
-        }
-        else if (flowNode is IActivity)
+            X = shape.Bounds.X + shape.Bounds.Width,
+            Y = shape.Bounds.Y + shape.Bounds.Height / 2
+        };
+    }
+
+    private static IPoint GetTopDock(IBpmnShape shape)
+    {
+        return new Point()
         {
-            (offsetX, offsetY) = GetRectangleOffset(angleInDegrees, 100, 80);
-        }
-
-        return (offsetX, offsetY);
+            X = shape.Bounds.X + shape.Bounds.Width / 2,
+            Y = shape.Bounds.Y
+        };
     }
 
-    private static (double, double) GetRectangleOffset(double angleInDegrees, double width, double height)
+    private static IPoint GetBottomDock(IBpmnShape shape)
     {
-        double angle = DegToRad(angleInDegrees);
-        double directionX = Math.Cos(angle);
-        double directionY = Math.Sin(angle);
-        double scaleX = Math.Abs(directionX) <= double.Epsilon
-            ? double.MaxValue
-            : width / 2d / Math.Abs(directionX);
-        double scaleY = Math.Abs(directionY) <= double.Epsilon
-            ? double.MaxValue
-            : height / 2d / Math.Abs(directionY);
-        double scale = Math.Min(scaleX, scaleY);
-
-        return (
-            directionX * scale,
-            directionY * scale);
-    }
-
-    // adapted from: https://stackoverflow.com/questions/13695317/rotate-a-point-around-another-point
-    private static (double, double) RotatePoint(double x, double y, double angleInDegrees)
-    {
-        double angle = DegToRad(angleInDegrees);
-        double cosTheta = Math.Cos(angle);
-        double sinTheta = Math.Sin(angle);
-        return (cosTheta * x - sinTheta * y, sinTheta * x + cosTheta * y);
-    }
-
-    private static double DegToRad(double degrees)
-    {
-        return Math.PI / 180 * degrees;
+        return new Point()
+        {
+            X = shape.Bounds.X + shape.Bounds.Width / 2,
+            Y = shape.Bounds.Y + shape.Bounds.Height
+        };
     }
 }

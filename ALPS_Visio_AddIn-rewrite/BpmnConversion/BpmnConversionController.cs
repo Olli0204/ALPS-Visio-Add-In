@@ -235,6 +235,8 @@ namespace ALPS_Visio_AddIn_rewrite.BpmnConversion
                 BpmnModelConstants.OmgDcNs;
             XNamespace diNamespace =
                 BpmnModelConstants.OmgDiNs;
+            XNamespace bpmnDiNamespace =
+                BpmnModelConstants.BpmnDiNs;
             double maximumShapeExtent = document
                 .Descendants(dcNamespace + "Bounds")
                 .SelectMany(bounds =>
@@ -267,6 +269,47 @@ namespace ALPS_Visio_AddIn_rewrite.BpmnConversion
                     throw new InvalidDataException(
                         "Der BPMN-Export enthält eine Diagrammkante "
                         + "außerhalb des sichtbaren Modellbereichs.");
+                }
+            }
+
+            foreach (XElement edge in document
+                .Descendants(bpmnDiNamespace + "BPMNEdge"))
+            {
+                IList<XElement> waypoints = edge
+                    .Elements(diNamespace + "waypoint")
+                    .ToList();
+                if (waypoints.Count < 2)
+                {
+                    throw new InvalidDataException(
+                        "Der BPMN-Export enthält eine Diagrammkante "
+                        + "mit weniger als zwei Wegpunkten.");
+                }
+
+                for (int index = 1; index < waypoints.Count; index++)
+                {
+                    double previousX = ReadCoordinate(
+                        waypoints[index - 1],
+                        "x");
+                    double previousY = ReadCoordinate(
+                        waypoints[index - 1],
+                        "y");
+                    double currentX = ReadCoordinate(
+                        waypoints[index],
+                        "x");
+                    double currentY = ReadCoordinate(
+                        waypoints[index],
+                        "y");
+                    bool horizontal =
+                        Math.Abs(previousY - currentY) < 0.001;
+                    bool vertical =
+                        Math.Abs(previousX - currentX) < 0.001;
+                    if (!horizontal && !vertical)
+                    {
+                        throw new InvalidDataException(
+                            "Der BPMN-Export enthält eine diagonale "
+                            + "Diagrammkante statt eines "
+                            + "orthogonalen Routings.");
+                    }
                 }
             }
         }

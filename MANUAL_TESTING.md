@@ -148,10 +148,17 @@ implementation respectively.
   model name begins with `[Test]`.
 - Confirm that participants, processes, flow nodes, sequence flows, and BPMN
   diagram coordinates are present. All coordinates must be finite and remain
-  within the visible participant area; no edge may jump to an extremely large
-  X or Y position.
+  within the visible collaboration area; no edge may jump to an extremely
+  large X or Y position.
+- Confirm that the two pools are aligned to the same width and each process
+  uses two compact rows. The main flow runs left-to-right; feedback flows use
+  separate lower corridors instead of crossing tasks.
+- Confirm that sequence and message flows use horizontal/vertical segments
+  only. No connector may run through an unrelated task, event, or gateway.
 - Confirm that `Vacation Request`, `Approval`, and `Denial` are visible as
   message flows between the matching send and receive tasks in the two pools.
+  Their labels must be staggered inside the gap between the pools without
+  overlapping nodes or one another.
 - Cancel the input dialog and then the output dialog in separate runs. Neither
   cancellation may show an error.
 - Select a malformed OWL/RDF file and confirm that one error dialog is shown
