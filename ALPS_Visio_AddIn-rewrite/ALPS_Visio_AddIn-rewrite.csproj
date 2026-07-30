@@ -423,8 +423,11 @@
     </Compile>
     <AppDesigner Include="Properties\" />
     <None Include="TODO.md" />
-    <None Include="BpmnConversion\Upstream\LICENSE" />
     <None Include="BpmnConversion\Upstream\README.md" />
+    <Content Include="BpmnConversion\Upstream\LICENSE">
+      <Link>ThirdParty\pass-bpmn-converter-LICENSE.txt</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\document-open-7.png" />

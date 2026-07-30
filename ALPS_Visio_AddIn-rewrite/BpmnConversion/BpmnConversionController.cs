@@ -18,10 +18,10 @@ namespace ALPS_Visio_AddIn_rewrite.BpmnConversion
     {
         public void Run()
         {
-            string inputFilePath = SelectInputFile();
+            string? inputFilePath = SelectInputFile();
             if (inputFilePath == null) return;
 
-            string outputFilePath = SelectOutputFile(inputFilePath);
+            string? outputFilePath = SelectOutputFile(inputFilePath);
             if (outputFilePath == null) return;
 
             Cursor previousCursor = Cursor.Current;
@@ -71,7 +71,7 @@ namespace ALPS_Visio_AddIn_rewrite.BpmnConversion
             BpmnSerializer.Serialize(bpmnModel, outputFilePath);
         }
 
-        private static string SelectInputFile()
+        private static string? SelectInputFile()
         {
             using (OpenFileDialog dialog = new OpenFileDialog())
             {
@@ -88,7 +88,7 @@ namespace ALPS_Visio_AddIn_rewrite.BpmnConversion
             }
         }
 
-        private static string SelectOutputFile(string inputFilePath)
+        private static string? SelectOutputFile(string inputFilePath)
         {
             using (SaveFileDialog dialog = new SaveFileDialog())
             {
