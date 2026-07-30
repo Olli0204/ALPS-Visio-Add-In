@@ -27,7 +27,7 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
                 "INDEX(" + (int)condition.getTimeTransitionType() + ", Prop." + Constants.Properties.Transition.TimeOutType + ".Format)");
 
             // timeout
-            bool isReminder = condition.getTimeTransitionType() == ITimeTransitionCondition.TimeTransitionConditionType.TimeBasedReminder || condition.getTimeTransitionType() == ITimeTransitionCondition.TimeTransitionConditionType.CalendarBasedReminder;
+            bool isReminder = condition.getTimeTransitionType() == ITimeTransitionCondition.TimeTransitionConditionType.TimeBasedReminderTC || condition.getTimeTransitionType() == ITimeTransitionCondition.TimeTransitionConditionType.CalendarBasedReminderTC;
             if (isReminder) VH.SetProperty(export.GetShape(), Constants.Properties.Transition.TimeOutDate, condition.getTimeValue());
             else VH.SetProperty(export.GetShape(), Constants.Properties.Transition.TimeOutTime, condition.getTimeValue());
         }

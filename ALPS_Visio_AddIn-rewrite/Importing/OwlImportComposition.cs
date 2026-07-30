@@ -1,4 +1,3 @@
-using alps.net.api;
 using alps.net.api.parsing;
 using ALPS_Visio_AddIn_rewrite.OWLShapes;
 using System;
@@ -25,9 +24,8 @@ namespace ALPS_Visio_AddIn_rewrite.Importing
         internal static IPASSReaderWriter CreateConfiguredParser()
         {
             Assembly assembly = Assembly.GetExecutingAssembly();
-            ReflectiveEnumerator.addAssemblyToCheckForTypes(assembly);
-
             IPASSReaderWriter parser = PASSReaderWriter.getInstance();
+            parser.addAssemblyToCheckForTypes(assembly);
             parser.setModelElementFactory(new VisioClassFactory());
 
             string assemblyDirectory = Path.GetDirectoryName(assembly.Location);
