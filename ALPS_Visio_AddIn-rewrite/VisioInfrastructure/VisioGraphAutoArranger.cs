@@ -82,7 +82,7 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
             {
                 if (shape.OneD == 0
                     || !VisioConnectorRebinder.TryGetConnectedShapes(
-                        shape, out Visio.Shape sourceShape,
+                        page, shape, out Visio.Shape sourceShape,
                         out Visio.Shape targetShape)
                     || !nodesById.TryGetValue(
                         sourceShape.ID, out GraphNode source)
@@ -318,26 +318,48 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
         private static double EstimateConnectorLabelWidth(
             Visio.Shape connector)
         {
+            int longestLine = GetLongestTextLine(connector);
+            return Math.Min(
+                MaximumConnectorLabelWidth,
+                longestLine * EstimatedCharacterWidth);
+        }
+
+        private static int GetLongestTextLine(Visio.Shape shape)
+        {
+            int longestLine = 0;
             try
             {
-                string text = connector.Text;
-                if (string.IsNullOrWhiteSpace(text)) return 0d;
-
-                int longestLine = text
-                    .Replace("\r\n", "\n")
-                    .Replace('\r', '\n')
-                    .Split('\n')
-                    .Select(line => line.Trim().Length)
-                    .DefaultIfEmpty(0)
-                    .Max();
-                return Math.Min(
-                    MaximumConnectorLabelWidth,
-                    longestLine * EstimatedCharacterWidth);
+                string text = shape.Text;
+                if (!string.IsNullOrWhiteSpace(text))
+                {
+                    longestLine = text
+                        .Replace("\r\n", "\n")
+                        .Replace('\r', '\n')
+                        .Split('\n')
+                        .Select(line => line.Trim().Length)
+                        .DefaultIfEmpty(0)
+                        .Max();
+                }
             }
             catch (System.Runtime.InteropServices.COMException)
             {
-                return 0d;
+                // Some master subshapes do not expose a text range.
             }
+
+            try
+            {
+                foreach (Visio.Shape child in shape.Shapes)
+                {
+                    longestLine = Math.Max(
+                        longestLine, GetLongestTextLine(child));
+                }
+            }
+            catch (System.Runtime.InteropServices.COMException)
+            {
+                // Atomic shapes do not have child shapes.
+            }
+
+            return longestLine;
         }
 
         private static void PlaceTopDown(IEnumerable<RankBand> bands,

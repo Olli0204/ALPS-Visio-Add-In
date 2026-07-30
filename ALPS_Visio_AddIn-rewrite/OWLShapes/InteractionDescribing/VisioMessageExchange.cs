@@ -22,10 +22,29 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
 
             export.Export(shapeType, page, VH.GetBounds(this));
 
+            // Keep the semantic endpoints on the connector itself. Some
+            // message connector masters temporarily lose one glue entry while
+            // Visio lays out a coordinate-free import. The common auto-arrange
+            // pipeline can restore both ends deterministically from these IDs.
+            ISubject sender = getSender();
+            ISubject receiver = getReceiver();
+            if (sender != null)
+            {
+                VH.SetProperty(GetShape(),
+                    Constants.Properties.MessageExchange.OriginSubject,
+                    sender.getModelComponentID());
+            }
+            if (receiver != null)
+            {
+                VH.SetProperty(GetShape(),
+                    Constants.Properties.MessageExchange.TargetSubject,
+                    receiver.getModelComponentID());
+            }
+
             // set path (auto arrange)
-            if (this.getSender() is IVisioExportableWithShape exportableSender && exportableSender.GetShape() != null)
+            if (sender is IVisioExportableWithShape exportableSender && exportableSender.GetShape() != null)
                 this.GetShape().CellsU["BeginX"].GlueToPos(exportableSender.GetShape(), 1, 0.5);
-            if (this.getReceiver() is IVisioExportableWithShape exportableReceiver && exportableReceiver.GetShape() != null)
+            if (receiver is IVisioExportableWithShape exportableReceiver && exportableReceiver.GetShape() != null)
                 this.GetShape().CellsU["EndX"].GlueToPos(exportableReceiver.GetShape(), 0, 0.5);
 
             // TODO: AbstractMessageExchange

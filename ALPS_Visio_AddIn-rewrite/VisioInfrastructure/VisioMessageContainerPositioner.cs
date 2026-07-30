@@ -45,7 +45,7 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
                     || !connectors.TryGetValue(
                         connectorId, out Visio.Shape connector)
                     || !VisioConnectorRebinder.TryGetConnectedShapes(
-                        connector, out Visio.Shape source,
+                        page, connector, out Visio.Shape source,
                         out Visio.Shape target))
                 {
                     continue;

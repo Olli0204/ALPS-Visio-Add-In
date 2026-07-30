@@ -71,6 +71,12 @@
                 public const string Finalized = "isFinalized";
             }
 
+            public static class MessageExchange
+            {
+                public const string OriginSubject = "originSubject";
+                public const string TargetSubject = "targetSubject";
+            }
+
             public static class Transition
             {
                 public const string ReceiverSenderListForSubject = "receiverSenderListForSubject";

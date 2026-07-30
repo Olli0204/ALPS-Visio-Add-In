@@ -24,8 +24,8 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
             foreach (Visio.Shape shape in page.Shapes)
             {
                 if (shape.OneD == 0
-                    || !TryGetConnectedShapes(shape, out Visio.Shape source,
-                        out Visio.Shape target))
+                    || !TryGetConnectedShapes(page, shape,
+                        out Visio.Shape source, out Visio.Shape target))
                 {
                     continue;
                 }
@@ -79,23 +79,132 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
             }
         }
 
-        internal static bool TryGetConnectedShapes(Visio.Shape connector,
-            out Visio.Shape source, out Visio.Shape target)
+        internal static bool TryGetConnectedShapes(Visio.IVPage page,
+            Visio.Shape connector, out Visio.Shape source,
+            out Visio.Shape target)
         {
             source = null;
             target = null;
 
-            foreach (Visio.Connect connection in connector.Connects)
+            try
             {
-                int fromPart = connection.FromPart;
-                if (fromPart >= 7 && fromPart <= 9)
-                    source = connection.ToSheet;
-                else if (fromPart >= 10 && fromPart <= 12)
-                    target = connection.ToSheet;
+                foreach (Visio.Connect connection in connector.Connects)
+                {
+                    int fromPart = connection.FromPart;
+                    if (fromPart >= 7 && fromPart <= 9)
+                        source = connection.ToSheet;
+                    else if (fromPart >= 10 && fromPart <= 12)
+                        target = connection.ToSheet;
+                }
+            }
+            catch (System.Runtime.InteropServices.COMException)
+            {
+                // Recover missing endpoints from the semantic properties below.
             }
 
-            return source != null && target != null
-                && source.OneD == 0 && target.OneD == 0;
+            if (TryGetRelatedShape(page, connector,
+                Constants.Properties.MessageExchange.OriginSubject,
+                out Visio.Shape semanticSource))
+            {
+                source = semanticSource;
+            }
+            else if (!IsNode(source))
+            {
+                source = null;
+            }
+
+            if (TryGetRelatedShape(page, connector,
+                Constants.Properties.MessageExchange.TargetSubject,
+                out Visio.Shape semanticTarget))
+            {
+                target = semanticTarget;
+            }
+            else if (!IsNode(target))
+            {
+                target = null;
+            }
+
+            return IsNode(source) && IsNode(target);
+        }
+
+        private static bool TryGetRelatedShape(Visio.IVPage page,
+            Visio.Shape connector, string relationProperty,
+            out Visio.Shape relatedShape)
+        {
+            relatedShape = null;
+            if (page == null || connector == null) return false;
+
+            string relatedId = GetProperty(connector, relationProperty);
+            if (string.IsNullOrWhiteSpace(relatedId) || relatedId == "0")
+                return false;
+
+            foreach (Visio.Shape candidate in page.Shapes)
+            {
+                if (!IsNode(candidate)) continue;
+
+                string candidateId =
+                    GetProperty(candidate, Constants.Properties.ID);
+                if (IdentifiersMatch(relatedId, candidateId)
+                    || IdentifiersMatch(
+                        relatedId, GetShapeName(candidate, true))
+                    || IdentifiersMatch(
+                        relatedId, GetShapeName(candidate, false)))
+                {
+                    relatedShape = candidate;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool IsNode(Visio.Shape shape)
+        {
+            try
+            {
+                return shape != null && shape.OneD == 0;
+            }
+            catch (System.Runtime.InteropServices.COMException)
+            {
+                return false;
+            }
+        }
+
+        private static string GetProperty(
+            Visio.Shape shape, string propertyName)
+        {
+            string cellName = "Prop." + propertyName;
+            try
+            {
+                return shape.CellExistsU[cellName, 0] != 0
+                    ? shape.CellsU[cellName].ResultStr[""]
+                    : null;
+            }
+            catch (System.Runtime.InteropServices.COMException)
+            {
+                return null;
+            }
+        }
+
+        private static string GetShapeName(
+            Visio.Shape shape, bool universal)
+        {
+            try
+            {
+                return universal ? shape.NameU : shape.Name;
+            }
+            catch (System.Runtime.InteropServices.COMException)
+            {
+                return null;
+            }
+        }
+
+        private static bool IdentifiersMatch(
+            string expected, string candidate)
+        {
+            return !string.IsNullOrWhiteSpace(candidate)
+                && string.Equals(expected.Trim(), candidate.Trim(),
+                    StringComparison.OrdinalIgnoreCase);
         }
 
         private static void AssignConnectionSides(AutoArrangeConnector connector,
