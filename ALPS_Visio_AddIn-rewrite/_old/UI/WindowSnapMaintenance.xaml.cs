@@ -14,7 +14,7 @@ namespace VisioAddIn
             InitializeComponent();
         }
 
-        private SbdSnapHandler SnapHandler;
+        private SnapHandler SnapHandler;
 
         private Shape Shape;
         private Shape SnapToShape;
@@ -25,7 +25,8 @@ namespace VisioAddIn
         /// <param name="snapHandler">callback</param>
         /// <param name="shape">name of shape</param>
         /// <param name="snapToShape">name of shape should be snapping to</param>
-        public WindowSnapMaintenance(SbdSnapHandler snapHandler, Shape shape, Shape snapToShape)
+        public WindowSnapMaintenance(
+            SnapHandler snapHandler, Shape shape, Shape snapToShape)
         {
             InitializeComponent();
 

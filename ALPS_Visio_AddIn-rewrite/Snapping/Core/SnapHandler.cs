@@ -130,6 +130,24 @@ namespace VisioAddIn.Snapping
         public abstract void unsnap(Shape shape);
 
         /// <summary>
+        /// Keeps an existing snap after the user moved the foreground shape
+        /// out of range by restoring its exact position over the reference.
+        /// Shared by SID subject extensions and SBD state references.
+        /// </summary>
+        public void maintainSnap(Shape shape, Shape snapToShape)
+        {
+            if (shape == null || snapToShape == null
+                || !snappedShapes.TryGetValue(
+                    shape, out Shape currentReference)
+                || !AreSameShape(currentReference, snapToShape))
+            {
+                return;
+            }
+
+            adjustSize(shape, snapToShape);
+        }
+
+        /// <summary>
         /// Sets the referenced background page, including clearing it with
         /// null.
         /// </summary>

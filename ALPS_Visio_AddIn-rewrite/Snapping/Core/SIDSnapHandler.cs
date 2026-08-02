@@ -187,7 +187,11 @@ namespace VisioAddIn.Snapping
         /// </summary>
         protected override void handleDistantSnappedShapes(Shape snappingShape)
         {
-            unsnap(snappingShape);
+            WindowSnapMaintenance snapMaintenance =
+                new WindowSnapMaintenance(
+                    this, snappingShape,
+                    snappedShapes[snappingShape]);
+            snapMaintenance.ShowDialog();
         }
 
         /// <summary>

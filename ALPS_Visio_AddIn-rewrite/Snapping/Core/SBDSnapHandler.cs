@@ -219,11 +219,6 @@ namespace VisioAddIn.Snapping
                 "Error", MessageBoxButton.OK);
         }
 
-        public void maintainSnap(Shape shape, Shape snapToShape)
-        {
-            adjustSize(shape, snapToShape);
-        }
-
         /// <summary>
         /// unsnaps a snappingShape
         /// </summary>
