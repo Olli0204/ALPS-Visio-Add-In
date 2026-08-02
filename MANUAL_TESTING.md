@@ -67,31 +67,35 @@ Import `docs/[Test]_Vacation_Request.owl`.
 - Missing coordinates trigger the same deterministic Top-down graph layout,
   connector rebinding, feedback routing, and SID Message Box positioning as the
   Auto-Arrange command.
-- Every SID message connector remains glued to both semantic subjects; no
-  detached horizontal or vertical connector fragment remains beside a Message
-  Box, including after the Message Box has moved to its final layout position.
+- Every hidden semantic SID connector remains glued to both subjects. Its
+  presentation polyline must terminate exactly at the corresponding subject
+  boundaries; no detached horizontal or vertical fragment may remain beside a
+  Message Box after that box has moved to its final layout position.
 - In Top-down layout, the Employee-to-Manager channel and its `Vacation Request`
   box share the right outer corridor; the Manager-to-Employee channel and its
   `Approval`/`Denial` box share the left outer corridor.
 - Exactly one visible line represents each SID channel. The semantic stencil
   connector remains on the hidden, non-printing `ALPS Internal SID Semantics`
-  layer, while its native visual connector stays attached after repeated
-  Top-down and Left-right Auto-Arrange runs.
+  layer, while its fixed presentation polyline is regenerated from the stored
+  subject IDs after repeated Top-down and Left-right Auto-Arrange runs.
 - Reopen a document previously arranged with an older Add-in build and run
   Auto-Arrange again. Guarded legacy group geometry, including horizontal
   cross-lines, vertical leaders, and line jumps, must no longer be visible.
-- The target arrowhead of each native SID connector remains visible above the
+- The target arrowhead of each visible SID route remains visible above the
   subject fill, while message containers and their list entries stay above the
   connector line so their labels remain unobstructed.
 - For vertically aligned subjects, neither native channel may coincide with a
   left or right subject border. Each route must contain two horizontal legs and
   one vertical leg through its left or right message corridor. The MessageBox
   outline must remain visible after migrating a diagram from an older build.
+- Move either subject manually and run Auto-Arrange again. The visible channel
+  must be regenerated at the new subject boundaries without becoming glued to
+  them or losing either horizontal corridor leg.
 - Verify both directions independently: `Vacation Request` must connect
   Employee to Manager, while the combined `Approval`/`Denial` channel must
-  connect Manager back to Employee. Both channels must remain attached and
-  their arrowheads must still show these semantic directions after a second
-  Top-down Auto-Arrange run.
+  connect Manager back to Employee. Both visible routes must terminate at the
+  expected subjects, and their arrowheads must still show these semantic
+  directions after a second Top-down Auto-Arrange run.
 - SID/SBD page sizes remain readable; shapes do not overlap unexpectedly.
 - Forward, feedback, parallel, and self-loop transitions route visibly.
 - Repeating either import creates unique page names and does not reuse routing

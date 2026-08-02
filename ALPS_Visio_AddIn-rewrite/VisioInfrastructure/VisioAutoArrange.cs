@@ -24,12 +24,17 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
 
             AlpsDiagramKind diagramKind = GetDiagramKind(page);
             if (diagramKind == AlpsDiagramKind.Sid)
-                VisioSidMessageConnectorRenderer.Ensure(page, direction);
+                VisioSidMessageConnectorRenderer.Ensure(page);
 
             foreach (Visio.Shape shape in page.Shapes)
             {
-                if (shape.OneD == 0 || shape.CellExistsU["ConFixedCode", 0] == 0)
+                if (VisioSidMessageConnectorRenderer.IsSemanticShadow(shape)
+                    || VisioSidMessageConnectorRenderer.IsVisualConnector(shape)
+                    || shape.OneD == 0
+                    || shape.CellExistsU["ConFixedCode", 0] == 0)
+                {
                     continue;
+                }
                 shape.CellsU["ConFixedCode"].FormulaU = "0";
             }
 

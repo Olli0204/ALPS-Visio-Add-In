@@ -28,8 +28,7 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
             "CompoundType"
         };
 
-        public static void Ensure(
-            Visio.IVPage page, LayoutDirection direction)
+        public static void Ensure(Visio.IVPage page)
         {
             if (page == null) throw new ArgumentNullException(nameof(page));
 
@@ -61,7 +60,6 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
 
                 Visio.Shape visualConnector = FindVisualConnector(
                     page, semanticConnector.ID);
-                bool created = visualConnector == null;
                 if (visualConnector == null)
                 {
                     visualConnector = CreateVisualConnector(
@@ -72,13 +70,6 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
 
                 MarkVisualConnector(
                     visualConnector, semanticConnector, source, target);
-                if (!VisioConnectorRebinder.RebindKnownConnector(
-                    page, visualConnector, source, target, direction))
-                {
-                    if (created) TryDelete(visualConnector);
-                    continue;
-                }
-
                 HideSemanticConnector(page, semanticConnector);
                 try
                 {
@@ -129,11 +120,7 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
                 Visio.Shape messageContainer = FindMessageContainer(
                     page, semanticConnector.ID);
                 double[] points = BuildCorridorPoints(
-                    source, target, messageContainer, direction,
-                    out double sourceRelativeX,
-                    out double sourceRelativeY,
-                    out double targetRelativeX,
-                    out double targetRelativeY);
+                    source, target, messageContainer, direction);
 
                 Visio.Shape previousVisual = FindVisualConnector(
                     page, semanticConnector.ID);
@@ -143,15 +130,6 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
 
                 MarkVisualConnector(
                     replacement, semanticConnector, source, target);
-                if (!TryGlueCorridorConnector(
-                    replacement, source, target,
-                    sourceRelativeX, sourceRelativeY,
-                    targetRelativeX, targetRelativeY))
-                {
-                    TryDelete(replacement);
-                    continue;
-                }
-
                 TryBringToFront(replacement);
                 BringMessageContainerToFront(page, messageContainer);
                 if (previousVisual != null
@@ -232,16 +210,13 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
                     ref coordinateArray,
                     (short)Visio.VisDrawSplineFlags.visPolyline1D);
                 CopyLineFormatting(semanticConnector, connector);
-                VisioRouting.TrySetCell(
-                    connector, "ObjType", 2, false);
-                VisioRouting.TrySetCell(
-                    connector, "GlueType", 2, false);
-                VisioRouting.TrySetCell(
-                    connector, "ShapeRouteStyle", 1, false);
+                // This shape is intentionally presentation-only. Gluing it or
+                // marking it as a routable connector lets Visio discard the
+                // explicit vertices and collapse the path onto a subject
+                // border. The hidden stencil connector remains physically
+                // glued and carries all semantic data.
                 VisioRouting.TrySetCell(
                     connector, "ConFixedCode", 2, false);
-                VisioRouting.TrySetCell(
-                    connector, "ConLineRouteExt", 1, false);
                 VisioRouting.TrySetCell(
                     connector, "ConLineJumpCode", 0, false);
                 VisioRouting.TrySetCell(
@@ -256,9 +231,7 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
 
         private static double[] BuildCorridorPoints(
             Visio.Shape source, Visio.Shape target,
-            Visio.Shape messageContainer, LayoutDirection direction,
-            out double sourceRelativeX, out double sourceRelativeY,
-            out double targetRelativeX, out double targetRelativeY)
+            Visio.Shape messageContainer, LayoutDirection direction)
         {
             double sourceX = GetNumber(source, "PinX");
             double sourceY = GetNumber(source, "PinY");
@@ -274,10 +247,8 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
             {
                 bool useLeft = !selfLoop
                     && sourceY < targetY - CoordinateTolerance;
-                sourceRelativeX = useLeft ? 0d : 1d;
-                targetRelativeX = sourceRelativeX;
-                sourceRelativeY = selfLoop ? 0.65 : 0.5;
-                targetRelativeY = selfLoop ? 0.35 : 0.5;
+                double sourceRelativeY = selfLoop ? 0.65 : 0.5;
+                double targetRelativeY = selfLoop ? 0.35 : 0.5;
 
                 double sourceEdgeX = sourceX
                     + (useLeft ? -sourceWidth / 2d : sourceWidth / 2d);
@@ -310,10 +281,8 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
 
             bool useBottom = !selfLoop
                 && sourceX > targetX + CoordinateTolerance;
-            sourceRelativeX = selfLoop ? 0.35 : 0.5;
-            targetRelativeX = selfLoop ? 0.65 : 0.5;
-            sourceRelativeY = useBottom ? 0d : 1d;
-            targetRelativeY = sourceRelativeY;
+            double sourceRelativeX = selfLoop ? 0.35 : 0.5;
+            double targetRelativeX = selfLoop ? 0.65 : 0.5;
 
             double sourceEdgeY = sourceY
                 + (useBottom ? -sourceHeight / 2d : sourceHeight / 2d);
@@ -340,28 +309,6 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
                 targetPortX, corridorY,
                 targetPortX, targetEdgeY
             };
-        }
-
-        private static bool TryGlueCorridorConnector(
-            Visio.Shape connector, Visio.Shape source, Visio.Shape target,
-            double sourceRelativeX, double sourceRelativeY,
-            double targetRelativeX, double targetRelativeY)
-        {
-            try
-            {
-                connector.CellsU["BeginX"].GlueToPos(
-                    source, sourceRelativeX, sourceRelativeY);
-                connector.CellsU["EndX"].GlueToPos(
-                    target, targetRelativeX, targetRelativeY);
-                VisioRouting.TrySetCell(
-                    connector, "ConFixedCode", 2, false);
-                return VisioConnectorRebinder.AreSemanticEndpointsBound(
-                    connector, source, target);
-            }
-            catch (COMException)
-            {
-                return false;
-            }
         }
 
         private static void MarkVisualConnector(Visio.Shape visualConnector,
