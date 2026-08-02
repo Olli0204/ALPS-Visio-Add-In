@@ -51,6 +51,8 @@
                 "alpsAutoArrangeTargetShapeId";
             public const string AutoArrangeSidVisualConnector =
                 "alpsAutoArrangeSidVisualConnector";
+            public const string AutoArrangeSidVisualLeader =
+                "alpsAutoArrangeSidVisualLeader";
             public const string AutoArrangeSidSemanticConnectorShapeId =
                 "alpsAutoArrangeSidSemanticConnectorShapeId";
             public const string AutoArrangeSidSemanticShadow =

@@ -124,6 +124,8 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
 
                 Visio.Shape previousVisual = FindVisualConnector(
                     page, semanticConnector.ID);
+                Visio.Shape previousLeader = FindVisualLeader(
+                    page, semanticConnector.ID);
                 Visio.Shape replacement = CreateCorridorConnector(
                     page, semanticConnector, points);
                 if (replacement == null) continue;
@@ -131,6 +133,21 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
                 MarkVisualConnector(
                     replacement, semanticConnector, source, target);
                 TryBringToFront(replacement);
+
+                Visio.Shape leader = CreateMessageLeader(
+                    page, semanticConnector, messageContainer,
+                    points, direction);
+                if (leader != null)
+                {
+                    MarkVisualLeader(leader, semanticConnector);
+                    TryBringToFront(leader);
+                    if (previousLeader != null
+                        && previousLeader.ID != leader.ID)
+                    {
+                        TryDelete(previousLeader);
+                    }
+                }
+
                 BringMessageContainerToFront(page, messageContainer);
                 if (previousVisual != null
                     && previousVisual.ID != replacement.ID)
@@ -152,6 +169,12 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
                 shape, Constants.UserCells.AutoArrangeSidSemanticShadow);
         }
 
+        internal static bool IsVisualLeader(Visio.Shape shape)
+        {
+            return GetUserFlag(
+                shape, Constants.UserCells.AutoArrangeSidVisualLeader);
+        }
+
         private static Visio.Shape FindVisualConnector(
             Visio.IVPage page, int semanticConnectorId)
         {
@@ -160,6 +183,26 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
             foreach (Visio.Shape shape in page.Shapes)
             {
                 if (IsVisualConnector(shape)
+                    && string.Equals(GetUserValue(shape,
+                        Constants.UserCells
+                            .AutoArrangeSidSemanticConnectorShapeId),
+                        expectedId, StringComparison.OrdinalIgnoreCase))
+                {
+                    return shape;
+                }
+            }
+
+            return null;
+        }
+
+        private static Visio.Shape FindVisualLeader(
+            Visio.IVPage page, int semanticConnectorId)
+        {
+            string expectedId = semanticConnectorId.ToString(
+                CultureInfo.InvariantCulture);
+            foreach (Visio.Shape shape in page.Shapes)
+            {
+                if (IsVisualLeader(shape)
                     && string.Equals(GetUserValue(shape,
                         Constants.UserCells
                             .AutoArrangeSidSemanticConnectorShapeId),
@@ -227,6 +270,113 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
             {
                 return null;
             }
+        }
+
+        private static Visio.Shape CreateMessageLeader(
+            Visio.IVPage page, Visio.Shape semanticConnector,
+            Visio.Shape messageContainer, double[] points,
+            LayoutDirection direction)
+        {
+            if (messageContainer == null || points == null
+                || points.Length < 8)
+            {
+                return null;
+            }
+
+            try
+            {
+                double boxX = GetNumber(messageContainer, "PinX");
+                double boxY = GetNumber(messageContainer, "PinY");
+                double boxWidth = GetNumber(messageContainer, "Width");
+                double boxHeight = GetNumber(messageContainer, "Height");
+                string boxReference = "Sheet."
+                    + messageContainer.ID.ToString(
+                        CultureInfo.InvariantCulture) + "!";
+
+                double beginX;
+                double beginY;
+                double endX;
+                double endY;
+                string beginXFormula;
+                string beginYFormula;
+                string endXFormula;
+                string endYFormula;
+
+                if (direction == LayoutDirection.TopDown)
+                {
+                    double corridorX = points[2];
+                    double minimumY = Math.Min(points[3], points[5]);
+                    double maximumY = Math.Max(points[3], points[5]);
+                    beginX = boxX + (boxX < corridorX
+                        ? boxWidth / 2d : -boxWidth / 2d);
+                    beginY = boxY;
+                    endX = corridorX;
+                    endY = Clamp(boxY, minimumY, maximumY);
+                    string corridor = FormatInches(corridorX);
+                    beginXFormula = "GUARD(" + boxReference
+                        + "PinX+IF(" + boxReference + "PinX<"
+                        + corridor + ",0.5*" + boxReference
+                        + "Width,-0.5*" + boxReference + "Width))";
+                    beginYFormula = "GUARD(" + boxReference + "PinY)";
+                    endXFormula = "GUARD(" + corridor + ")";
+                    endYFormula = "GUARD(MAX(" + FormatInches(minimumY)
+                        + ",MIN(" + FormatInches(maximumY) + ","
+                        + boxReference + "PinY)))";
+                }
+                else
+                {
+                    double corridorY = points[3];
+                    double minimumX = Math.Min(points[2], points[4]);
+                    double maximumX = Math.Max(points[2], points[4]);
+                    beginX = boxX;
+                    beginY = boxY + (boxY < corridorY
+                        ? boxHeight / 2d : -boxHeight / 2d);
+                    endX = Clamp(boxX, minimumX, maximumX);
+                    endY = corridorY;
+                    string corridor = FormatInches(corridorY);
+                    beginXFormula = "GUARD(" + boxReference + "PinX)";
+                    beginYFormula = "GUARD(" + boxReference
+                        + "PinY+IF(" + boxReference + "PinY<"
+                        + corridor + ",0.5*" + boxReference
+                        + "Height,-0.5*" + boxReference + "Height))";
+                    endXFormula = "GUARD(MAX(" + FormatInches(minimumX)
+                        + ",MIN(" + FormatInches(maximumX) + ","
+                        + boxReference + "PinX)))";
+                    endYFormula = "GUARD(" + corridor + ")";
+                }
+
+                Visio.Shape leader = page.DrawLine(
+                    beginX, beginY, endX, endY);
+                CopyLineFormatting(semanticConnector, leader);
+                VisioRouting.TrySetCell(
+                    leader, "ConFixedCode", 2, false);
+                VisioRouting.TrySetCell(
+                    leader, "ConLineJumpCode", 0, false);
+                VisioRouting.TrySetCell(
+                    leader, "BeginArrow", 0, false);
+                VisioRouting.TrySetCell(
+                    leader, "EndArrow", 0, false);
+                leader.CellsU["BeginX"].FormulaForceU = beginXFormula;
+                leader.CellsU["BeginY"].FormulaForceU = beginYFormula;
+                leader.CellsU["EndX"].FormulaForceU = endXFormula;
+                leader.CellsU["EndY"].FormulaForceU = endYFormula;
+                return leader;
+            }
+            catch (COMException)
+            {
+                return null;
+            }
+        }
+
+        private static string FormatInches(double value)
+        {
+            return value.ToString(CultureInfo.InvariantCulture) + " in";
+        }
+
+        private static double Clamp(double value, double minimum,
+            double maximum)
+        {
+            return Math.Max(minimum, Math.Min(maximum, value));
         }
 
         private static double[] BuildCorridorPoints(
@@ -324,6 +474,16 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
                 Constants.UserCells.AutoArrangeSourceShapeId, source.ID);
             VisioShapeSheet.SetUserCell(visualConnector,
                 Constants.UserCells.AutoArrangeTargetShapeId, target.ID);
+        }
+
+        private static void MarkVisualLeader(Visio.Shape leader,
+            Visio.Shape semanticConnector)
+        {
+            VisioShapeSheet.SetUserCell(leader,
+                Constants.UserCells.AutoArrangeSidVisualLeader, 1);
+            VisioShapeSheet.SetUserCell(leader,
+                Constants.UserCells.AutoArrangeSidSemanticConnectorShapeId,
+                semanticConnector.ID);
         }
 
         private static Visio.Shape FindMessageContainer(

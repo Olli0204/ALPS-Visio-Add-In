@@ -91,6 +91,10 @@ Import `docs/[Test]_Vacation_Request.owl`.
 - Move either subject manually and run Auto-Arrange again. The visible channel
   must be regenerated at the new subject boundaries without becoming glued to
   them or losing either horizontal corridor leg.
+- Drag either SID Message Box away from its channel after Auto-Arrange. A
+  straight leader line without arrowheads must follow the box immediately and
+  terminate on the nearest point of that channel's corridor. Moving the box
+  again must update the leader without rerouting the main channel.
 - Verify both directions independently: `Vacation Request` must connect
   Employee to Manager, while the combined `Approval`/`Denial` channel must
   connect Manager back to Employee. Both visible routes must terminate at the

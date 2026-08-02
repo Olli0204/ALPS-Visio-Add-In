@@ -30,6 +30,7 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
             {
                 if (VisioSidMessageConnectorRenderer.IsSemanticShadow(shape)
                     || VisioSidMessageConnectorRenderer.IsVisualConnector(shape)
+                    || VisioSidMessageConnectorRenderer.IsVisualLeader(shape)
                     || shape.OneD == 0
                     || shape.CellExistsU["ConFixedCode", 0] == 0)
                 {

@@ -25,6 +25,7 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
             {
                 if (VisioSidMessageConnectorRenderer.IsSemanticShadow(shape)
                     || VisioSidMessageConnectorRenderer.IsVisualConnector(shape)
+                    || VisioSidMessageConnectorRenderer.IsVisualLeader(shape)
                     || !HasConnectorEndpoints(shape)
                     || !TryGetConnectedShapes(page, shape,
                         out Visio.Shape source, out Visio.Shape target))
