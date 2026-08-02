@@ -41,11 +41,28 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
                     receiver.getModelComponentID());
             }
 
-            // set path (auto arrange)
-            if (sender is IVisioExportableWithShape exportableSender && exportableSender.GetShape() != null)
-                this.GetShape().CellsU["BeginX"].GlueToPos(exportableSender.GetShape(), 1, 0.5);
-            if (receiver is IVisioExportableWithShape exportableReceiver && exportableReceiver.GetShape() != null)
-                this.GetShape().CellsU["EndX"].GlueToPos(exportableReceiver.GetShape(), 0, 0.5);
+            // Store the concrete page shape IDs as well as the semantic IDs.
+            // The SID master can remove a Glue entry when its coupled Message
+            // Box moves; a page-local ID restores the exact original shape
+            // without depending on the master's Shape Data formulas.
+            if (sender is IVisioExportableWithShape exportableSender
+                && exportableSender.GetShape() != null)
+            {
+                Visio.Shape senderShape = exportableSender.GetShape();
+                VH.SetUser(GetShape(),
+                    Constants.UserCells.AutoArrangeSourceShapeId,
+                    senderShape.ID);
+                GetShape().CellsU["BeginX"].GlueToPos(senderShape, 1, 0.5);
+            }
+            if (receiver is IVisioExportableWithShape exportableReceiver
+                && exportableReceiver.GetShape() != null)
+            {
+                Visio.Shape receiverShape = exportableReceiver.GetShape();
+                VH.SetUser(GetShape(),
+                    Constants.UserCells.AutoArrangeTargetShapeId,
+                    receiverShape.ID);
+                GetShape().CellsU["EndX"].GlueToPos(receiverShape, 0, 0.5);
+            }
 
             // TODO: AbstractMessageExchange
             // TODO: FinalizedMessageExchange -> alps.net.api

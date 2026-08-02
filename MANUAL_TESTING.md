@@ -69,7 +69,7 @@ Import `docs/[Test]_Vacation_Request.owl`.
   Auto-Arrange command.
 - Every SID message connector remains glued to both semantic subjects; no
   detached horizontal or vertical connector fragment remains beside a Message
-  Box.
+  Box, including after the Message Box has moved to its final layout position.
 - SID/SBD page sizes remain readable; shapes do not overlap unexpectedly.
 - Forward, feedback, parallel, and self-loop transitions route visibly.
 - Repeating either import creates unique page names and does not reuse routing

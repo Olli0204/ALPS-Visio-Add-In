@@ -41,6 +41,14 @@
             public const string SBDState = "alpsSBDstate";
         }
 
+        public static class UserCells
+        {
+            public const string AutoArrangeSourceShapeId =
+                "alpsAutoArrangeSourceShapeId";
+            public const string AutoArrangeTargetShapeId =
+                "alpsAutoArrangeTargetShapeId";
+        }
+
         public static class Properties
         {
             public const string Label = "lable";

@@ -36,9 +36,15 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
                 page.Layout();
 
             ConfigurePrintLayout(page.PageSheet, direction);
-            VisioConnectorRebinder.Rebind(page, direction);
             if (diagramKind == AlpsDiagramKind.Sid)
+            {
+                // The SID master couples a Message Box to connector control
+                // cells. Moving the box can change the connector geometry and
+                // invalidate Glue entries, so no box may move after the final
+                // endpoint binding.
                 VisioMessageContainerPositioner.Reposition(page, direction);
+            }
+            VisioConnectorRebinder.Rebind(page, direction);
         }
 
         private static void ConfigureSpacing(Visio.Shape pageSheet,

@@ -102,7 +102,13 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
                 // Recover missing endpoints from the semantic properties below.
             }
 
-            if (TryGetRelatedShape(page, connector,
+            if (TryGetStoredShape(page, connector,
+                Constants.UserCells.AutoArrangeSourceShapeId,
+                out Visio.Shape storedSource))
+            {
+                source = storedSource;
+            }
+            else if (TryGetRelatedShape(page, connector,
                 Constants.Properties.MessageExchange.OriginSubject,
                 out Visio.Shape semanticSource))
             {
@@ -113,7 +119,13 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
                 source = null;
             }
 
-            if (TryGetRelatedShape(page, connector,
+            if (TryGetStoredShape(page, connector,
+                Constants.UserCells.AutoArrangeTargetShapeId,
+                out Visio.Shape storedTarget))
+            {
+                target = storedTarget;
+            }
+            else if (TryGetRelatedShape(page, connector,
                 Constants.Properties.MessageExchange.TargetSubject,
                 out Visio.Shape semanticTarget))
             {
@@ -125,6 +137,33 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
             }
 
             return IsNode(source) && IsNode(target);
+        }
+
+        private static bool TryGetStoredShape(Visio.IVPage page,
+            Visio.Shape connector, string userCell,
+            out Visio.Shape storedShape)
+        {
+            storedShape = null;
+            string shapeIdText = GetCellString(
+                connector, "User." + userCell);
+            if (!int.TryParse(shapeIdText, NumberStyles.Integer,
+                CultureInfo.InvariantCulture, out int shapeId)
+                || shapeId <= 0)
+            {
+                return false;
+            }
+
+            try
+            {
+                Visio.Shape candidate = page.Shapes.get_ItemFromID(shapeId);
+                if (!IsNode(candidate)) return false;
+                storedShape = candidate;
+                return true;
+            }
+            catch (System.Runtime.InteropServices.COMException)
+            {
+                return false;
+            }
         }
 
         private static bool TryGetRelatedShape(Visio.IVPage page,
@@ -173,7 +212,12 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
         private static string GetProperty(
             Visio.Shape shape, string propertyName)
         {
-            string cellName = "Prop." + propertyName;
+            return GetCellString(shape, "Prop." + propertyName);
+        }
+
+        private static string GetCellString(
+            Visio.Shape shape, string cellName)
+        {
             try
             {
                 return shape.CellExistsU[cellName, 0] != 0
