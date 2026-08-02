@@ -9,6 +9,10 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
     /// </summary>
     internal static class VisioRouting
     {
+        private const string SolidLinePatternFormula = "1";
+        private const string StandardEndArrowFormula = "4";
+        private const string MediumArrowSizeFormula = "2";
+
         public static void ConfigureFallbackSbd(Visio.Page page)
         {
             if (page == null) throw new ArgumentNullException(nameof(page));
@@ -34,6 +38,118 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
             if (connector == null) throw new ArgumentNullException(nameof(connector));
 
             TrySetCell(connector, "ConFixedCode", isFeedback ? 1 : 2, false);
+        }
+
+        /// <summary>
+        /// Keeps imported directional connectors visible even when a stencil
+        /// references a custom line pattern or line end that is absent from the
+        /// destination document stencil.
+        /// </summary>
+        public static void EnsureImportedDirectionalLine(
+            Visio.Shape connector)
+        {
+            if (connector == null)
+                throw new ArgumentNullException(nameof(connector));
+
+            bool arrowFallbackApplied = EnsureBuiltInCell(
+                connector, "EndArrow", StandardEndArrowFormula,
+                RequiresArrowFallback);
+            EnsureBuiltInCell(
+                connector, "LinePattern", SolidLinePatternFormula,
+                RequiresPatternFallback);
+
+            if (arrowFallbackApplied)
+                TrySetFormulaForceU(connector, "EndArrowSize",
+                    MediumArrowSizeFormula);
+        }
+
+        internal static bool RequiresPatternFallback(
+            double value, string formula)
+        {
+            return value < 1d || value > 23d || UsesCustomResource(formula);
+        }
+
+        internal static bool RequiresArrowFallback(
+            double value, string formula)
+        {
+            return value < 1d || value > 45d || UsesCustomResource(formula);
+        }
+
+        private static bool UsesCustomResource(string formula)
+        {
+            return !string.IsNullOrWhiteSpace(formula)
+                && formula.IndexOf(
+                    "USE(", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private static bool EnsureBuiltInCell(Visio.Shape shape,
+            string cellName, string fallbackFormula,
+            Func<double, string, bool> requiresFallback)
+        {
+            try
+            {
+                if (shape.CellExistsU[cellName, 0] == 0)
+                    return false;
+
+                Visio.Cell cell = shape.CellsU[cellName];
+                string formula;
+                try
+                {
+                    formula = cell.FormulaU;
+                }
+                catch (System.Runtime.InteropServices.COMException)
+                {
+                    formula = null;
+                }
+
+                if (UsesCustomResource(formula))
+                {
+                    cell.FormulaForceU = fallbackFormula;
+                    return true;
+                }
+
+                double value;
+                try
+                {
+                    value = cell.Result[""];
+                }
+                catch (System.Runtime.InteropServices.COMException)
+                {
+                    cell.FormulaForceU = fallbackFormula;
+                    return true;
+                }
+
+                if (!requiresFallback(value, formula))
+                    return false;
+
+                cell.FormulaForceU = fallbackFormula;
+                return true;
+            }
+            catch (System.Runtime.InteropServices.COMException exception)
+            {
+                Debug.Print("Could not normalize Visio line cell "
+                    + cellName + ": " + exception.Message);
+                return false;
+            }
+        }
+
+        private static bool TrySetFormulaForceU(Visio.Shape shape,
+            string cellName, string formula)
+        {
+            try
+            {
+                if (shape.CellExistsU[cellName, 0] == 0)
+                    return false;
+
+                shape.CellsU[cellName].FormulaForceU = formula;
+                return true;
+            }
+            catch (System.Runtime.InteropServices.COMException exception)
+            {
+                Debug.Print("Could not set Visio line cell " + cellName
+                    + ": " + exception.Message);
+                return false;
+            }
         }
 
         public static bool TrySetCell(Visio.Shape shape, string cellName, double value,

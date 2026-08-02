@@ -156,6 +156,11 @@ namespace ALPS_Visio_AddIn_rewrite
             VisioRouting.FinalizeFallbackTransition(connector, isFeedback);
         }
 
+        public static void EnsureImportedDirectionalLine(Visio.Shape connector)
+        {
+            VisioRouting.EnsureImportedDirectionalLine(connector);
+        }
+
         public static Visio.Page CreateSIDPage(string name, string nameU, string modelURI, string extends, string implements, string priority)
         {
             return PageFactory.CreateSidPage(name, nameU, modelURI, extends, implements, priority);

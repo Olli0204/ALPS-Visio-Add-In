@@ -87,6 +87,7 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             {
                 VH.FinalizeFallbackTransitionRouting(this.GetShape(), isFeedback);
             }
+            VH.EnsureImportedDirectionalLine(this.GetShape());
 
             // set box movement
             VH.SetProperty(shape, Constants.Properties.Transition.BoxCanBeMovedFreely, "FALSE");

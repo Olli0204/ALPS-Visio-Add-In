@@ -234,6 +234,7 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
                     connector, "ConLineJumpCode", 0, false);
                 VisioRouting.TrySetCell(
                     connector, "BeginArrow", 0, false);
+                VisioRouting.EnsureImportedDirectionalLine(connector);
                 return connector;
             }
             catch (COMException)
@@ -264,6 +265,7 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
                     connector, "ConLineJumpCode", 0, false);
                 VisioRouting.TrySetCell(
                     connector, "BeginArrow", 0, false);
+                VisioRouting.EnsureImportedDirectionalLine(connector);
                 return connector;
             }
             catch (COMException)
@@ -645,9 +647,19 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
                         continue;
                     }
 
-                    double value = source.CellsU[cellName].Result[""];
-                    target.CellsU[cellName].FormulaU =
-                        value.ToString(CultureInfo.InvariantCulture);
+                    Visio.Cell sourceCell = source.CellsU[cellName];
+                    Visio.Cell targetCell = target.CellsU[cellName];
+                    string formula = sourceCell.FormulaU;
+                    if (!string.IsNullOrWhiteSpace(formula))
+                    {
+                        targetCell.FormulaForceU = formula;
+                    }
+                    else
+                    {
+                        double value = sourceCell.Result[""];
+                        targetCell.FormulaForceU = value.ToString(
+                            CultureInfo.InvariantCulture);
+                    }
                 }
                 catch (COMException)
                 {
