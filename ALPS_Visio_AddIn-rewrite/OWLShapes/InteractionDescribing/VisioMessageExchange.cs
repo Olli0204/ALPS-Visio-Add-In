@@ -90,6 +90,14 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             Visio.IVPage page, LayoutDirection direction)
         {
             Visio.Shape connector = GetShape();
+            // Auto-Arrange renders SID message exchanges through a native
+            // visual connector. The original grouped stencil master remains
+            // hidden solely as the semantic owner of Shape Data and the
+            // MessageBox relationship; rebinding it would revive the broken
+            // internal leader geometry that the visual connector replaces.
+            if (VisioSidMessageConnectorRenderer.IsSemanticShadow(connector))
+                return true;
+
             IVisioExportableWithShape exportableSender =
                 getSender() as IVisioExportableWithShape;
             IVisioExportableWithShape exportableReceiver =

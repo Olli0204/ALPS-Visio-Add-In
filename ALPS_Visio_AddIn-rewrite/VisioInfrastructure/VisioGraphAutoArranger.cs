@@ -80,7 +80,8 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
         {
             foreach (Visio.Shape shape in page.Shapes)
             {
-                if (!VisioConnectorRebinder.HasConnectorEndpoints(shape)
+                if (VisioSidMessageConnectorRenderer.IsSemanticShadow(shape)
+                    || !VisioConnectorRebinder.HasConnectorEndpoints(shape)
                     || !VisioConnectorRebinder.TryGetConnectedShapes(
                         page, shape, out Visio.Shape sourceShape,
                         out Visio.Shape targetShape)

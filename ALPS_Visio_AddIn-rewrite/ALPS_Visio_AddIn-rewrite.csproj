@@ -340,6 +340,7 @@
     <Compile Include="VisioInfrastructure\VisioRouting.cs" />
     <Compile Include="VisioInfrastructure\VisioShapeSheet.cs" />
     <Compile Include="VisioInfrastructure\VisioShapePositioner.cs" />
+    <Compile Include="VisioInfrastructure\VisioSidMessageConnectorRenderer.cs" />
     <Compile Include="VisioInfrastructure\VisioStencilRepository.cs" />
     <Compile Include="VisioInfrastructure\VisioStencilSession.cs" />
     <Compile Include="VisioHelper.cs" />

@@ -49,6 +49,18 @@
                 "alpsAutoArrangeSourceShapeId";
             public const string AutoArrangeTargetShapeId =
                 "alpsAutoArrangeTargetShapeId";
+            public const string AutoArrangeSidVisualConnector =
+                "alpsAutoArrangeSidVisualConnector";
+            public const string AutoArrangeSidSemanticConnectorShapeId =
+                "alpsAutoArrangeSidSemanticConnectorShapeId";
+            public const string AutoArrangeSidSemanticShadow =
+                "alpsAutoArrangeSidSemanticShadow";
+        }
+
+        public static class Layers
+        {
+            public const string InternalSidSemantics =
+                "ALPS Internal SID Semantics";
         }
 
         public static class Properties

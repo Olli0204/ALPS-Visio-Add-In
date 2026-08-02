@@ -73,6 +73,10 @@ Import `docs/[Test]_Vacation_Request.owl`.
 - In Top-down layout, the Employee-to-Manager channel and its `Vacation Request`
   box share the right outer corridor; the Manager-to-Employee channel and its
   `Approval`/`Denial` box share the left outer corridor.
+- Exactly one visible line represents each SID channel. The semantic stencil
+  connector remains on the hidden, non-printing `ALPS Internal SID Semantics`
+  layer, while its native visual connector stays attached after repeated
+  Top-down and Left-right Auto-Arrange runs.
 - Verify both directions independently: `Vacation Request` must connect
   Employee to Manager, while the combined `Approval`/`Denial` channel must
   connect Manager back to Employee. Both channels must remain attached and

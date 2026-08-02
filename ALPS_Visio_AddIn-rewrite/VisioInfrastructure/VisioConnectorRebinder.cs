@@ -23,7 +23,8 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
 
             foreach (Visio.Shape shape in page.Shapes)
             {
-                if (!HasConnectorEndpoints(shape)
+                if (VisioSidMessageConnectorRenderer.IsSemanticShadow(shape)
+                    || !HasConnectorEndpoints(shape)
                     || !TryGetConnectedShapes(page, shape,
                         out Visio.Shape source, out Visio.Shape target))
                 {
@@ -345,6 +346,12 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
 
         private static bool IsSidMessageConnector(Visio.Shape shape)
         {
+            return VisioSidMessageConnectorRenderer.IsVisualConnector(shape)
+                || IsStencilSidMessageConnector(shape);
+        }
+
+        internal static bool IsStencilSidMessageConnector(Visio.Shape shape)
+        {
             if (shape == null) return false;
 
             try
@@ -587,7 +594,7 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
             // the master retains the selected endpoint part in its glue state.
             string endpointCell = endpoint.IsSource
                 ? "BeginX"
-                : IsSidMessageConnector(endpoint.Connector.Shape)
+                : IsStencilSidMessageConnector(endpoint.Connector.Shape)
                     ? "EndY"
                     : "EndX";
             endpoint.Connector.Shape.CellsU[endpointCell]

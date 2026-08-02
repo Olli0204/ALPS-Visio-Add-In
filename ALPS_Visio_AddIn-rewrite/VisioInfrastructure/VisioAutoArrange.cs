@@ -22,6 +22,10 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
             ConfigureSpacing(page.PageSheet, direction);
             VisioRouting.TrySetCell(page.PageSheet, "RouteStyle", 1, false);
 
+            AlpsDiagramKind diagramKind = GetDiagramKind(page);
+            if (diagramKind == AlpsDiagramKind.Sid)
+                VisioSidMessageConnectorRenderer.Ensure(page, direction);
+
             foreach (Visio.Shape shape in page.Shapes)
             {
                 if (shape.OneD == 0 || shape.CellExistsU["ConFixedCode", 0] == 0)
@@ -29,7 +33,6 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
                 shape.CellsU["ConFixedCode"].FormulaU = "0";
             }
 
-            AlpsDiagramKind diagramKind = GetDiagramKind(page);
             bool arranged = VisioGraphAutoArranger.TryArrange(
                 page, direction, diagramKind);
             if (!arranged)
