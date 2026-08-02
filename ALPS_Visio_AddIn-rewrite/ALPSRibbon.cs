@@ -139,7 +139,7 @@ namespace ALPS_Visio_AddIn_rewrite
             autoArrangeButton.Label = "Auto-Arrange";
             autoArrangeButton.ScreenTip = "Graph automatisch anordnen";
             autoArrangeButton.SuperTip = "Ordnet den Graphen standardmäßig von oben nach unten an. Über das Menü kann alternativ eine Anordnung von links nach rechts gewählt werden.";
-            autoArrangeButton.Image = Properties.Resources.pageSetup;
+            autoArrangeButton.Image = Properties.Resources.autoArrange;
             autoArrangeButton.ShowLabel = true;
             autoArrangeButton.ControlSize = RibbonControlSize.RibbonControlSizeLarge;
             autoArrangeButton.ItemSize = RibbonControlSize.RibbonControlSizeRegular;

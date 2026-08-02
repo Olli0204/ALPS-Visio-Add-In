@@ -439,6 +439,10 @@
     <None Include="Resources\document-page-setup.png" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Resources\auto-arrange.png" />
+    <None Include="Resources\auto-arrange.svg" />
+  </ItemGroup>
+  <ItemGroup>
     <None Include="Resources\owlIcon2.png" />
   </ItemGroup>
   <ItemGroup>

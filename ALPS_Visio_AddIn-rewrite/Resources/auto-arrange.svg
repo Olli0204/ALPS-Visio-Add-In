@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
+  <defs>
+    <linearGradient id="nodeFill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#79c7f2"/>
+      <stop offset="1" stop-color="#388fc5"/>
+    </linearGradient>
+  </defs>
+
+  <g fill="none" stroke="#245a7a" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M24 15v7H13v9" stroke-width="2.5"/>
+    <path d="M24 22h11v9" stroke-width="2.5"/>
+  </g>
+
+  <g fill="#245a7a">
+    <path d="M9.5 27.5 13 31l3.5-3.5z"/>
+    <path d="M31.5 27.5 35 31l3.5-3.5z"/>
+  </g>
+
+  <g fill="url(#nodeFill)" stroke="#185577" stroke-width="1.5">
+    <rect x="15" y="4" width="18" height="11" rx="3"/>
+    <rect x="4" y="32" width="18" height="11" rx="3"/>
+    <rect x="26" y="32" width="18" height="11" rx="3"/>
+  </g>
+
+  <g fill="none" stroke="#bfe9ff" stroke-linecap="round" stroke-width="1.2" opacity="0.9">
+    <path d="M18.5 7.5h11"/>
+    <path d="M7.5 35.5h11"/>
+    <path d="M29.5 35.5h11"/>
+  </g>
+
+  <g fill="#f5a623" stroke="#b86400" stroke-linejoin="round" stroke-width="0.8">
+    <path d="m39 3 1.25 3.75L44 8l-3.75 1.25L39 13l-1.25-3.75L34 8l3.75-1.25z"/>
+    <circle cx="45" cy="4" r="1.15"/>
+  </g>
+</svg>
