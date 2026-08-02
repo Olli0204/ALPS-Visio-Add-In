@@ -441,6 +441,12 @@
   <ItemGroup>
     <None Include="Resources\auto-arrange.png" />
     <None Include="Resources\auto-arrange.svg" />
+    <None Include="Resources\auto-arrange-left-right.png" />
+    <None Include="Resources\auto-arrange-left-right.svg" />
+    <None Include="Resources\auto-arrange-top-down.png" />
+    <None Include="Resources\auto-arrange-top-down.svg" />
+    <None Include="Resources\nlp-provider-settings.png" />
+    <None Include="Resources\nlp-provider-settings.svg" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\owlIcon2.png" />

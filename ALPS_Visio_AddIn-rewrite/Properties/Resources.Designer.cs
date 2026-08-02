@@ -79,6 +79,26 @@ namespace ALPS_Visio_AddIn_rewrite.Properties {
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
+
+        /// <summary>
+        ///   Sucht eine lokalisierte Ressource vom Typ System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap autoArrangeLeftRight {
+            get {
+                object obj = ResourceManager.GetObject("autoArrangeLeftRight", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+
+        /// <summary>
+        ///   Sucht eine lokalisierte Ressource vom Typ System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap autoArrangeTopDown {
+            get {
+                object obj = ResourceManager.GetObject("autoArrangeTopDown", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
         
         /// <summary>
         ///   Sucht eine lokalisierte Ressource vom Typ System.Drawing.Bitmap.
@@ -96,6 +116,16 @@ namespace ALPS_Visio_AddIn_rewrite.Properties {
         internal static System.Drawing.Bitmap owlIcon2 {
             get {
                 object obj = ResourceManager.GetObject("owlIcon2", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+
+        /// <summary>
+        ///   Sucht eine lokalisierte Ressource vom Typ System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap nlpProviderSettings {
+            get {
+                object obj = ResourceManager.GetObject("nlpProviderSettings", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }

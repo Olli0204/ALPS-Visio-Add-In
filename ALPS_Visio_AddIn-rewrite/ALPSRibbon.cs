@@ -149,6 +149,8 @@ namespace ALPS_Visio_AddIn_rewrite
             topDownButton.Name = "autoArrangeTopDownButton";
             topDownButton.Label = "Top-down";
             topDownButton.ScreenTip = "Von oben nach unten anordnen";
+            topDownButton.Image = Properties.Resources.autoArrangeTopDown;
+            topDownButton.ShowImage = true;
             topDownButton.Click += new RibbonControlEventHandler(this.AutoArrangeTopDown);
             autoArrangeButton.Items.Add(topDownButton);
 
@@ -156,6 +158,8 @@ namespace ALPS_Visio_AddIn_rewrite
             leftRightButton.Name = "autoArrangeLeftRightButton";
             leftRightButton.Label = "Left-right";
             leftRightButton.ScreenTip = "Von links nach rechts anordnen";
+            leftRightButton.Image = Properties.Resources.autoArrangeLeftRight;
+            leftRightButton.ShowImage = true;
             leftRightButton.Click += new RibbonControlEventHandler(this.AutoArrangeLeftRight);
             autoArrangeButton.Items.Add(leftRightButton);
 
@@ -205,6 +209,9 @@ namespace ALPS_Visio_AddIn_rewrite
             apiSettingsButton.Label = "Provider Settings";
             apiSettingsButton.ScreenTip =
                 "Configure providers, API keys, and models";
+            apiSettingsButton.Image =
+                Properties.Resources.nlpProviderSettings;
+            apiSettingsButton.ShowImage = true;
             apiSettingsButton.Click += new RibbonControlEventHandler(
                 this.ConfigureNlpApi);
             button.Items.Add(apiSettingsButton);
