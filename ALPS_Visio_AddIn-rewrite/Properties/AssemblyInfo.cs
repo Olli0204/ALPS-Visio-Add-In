@@ -36,3 +36,4 @@ using System.Security;
 [assembly: AssemblyVersion("1.0.0.0")]
 [assembly: AssemblyFileVersion("1.0.0.0")]
 
+[assembly: InternalsVisibleTo("ALPS_Visio_AddIn-rewrite.Tests")]

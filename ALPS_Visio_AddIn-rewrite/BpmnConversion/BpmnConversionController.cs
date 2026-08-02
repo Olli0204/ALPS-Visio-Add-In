@@ -55,7 +55,8 @@ namespace ALPS_Visio_AddIn_rewrite.BpmnConversion
             }
         }
 
-        private static void Convert(string inputFilePath, string outputFilePath)
+        internal static void Convert(
+            string inputFilePath, string outputFilePath)
         {
             IPASSReaderWriter parser =
                 OwlImportComposition.CreateConfiguredParser();
@@ -75,7 +76,7 @@ namespace ALPS_Visio_AddIn_rewrite.BpmnConversion
             ValidateSerializedBpmn(outputFilePath);
         }
 
-        private static void ValidateSerializedBpmn(
+        internal static void ValidateSerializedBpmn(
             string outputFilePath)
         {
             XDocument document = XDocument.Load(outputFilePath);

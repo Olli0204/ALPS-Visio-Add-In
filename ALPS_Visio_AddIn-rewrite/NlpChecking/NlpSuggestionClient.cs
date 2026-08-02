@@ -17,7 +17,19 @@ namespace ALPS_Visio_AddIn_rewrite.NlpChecking
     /// </summary>
     internal sealed class NlpSuggestionClient
     {
-        private static readonly HttpClient Client = CreateClient();
+        private static readonly HttpClient SharedClient = CreateClient();
+        private readonly HttpClient client;
+
+        public NlpSuggestionClient()
+            : this(SharedClient)
+        {
+        }
+
+        internal NlpSuggestionClient(HttpClient client)
+        {
+            this.client = client
+                ?? throw new ArgumentNullException(nameof(client));
+        }
 
         public async Task<IList<string>> GetModelsAsync(
             NlpProviderSettings provider)
@@ -32,7 +44,7 @@ namespace ALPS_Visio_AddIn_rewrite.NlpChecking
             using (HttpRequestMessage request = CreateRequest(
                 provider, HttpMethod.Get, relativePath))
             using (HttpResponseMessage response =
-                await Client.SendAsync(request))
+                await client.SendAsync(request))
             {
                 string responseBody =
                     await response.Content.ReadAsStringAsync();
@@ -77,7 +89,7 @@ namespace ALPS_Visio_AddIn_rewrite.NlpChecking
             return await SuggestWithOpenAiAsync(provider, prompt);
         }
 
-        private static async Task<string> SuggestWithOpenAiAsync(
+        private async Task<string> SuggestWithOpenAiAsync(
             NlpProviderSettings provider, string prompt)
         {
             var requestBody = new
@@ -105,7 +117,7 @@ namespace ALPS_Visio_AddIn_rewrite.NlpChecking
                     "application/json");
 
                 using (HttpResponseMessage response =
-                    await Client.SendAsync(request))
+                    await client.SendAsync(request))
                 {
                     string responseBody =
                         await response.Content.ReadAsStringAsync();
@@ -125,7 +137,7 @@ namespace ALPS_Visio_AddIn_rewrite.NlpChecking
             }
         }
 
-        private static async Task<string> SuggestWithAnthropicAsync(
+        private async Task<string> SuggestWithAnthropicAsync(
             NlpProviderSettings provider, string prompt)
         {
             var requestBody = new
@@ -149,7 +161,7 @@ namespace ALPS_Visio_AddIn_rewrite.NlpChecking
                     "application/json");
 
                 using (HttpResponseMessage response =
-                    await Client.SendAsync(request))
+                    await client.SendAsync(request))
                 {
                     string responseBody =
                         await response.Content.ReadAsStringAsync();

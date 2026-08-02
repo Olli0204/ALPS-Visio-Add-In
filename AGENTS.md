@@ -12,7 +12,8 @@ because moving its XAML sources breaks legacy WinFX markup compilation. Constant
 and helpers live in `Compatibility/`. Ontologies and images are in `Resources/`;
 the integrated label checker lives in `NlpChecking/`, including its embedded
 training set under `NlpChecking/Resources/`. Documentation and sample OWL files
-are in `docs/`. There is no active test project.
+are in `docs/`. Automated tests are in the separate
+`ALPS_Visio_AddIn-rewrite.Tests/` MSTest project.
 
 ## Image Retention
 
@@ -28,6 +29,7 @@ Development requires Windows, Visio, and Visual Studio 2022 with Office/VSTO.
 nuget restore ALPS_Visio_Tools.sln
 msbuild ALPS_Visio_Tools.sln /p:Configuration=Debug
 msbuild ALPS_Visio_Tools.sln /p:Configuration=Release
+dotnet test ALPS_Visio_AddIn-rewrite.Tests\ALPS_Visio_AddIn-rewrite.Tests.csproj /p:Configuration=Debug --no-build --no-restore
 ```
 
 Restore `packages.config` dependencies before building. Run Debug from Visual Studio to launch or attach to Visio. Follow `MANUAL_TESTING.md` for the acceptance pass.
@@ -50,7 +52,13 @@ legacy DPAPI-protected UniGPT key.
 
 ## Testing Guidelines
 
-No automated suite or coverage threshold exists. Manually verify both `docs/[Test]_Vacation_Request_2D.owl` and `docs/[Test]_Vacation_Request.owl`, SID/SBD links, connectors, routing, both Auto-Arrange directions, snapping, and the layer explorer. Add regression OWL samples under `docs/`. New tests belong in a separate `*Tests` project; name methods `Method_Scenario_ExpectedResult`.
+Run the automated MSTest suite for COM-free geometry, layout, ontology,
+verification, NLP-provider, and BPMN paths. Manually verify both
+`docs/[Test]_Vacation_Request_2D.owl` and `docs/[Test]_Vacation_Request.owl`,
+SID/SBD links, connectors, routing, both Auto-Arrange directions, snapping, and
+the layer explorer. Add regression OWL samples under `docs/`. New tests belong
+in the separate `*Tests` project; name methods
+`Method_Scenario_ExpectedResult`.
 
 ## Commit & Pull Request Guidelines
 
