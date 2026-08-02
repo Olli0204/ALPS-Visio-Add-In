@@ -43,6 +43,7 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
                 AssignConnectionSides(connector, direction,
                     pageCenterX, pageCenterY,
                     ref lowerSideCount, ref upperSideCount);
+                ConfigurePhysicalDirection(connector);
 
                 VisioRouting.TrySetCell(
                     connector.Shape, "ConFixedCode", 0, false);
@@ -114,6 +115,7 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
             AssignConnectionSides(connector, direction,
                 pageCenterX, pageCenterY,
                 ref lowerSideCount, ref upperSideCount);
+            ConfigurePhysicalDirection(connector);
 
             VisioRouting.TrySetCell(shape, "ConFixedCode", 0, false);
             VisioRouting.TrySetCell(shape, "ShapeRouteStyle", 1, false);
@@ -137,24 +139,12 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
             Visio.Shape connector, out Visio.Shape source,
             out Visio.Shape target)
         {
-            source = null;
-            target = null;
-
-            try
-            {
-                foreach (Visio.Connect connection in connector.Connects)
-                {
-                    int fromPart = connection.FromPart;
-                    if (fromPart >= 7 && fromPart <= 9)
-                        source = connection.ToSheet;
-                    else if (fromPart >= 10 && fromPart <= 12)
-                        target = connection.ToSheet;
-                }
-            }
-            catch (System.Runtime.InteropServices.COMException)
-            {
-                // Recover missing endpoints from the semantic properties below.
-            }
+            ReadPhysicalConnectedShapes(
+                connector, out Visio.Shape beginShape, out Visio.Shape endShape);
+            bool reversePhysicalEndpoints =
+                HasReversedPhysicalEndpoints(connector);
+            source = reversePhysicalEndpoints ? endShape : beginShape;
+            target = reversePhysicalEndpoints ? beginShape : endShape;
 
             if (TryGetStoredShape(page, connector,
                 Constants.UserCells.AutoArrangeSourceShapeId,
@@ -191,6 +181,62 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
             }
 
             return IsNode(source) && IsNode(target);
+        }
+
+        internal static bool AreSemanticEndpointsBound(Visio.Shape connector,
+            Visio.Shape source, Visio.Shape target)
+        {
+            if (connector == null || !IsNode(source) || !IsNode(target))
+                return false;
+
+            ReadPhysicalConnectedShapes(
+                connector, out Visio.Shape beginShape, out Visio.Shape endShape);
+            bool reversePhysicalEndpoints =
+                HasReversedPhysicalEndpoints(connector);
+            Visio.Shape semanticSource = reversePhysicalEndpoints
+                ? endShape : beginShape;
+            Visio.Shape semanticTarget = reversePhysicalEndpoints
+                ? beginShape : endShape;
+
+            return IsSameShape(semanticSource, source)
+                && IsSameShape(semanticTarget, target);
+        }
+
+        private static void ReadPhysicalConnectedShapes(Visio.Shape connector,
+            out Visio.Shape beginShape, out Visio.Shape endShape)
+        {
+            beginShape = null;
+            endShape = null;
+            if (connector == null) return;
+
+            try
+            {
+                foreach (Visio.Connect connection in connector.Connects)
+                {
+                    int fromPart = connection.FromPart;
+                    if (fromPart >= 7 && fromPart <= 9)
+                        beginShape = connection.ToSheet;
+                    else if (fromPart >= 10 && fromPart <= 12)
+                        endShape = connection.ToSheet;
+                }
+            }
+            catch (System.Runtime.InteropServices.COMException)
+            {
+                // Missing physical endpoints are recovered from the semantic
+                // shape IDs by TryGetConnectedShapes.
+            }
+        }
+
+        private static bool IsSameShape(Visio.Shape first, Visio.Shape second)
+        {
+            try
+            {
+                return first != null && second != null && first.ID == second.ID;
+            }
+            catch (System.Runtime.InteropServices.COMException)
+            {
+                return false;
+            }
         }
 
         private static bool TryGetStoredShape(Visio.IVPage page,
@@ -319,6 +365,18 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
                 VisioShapeSheet.GetNumber(connector.Target, "PinY");
             const double sameRankTolerance = 0.05;
 
+            // StandardMessageConnector is a direction-locked group master:
+            // Angle/FlipX/FlipY and its local transform are guarded. A channel
+            // that runs against the primary layout axis must therefore use the
+            // geometrically stable physical direction while keeping Source and
+            // Target in their original semantic order.
+            connector.ReversePhysicalEndpoints = IsSidMessageConnector(
+                connector.Shape)
+                && connector.Source.ID != connector.Target.ID
+                && (direction == LayoutDirection.TopDown
+                    ? sourceY > targetY + sameRankTolerance
+                    : sourceX > targetX + sameRankTolerance);
+
             if (connector.Source.ID == connector.Target.ID)
             {
                 bool useLowerSide = lowerSideCount <= upperSideCount;
@@ -381,6 +439,79 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
             else
             {
                 AssignVerticalSides(connector, sourceY, targetY);
+            }
+        }
+
+        private static void ConfigurePhysicalDirection(
+            AutoArrangeConnector connector)
+        {
+            if (!IsSidMessageConnector(connector.Shape)) return;
+
+            VisioShapeSheet.SetUserCell(connector.Shape,
+                Constants.UserCells.AutoArrangeReversePhysicalEndpoints,
+                connector.ReversePhysicalEndpoints ? 1 : 0);
+
+            double arrowCode = GetArrowCode(connector.Shape);
+            VisioRouting.TrySetCell(connector.Shape, "BeginArrow",
+                connector.ReversePhysicalEndpoints ? arrowCode : 0, false);
+            VisioRouting.TrySetCell(connector.Shape, "EndArrow",
+                connector.ReversePhysicalEndpoints ? 0 : arrowCode, false);
+        }
+
+        private static double GetArrowCode(Visio.Shape connector)
+        {
+            const double defaultArrowCode = 5;
+            try
+            {
+                double beginArrow = connector.CellExistsU["BeginArrow", 0] != 0
+                    ? VisioShapeSheet.GetNumber(connector, "BeginArrow") : 0;
+                double endArrow = connector.CellExistsU["EndArrow", 0] != 0
+                    ? VisioShapeSheet.GetNumber(connector, "EndArrow") : 0;
+                double arrowCode = Math.Max(beginArrow, endArrow);
+                return arrowCode > 0 ? arrowCode : defaultArrowCode;
+            }
+            catch (System.Runtime.InteropServices.COMException)
+            {
+                return defaultArrowCode;
+            }
+        }
+
+        private static bool HasReversedPhysicalEndpoints(Visio.Shape connector)
+        {
+            string value = GetCellString(connector,
+                "User."
+                + Constants.UserCells.AutoArrangeReversePhysicalEndpoints);
+            return string.Equals(value, "1", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(value, "TRUE", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsSidMessageConnector(Visio.Shape shape)
+        {
+            if (shape == null) return false;
+
+            try
+            {
+                if (shape.HasCategory(
+                    Constants.ShapeCategories.SIDMessageConnector))
+                {
+                    return true;
+                }
+            }
+            catch (System.Runtime.InteropServices.COMException)
+            {
+                // Older stencil variants do not expose the category reliably.
+            }
+
+            try
+            {
+                return shape.Master != null
+                    && string.Equals(shape.Master.NameU,
+                        Constants.SIDMasters.StandardMessageConnector,
+                        StringComparison.OrdinalIgnoreCase);
+            }
+            catch (System.Runtime.InteropServices.COMException)
+            {
+                return false;
             }
         }
 
@@ -471,7 +602,13 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
                     throw new ArgumentOutOfRangeException();
             }
 
-            string endpointCell = endpoint.IsSource ? "BeginX" : "EndX";
+            // For a reversed SID master the semantic source is physically the
+            // End cell and the semantic target is physically the Begin cell.
+            // ConfigurePhysicalDirection moves the arrowhead accordingly.
+            bool useBeginCell = endpoint.IsSource
+                ? !endpoint.Connector.ReversePhysicalEndpoints
+                : endpoint.Connector.ReversePhysicalEndpoints;
+            string endpointCell = useBeginCell ? "BeginX" : "EndX";
             endpoint.Connector.Shape.CellsU[endpointCell]
                 .GlueToPos(endpoint.Shape, x, y);
         }
@@ -499,6 +636,7 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
             public Visio.Shape Target { get; private set; }
             public ConnectionSide SourceSide { get; set; }
             public ConnectionSide TargetSide { get; set; }
+            public bool ReversePhysicalEndpoints { get; set; }
         }
 
         private sealed class ConnectorEndpoint

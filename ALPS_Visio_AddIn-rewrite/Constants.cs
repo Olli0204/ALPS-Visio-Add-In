@@ -37,6 +37,8 @@
         {
             public const string SIDSubject = "alpsSIDactor";
             public const string SIDSubjectWithSBD = "alpsSIDactorWithSBD";
+            public const string SIDMessageConnector =
+                "alpsSIDMessageConnector";
             public const string SIDMessageConnectorBox = "messageConnectorBox";
             public const string SBDState = "alpsSBDstate";
         }
@@ -47,6 +49,8 @@
                 "alpsAutoArrangeSourceShapeId";
             public const string AutoArrangeTargetShapeId =
                 "alpsAutoArrangeTargetShapeId";
+            public const string AutoArrangeReversePhysicalEndpoints =
+                "alpsAutoArrangeReversePhysicalEndpoints";
         }
 
         public static class Properties

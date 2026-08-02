@@ -105,8 +105,8 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
 
             Visio.Shape senderShape = exportableSender.GetShape();
             Visio.Shape receiverShape = exportableReceiver.GetShape();
-            if (IsEndpointGluedTo(connector, senderShape, true)
-                && IsEndpointGluedTo(connector, receiverShape, false))
+            if (VisioConnectorRebinder.AreSemanticEndpointsBound(
+                connector, senderShape, receiverShape))
             {
                 return true;
             }
@@ -114,8 +114,8 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             bool rebound = VisioConnectorRebinder.RebindKnownConnector(
                 page, connector, senderShape, receiverShape, direction);
             return rebound
-                && IsEndpointGluedTo(connector, senderShape, true)
-                && IsEndpointGluedTo(connector, receiverShape, false);
+                && VisioConnectorRebinder.AreSemanticEndpointsBound(
+                    connector, senderShape, receiverShape);
         }
 
         private static bool TryGlueEndpoint(Visio.Shape connector,

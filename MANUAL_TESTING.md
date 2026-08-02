@@ -72,7 +72,9 @@ Import `docs/[Test]_Vacation_Request.owl`.
   Box, including after the Message Box has moved to its final layout position.
 - Verify both directions independently: `Vacation Request` must connect
   Employee to Manager, while the combined `Approval`/`Denial` channel must
-  connect Manager back to Employee.
+  connect Manager back to Employee. Both channels must remain attached and
+  their arrowheads must still show these semantic directions after a second
+  Top-down Auto-Arrange run.
 - SID/SBD page sizes remain readable; shapes do not overlap unexpectedly.
 - Forward, feedback, parallel, and self-loop transitions route visibly.
 - Repeating either import creates unique page names and does not reuse routing
