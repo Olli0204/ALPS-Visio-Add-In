@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Windows;
 using VisioAddIn;
 using MessageBox = System.Windows.MessageBox;
@@ -36,14 +37,99 @@ namespace VisioAddIn.Snapping
         /// <returns>true if snappable, false otherwise</returns>
         protected override bool isShapeSnappable(IVShape shape)
         {
-            Debug.Print("testing shape: " + shape.NameU + " - is snappable: "
-                + shape.HasCategory(ALPSConstants.alpsShapeCategoryStateExtension)
-                + " on: " + foregroundPage.getNameU()
-                + " with background: "
+            if (shape == null) return false;
+
+            bool hasStateExtensionCategory = false;
+            string masterName = null;
+            string shapeName = null;
+            string componentType = null;
+
+            try
+            {
+                hasStateExtensionCategory = shape.HasCategory(
+                    ALPSConstants.alpsShapeCategoryStateExtension);
+            }
+            catch (COMException)
+            {
+                // Category rows may still be initialized by EventDrop.
+            }
+
+            try
+            {
+                masterName = shape.Master?.NameU;
+            }
+            catch (COMException)
+            {
+                // Keep the independent identity fallbacks available.
+            }
+
+            try
+            {
+                shapeName = shape.NameU;
+            }
+            catch (COMException)
+            {
+                // A later movement event can retry classification.
+            }
+
+            try
+            {
+                if (shape.CellExistsU[
+                        ALPSConstants.cellValuePropertyModelComponentType,
+                        0] != 0)
+                {
+                    componentType = shape.CellsU[
+                        ALPSConstants.cellValuePropertyModelComponentType]
+                        .ResultStr[""];
+                }
+            }
+            catch (COMException)
+            {
+                // The property row is another optional fallback.
+            }
+
+            bool isSnappable = IsStateReferenceIdentity(
+                hasStateExtensionCategory, masterName, shapeName,
+                componentType);
+            Debug.Print("SBD snap candidate: "
+                + (shapeName ?? "<unknown>")
+                + "; master=" + (masterName ?? "<none>")
+                + "; componentType=" + (componentType ?? "<none>")
+                + "; stateExtensionCategory="
+                + hasStateExtensionCategory
+                + "; page=" + foregroundPage.getNameU()
+                + "; background="
                 + (referencedBackgroundPage == null
                     ? "<none>"
-                    : referencedBackgroundPage.getNameU()));
-            return shape.HasCategory(ALPSConstants.alpsShapeCategoryStateExtension);
+                    : referencedBackgroundPage.getNameU())
+                + "; snappable=" + isSnappable);
+            return isSnappable;
+        }
+
+        internal static bool IsStateReferenceIdentity(
+            bool hasStateExtensionCategory,
+            string masterName, string shapeName, string componentType)
+        {
+            return hasStateExtensionCategory
+                || HasIdentity(masterName,
+                    ALPSConstants.alpsSBDMasterStateExtension)
+                || HasIdentity(shapeName,
+                    ALPSConstants.alpsSBDMasterStateExtension)
+                || string.Equals(componentType, "StateReference",
+                    StringComparison.OrdinalIgnoreCase)
+                || string.Equals(componentType, "StateExtension",
+                    StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool HasIdentity(
+            string candidate, string expectedIdentity)
+        {
+            if (string.IsNullOrWhiteSpace(candidate)) return false;
+
+            return string.Equals(candidate, expectedIdentity,
+                    StringComparison.OrdinalIgnoreCase)
+                || candidate.StartsWith(expectedIdentity + ".",
+                    StringComparison.OrdinalIgnoreCase);
         }
 
         protected override void setBackPage(DiagramPage newProperty)

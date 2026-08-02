@@ -1,7 +1,9 @@
 ﻿using Microsoft.Office.Interop.Visio;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Windows.Threading;
 using VisioAddIn;
 
 namespace VisioAddIn.Snapping
@@ -11,6 +13,8 @@ namespace VisioAddIn.Snapping
         private readonly ModelController modelController;
         private readonly SIDPageController sidController;
         private readonly SbdSnapHandler snapHandler;
+        private readonly Dispatcher eventDispatcher;
+        private readonly ISet<int> shapesWaitingForStencilMacro;
 
         private readonly SBDPage sbdPage;
         private bool disposed;
@@ -20,6 +24,8 @@ namespace VisioAddIn.Snapping
             Debug.Print("Creating SBDPageController for: " + page.NameU);
             this.modelController = modelController;
             this.sidController = sidController;
+            eventDispatcher = Dispatcher.CurrentDispatcher;
+            shapesWaitingForStencilMacro = new HashSet<int>();
 
             string pageLayer = visioPage.PageSheet.CellsU[
                 ALPSConstants.cellValuePropertyPageLayer].Formula;
@@ -56,9 +62,84 @@ namespace VisioAddIn.Snapping
 
         private void shapeAdded(Shape shape)
         {
-            if (sbdPage.getExtends() != null)
+            if (shape == null || disposed
+                || eventDispatcher.HasShutdownStarted)
             {
+                return;
+            }
+
+            int shapeId;
+            try
+            {
+                shapeId = shape.ID;
+            }
+            catch (COMException)
+            {
+                return;
+            }
+
+            if (!shapesWaitingForStencilMacro.Add(shapeId)) return;
+
+            Debug.Print("Queueing deferred SBD snap check for shape ID "
+                + shapeId + " on " + sbdPage.getNameU());
+            try
+            {
+                // State Reference is initialized by the stencil's EventDrop
+                // macro. At ShapeAdded time its category, component type and
+                // final PinX/PinY values are not guaranteed to be available.
+                eventDispatcher.BeginInvoke(
+                    DispatcherPriority.ApplicationIdle,
+                    new Action(() =>
+                        checkAddedShapeAfterStencilMacro(shapeId)));
+            }
+            catch (InvalidOperationException)
+            {
+                shapesWaitingForStencilMacro.Remove(shapeId);
+            }
+        }
+
+        private void checkAddedShapeAfterStencilMacro(int shapeId)
+        {
+            if (disposed) return;
+
+            try
+            {
+                Shape shape = visioPage.Shapes.get_ItemFromID(shapeId);
+                shapesWaitingForStencilMacro.Remove(shapeId);
+
+                if (sbdPage.getExtends() == null)
+                {
+                    Debug.Print("Skipping deferred SBD snap check for "
+                        + shape.NameU + ": page " + sbdPage.getNameU()
+                        + " does not reference a background SBD.");
+                    return;
+                }
+
+                Debug.Print("Running deferred SBD snap check for "
+                    + shape.NameU + " on " + sbdPage.getNameU());
                 snapHandler.checkForSnapping(shape);
+            }
+            catch (COMException)
+            {
+                // The drop macro may replace or remove a temporary shape.
+            }
+            finally
+            {
+                shapesWaitingForStencilMacro.Remove(shapeId);
+            }
+        }
+
+        private bool isWaitingForStencilMacro(Shape shape)
+        {
+            if (shape == null) return false;
+
+            try
+            {
+                return shapesWaitingForStencilMacro.Contains(shape.ID);
+            }
+            catch (COMException)
+            {
+                return false;
             }
         }
 
@@ -84,8 +165,13 @@ namespace VisioAddIn.Snapping
                 //Debug.Print("XY transform change even! Extends null: " + (extends == null));
                 if (extends != null)
                 {
-                    //Debug.Print("SBD Event check for snapping:");
-                    snapHandler.checkForSnapping(cell.Shape);
+                    // ShapeAdded schedules a single check once EventDrop has
+                    // completed. Suppress premature PinX/PinY checks until
+                    // then; later user moves are processed immediately.
+                    if (!isWaitingForStencilMacro(cell.Shape))
+                    {
+                        snapHandler.checkForSnapping(cell.Shape);
+                    }
                 }
                 //not else, bc a page could be in the middle (is extending and is extended)
                 if (sbdPage.getForeground() != null)

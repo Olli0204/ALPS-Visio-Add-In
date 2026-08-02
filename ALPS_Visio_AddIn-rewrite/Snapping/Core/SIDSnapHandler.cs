@@ -201,15 +201,9 @@ namespace VisioAddIn.Snapping
                 snapToShapePage = referencedBackgroundPage.getSbdPage(referenceBackgroundShape.CellsU[ALPSConstants.cellSubAdressHyperlinkLinkedSBD].Formula);
             }*/
 
-            if (shape.CellExistsU["Hyperlink." + ALPSConstants.alpsHyperlinkTypeLinkedSBD, 0] != 0)
-            {
-                shapePage = foregroundPage.getSbdPage(shape.Hyperlinks.ItemU[ALPSConstants.alpsHyperlinkTypeLinkedSBD].SubAddress);
-            }
-            if (referencedBackgroundPage != null
-                && referenceBackgroundShape.CellExistsU["Hyperlink." + ALPSConstants.alpsHyperlinkTypeLinkedSBD, 0] != 0)
-            {
-                snapToShapePage = referencedBackgroundPage.getSbdPage(referenceBackgroundShape.Hyperlinks.ItemU[ALPSConstants.alpsHyperlinkTypeLinkedSBD].SubAddress);
-            }
+            shapePage = resolveLinkedSbdPage(foregroundPage, shape);
+            snapToShapePage = resolveLinkedSbdPage(
+                referencedBackgroundPage, referenceBackgroundShape);
 
 
 
@@ -306,22 +300,29 @@ namespace VisioAddIn.Snapping
 
             //Debug.Print("shape: " + snappingShape.NameU + " Link cell: " + (snappingShape.CellExistsU["Hyperlink.linkedSBD", 0] != 0) + " SubLink cell: " + (snappingShape.CellExistsU["Hyperlink.linkedSBD.SubAddress", 0] != 0));
            // Debug.Print(" - ALPSConstants.cellSubAdressHyperlinkLinkedSBD: " + ALPSConstants.cellSubAdressHyperlinkLinkedSBD);
-            if (snappingShape.CellExistsU["Hyperlink."+ALPSConstants.alpsHyperlinkTypeLinkedSBD, 0] != 0)
-            {
-                //Debug.Print(" Hyperlink sub: " +snappingShape.Hyperlinks.ItemU[ALPSConstants.alpsHyperlinkTypeLinkedSBD].SubAddress);
-                shapePage = foregroundPage.getSbdPage(snappingShape.Hyperlinks.ItemU[ALPSConstants.alpsHyperlinkTypeLinkedSBD].SubAddress);
-                //shapePage = foregroundPage.getSbdPage(snappingShape.CellsU[ALPSConstants.cellSubAdressHyperlinkLinkedSBD].Formula);
-
-            }
-            if (backgroundReferenceShape.CellExistsU["Hyperlink." + ALPSConstants.alpsHyperlinkTypeLinkedSBD, 0] != 0)
-            {
-                snapToShapePage = referencedBackgroundPage.getSbdPage(backgroundReferenceShape.Hyperlinks.ItemU[ALPSConstants.alpsHyperlinkTypeLinkedSBD].SubAddress);
-            }
+            shapePage = resolveLinkedSbdPage(
+                foregroundPage, snappingShape);
+            snapToShapePage = resolveLinkedSbdPage(
+                referencedBackgroundPage, backgroundReferenceShape);
             //Debug.Print("foregroundPage: " + foregroundPage.getNameU() + " referencedBackgroundPage: " + referencedBackgroundPage.getNameU());
            //Debug.Print("shapePage: " + shapePage.getNameU() + " - snapToShapePage: " + snapToShapePage.getNameU());
 
 
-            if (shapePage == null || snapToShapePage == null) return;
+            if (shapePage == null || snapToShapePage == null)
+            {
+                Debug.Print("SID snap could not establish the SBD relation: "
+                    + "foreground=" + foregroundPage.getNameU()
+                    + ", extension=" + snappingShape.NameU
+                    + ", extensionSBD="
+                    + (shapePage == null ? "<none>" : shapePage.getNameU())
+                    + ", background=" + referencedBackgroundPage.getNameU()
+                    + ", subject=" + backgroundReferenceShape.NameU
+                    + ", subjectSBD="
+                    + (snapToShapePage == null
+                        ? "<none>"
+                        : snapToShapePage.getNameU()));
+                return;
+            }
 
             SBDPageController shapePageC = modelController.getSbdPageController(shapePage);
             SBDPageController snapToShapePageC = modelController.getSbdPageController(snapToShapePage);
@@ -340,6 +341,9 @@ namespace VisioAddIn.Snapping
                 snapToShapePageC.setExtended(shapePage);
                 //Debug.Print("extension set");
                 shapePageC.setExtends(snapToShapePage);
+                Debug.Print("Established SBD extension relation: "
+                    + shapePage.getNameU() + " -> "
+                    + snapToShapePage.getNameU());
             }
 
             if (oldExtends == null) return;
@@ -376,6 +380,98 @@ namespace VisioAddIn.Snapping
                 || string.Equals(
                     shape.NameU, reference,
                     StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// Resolves the behavior page linked from a subject. Older stencil
+        /// macros can retain the SID number that existed while a compound
+        /// GuardExtension was assembled (for example SID_1 in the page name
+        /// while the final shape lives on SID_5). The stable suffix beginning
+        /// with the master identity still identifies the behavior uniquely.
+        /// </summary>
+        private static SBDPage resolveLinkedSbdPage(
+            SIDPage sidPage, Shape subjectShape)
+        {
+            if (sidPage == null || subjectShape == null) return null;
+
+            string linkedPageReference = null;
+            try
+            {
+                if (subjectShape.CellExistsU[
+                        "Hyperlink."
+                        + ALPSConstants.alpsHyperlinkTypeLinkedSBD,
+                        0] != 0)
+                {
+                    linkedPageReference = subjectShape.Hyperlinks.ItemU[
+                        ALPSConstants.alpsHyperlinkTypeLinkedSBD]
+                        .SubAddress;
+                }
+            }
+            catch (COMException)
+            {
+                // Continue with the identity-based fallbacks below.
+            }
+
+            SBDPage exact = sidPage.getSbdPage(linkedPageReference);
+            if (exact != null) return exact;
+
+            string shapeName = null;
+            string masterName = null;
+            try
+            {
+                shapeName = subjectShape.NameU;
+                masterName = subjectShape.Master?.NameU;
+            }
+            catch (COMException)
+            {
+                // A unique page is still a safe final fallback.
+            }
+
+            string identitySuffix = getMasterIdentitySuffix(
+                shapeName, masterName);
+            if (!string.IsNullOrWhiteSpace(identitySuffix))
+            {
+                List<SBDPage> identityMatches = sidPage.getSbdPages()
+                    .Where(page => page.getNameU().IndexOf(
+                        identitySuffix,
+                        StringComparison.OrdinalIgnoreCase) >= 0)
+                    .ToList();
+                if (identityMatches.Count == 1)
+                {
+                    Debug.Print("Resolved linked SBD by subject identity '"
+                        + identitySuffix + "': "
+                        + identityMatches[0].getNameU());
+                    return identityMatches[0];
+                }
+            }
+
+            IList<SBDPage> availablePages = sidPage.getSbdPages();
+            if (availablePages.Count == 1)
+            {
+                Debug.Print("Resolved the only SBD on "
+                    + sidPage.getNameU() + " for "
+                    + (shapeName ?? "<unknown subject>") + ": "
+                    + availablePages[0].getNameU());
+                return availablePages[0];
+            }
+
+            return null;
+        }
+
+        internal static string getMasterIdentitySuffix(
+            string shapeName, string masterName)
+        {
+            if (string.IsNullOrWhiteSpace(shapeName)
+                || string.IsNullOrWhiteSpace(masterName))
+            {
+                return null;
+            }
+
+            int masterStart = shapeName.IndexOf(
+                masterName, StringComparison.OrdinalIgnoreCase);
+            return masterStart < 0
+                ? null
+                : shapeName.Substring(masterStart);
         }
     }
 }

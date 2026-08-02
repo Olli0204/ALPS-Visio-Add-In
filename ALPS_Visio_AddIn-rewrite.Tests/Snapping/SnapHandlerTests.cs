@@ -59,5 +59,56 @@ namespace ALPS_Visio_AddIn_rewrite.Tests.Snapping
             Assert.IsTrue(SidSnapHandler.IsActorExtensionIdentity(
                 true, null, null));
         }
+
+        [TestMethod]
+        public void IsStateReferenceIdentity_StateExtensionMaster_ReturnsTrue()
+        {
+            Assert.IsTrue(SbdSnapHandler.IsStateReferenceIdentity(
+                false, "StateExtension", null, null));
+        }
+
+        [TestMethod]
+        public void IsStateReferenceIdentity_StateExtensionInstance_ReturnsTrue()
+        {
+            Assert.IsTrue(SbdSnapHandler.IsStateReferenceIdentity(
+                false, null, "StateExtension.42", null));
+        }
+
+        [TestMethod]
+        public void IsStateReferenceIdentity_ComponentType_ReturnsTrue()
+        {
+            Assert.IsTrue(SbdSnapHandler.IsStateReferenceIdentity(
+                false, null, null, "StateReference"));
+        }
+
+        [TestMethod]
+        public void IsStateReferenceIdentity_CategoryPresent_ReturnsTrue()
+        {
+            Assert.IsTrue(SbdSnapHandler.IsStateReferenceIdentity(
+                true, null, null, null));
+        }
+
+        [TestMethod]
+        public void IsStateReferenceIdentity_NormalState_ReturnsFalse()
+        {
+            Assert.IsFalse(SbdSnapHandler.IsStateReferenceIdentity(
+                false, "FunctionState", "FunctionState.42",
+                "DoState"));
+        }
+
+        [TestMethod]
+        public void GetMasterIdentitySuffix_GuardExtensionWithChangedSid_ReturnsStableSuffix()
+        {
+            Assert.AreEqual("GuardExtension_3",
+                SidSnapHandler.getMasterIdentitySuffix(
+                    "SID_5_GuardExtension_3", "GuardExtension"));
+        }
+
+        [TestMethod]
+        public void GetMasterIdentitySuffix_MasterNotInShape_ReturnsNull()
+        {
+            Assert.IsNull(SidSnapHandler.getMasterIdentitySuffix(
+                "SID_5_ActorExtension_3", "GuardExtension"));
+        }
     }
 }

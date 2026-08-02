@@ -43,8 +43,13 @@ namespace VisioAddIn.Snapping
         /// <returns>the sbd page if found, null otherwise</returns>
         internal SBDPage getSbdPage(string subjectShapeId)
         {
-            subjectShapeId = subjectShapeId.Trim(new Char[] { '\\', '"' });
-            return sbdPages.FirstOrDefault(sbdPage => sbdPage.getNameU().Equals(subjectShapeId));
+            if (string.IsNullOrWhiteSpace(subjectShapeId)) return null;
+
+            subjectShapeId = subjectShapeId
+                .Trim(new Char[] { '\\', '"', '/', ' ' });
+            return sbdPages.FirstOrDefault(sbdPage =>
+                sbdPage.getNameU().Equals(subjectShapeId,
+                    StringComparison.OrdinalIgnoreCase));
         }
 
         internal IList<SBDPage> getTreeView()
