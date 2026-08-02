@@ -5,8 +5,9 @@ Anordnen und Konvertieren von PASS- und ALPS-Prozessmodellen.
 
 Das Add-in ergänzt Visio um den Ribbon-Tab **ALPS/PASS ADDIN**. Es verbindet
 die vorhandenen ALPS/PASS-Visio-Schablonen mit einem OWL/RDF-Importer,
-automatischem Graph-Layout, Modellnavigation, einer lokalen Prüfung von
-Elementnamen, ALPS-SID-Verifikation und einem BPMN-2.0-Export.
+automatischem Graph-Layout, semantischem SID-/SBD-Snapping, Modellnavigation,
+einer lokalen Prüfung von Elementnamen, ALPS-SID-Verifikation und einem
+BPMN-2.0-Export.
 
 > **Plattformhinweis:** Das Add-in basiert auf .NET Framework 4.8 und VSTO.
 > Ausführung, vollständiger Build und manuelle Abnahme benötigen Windows,
@@ -43,6 +44,7 @@ Elementnamen, ALPS-SID-Verifikation und einem BPMN-2.0-Export.
 | NLP PASS Checking | **Check Model Naming** | Bewertet unterstützte Elementnamen mit einem lokalen, eingebetteten Klassifikator. |
 | NLP PASS Checking | **Retrain** | Trainiert den lokalen Klassifikator erneut aus 680 mitgelieferten Beispielen. |
 | NLP PASS Checking | **Provider Settings** | Konfiguriert optionale Vorschlagsanbieter und deren Modelle. |
+| Automatisch | **SID-/SBD-SnapHandler** | Koppelt Extension-Shapes geometrisch und semantisch an Elemente einer erweiterten Hintergrundseite. |
 
 Die Kernfunktionen zum Importieren, Prüfen und lokalen Klassifizieren arbeiten
 offline. Nur optionale NLP-Namensvorschläge greifen auf einen vom Benutzer
@@ -112,9 +114,12 @@ ausführliche historische Anleitung erklärt auch den Windows-Fehler
    - `docs/[Test]_Vacation_Request.owl` demonstriert das Fallback-Layout.
 4. Mit **Show layer Explorer** zwischen Modellebenen und verknüpften Seiten
    navigieren.
-5. Bei Bedarf **Auto-Arrange** ausführen und anschließend die fachliche
+5. Für eine Layer-Erweiterung im Explorer eine Hintergrundseite auswählen und
+   ein `ActorExtension`- bzw. `StateExtension`-Shape nahe an seine Referenz
+   bewegen. Den angebotenen Snap bestätigen.
+6. Bei Bedarf **Auto-Arrange** ausführen und anschließend die fachliche
    Modellstruktur prüfen.
-6. Vor der Weitergabe des Modells **Check Model Naming**, **Verify ALPS
+7. Vor der Weitergabe des Modells **Check Model Naming**, **Verify ALPS
    Models** oder **Convert PASS to BPMN** verwenden.
 
 ## Funktionen im Detail
@@ -140,6 +145,138 @@ die vorhandenen Bearbeitungsdialoge.
 
 Die zugehörigen Controller sind dokumentbezogen. Beim Aktualisieren werden alte
 COM-Events gelöst, damit Aktionen nicht mehrfach ausgelöst werden.
+
+### SnapHandler: semantisches SID-/SBD-Snapping
+
+Der SnapHandler ist eine automatisch aktive Modellierungsfunktion und besitzt
+keinen eigenen Ribbon-Befehl. Er unterstützt ALPS-Layer-Erweiterungen, indem er
+ein Extension-Shape auf der Vordergrundseite mit dem fachlich entsprechenden
+Element der eingeblendeten Hintergrundseite koppelt. Das ist mehr als das
+native Visio-Snapping: Neben Position und Größe werden die für `extends` und
+die Navigation benötigten ShapeSheet-Daten gepflegt.
+
+#### Voraussetzungen und Aktivierung
+
+Snapping wird nur auf vollständig initialisierten ALPS/PASS-Seiten aktiviert:
+
+- Eine SID-Seite wird über ihre PageSheet-Zellen für Modell-URI, Seitentyp,
+  Layer, Modellversion und Priorität erkannt.
+- Eine SBD-Seite wird über die PageSheet-Referenz auf ihr verknüpftes Subjekt
+  erkannt.
+- Die Vordergrundseite muss über ihre `extends`-Eigenschaft eine andere SID-
+  bzw. SBD-Seite erweitern. Der Controller setzt diese Seite zugleich als
+  Visio-`BackPage`.
+- Das bewegte Shape benötigt die richtige Kategorie aus der ALPS/PASS-Schablone;
+  gewöhnliche Visio-Shapes werden ignoriert.
+
+Die Seitenbeziehung kann über den Layer Explorer, die vorhandenen
+Eigenschaftsdialoge, die Schablonenmakros oder gültige ShapeSheet-Daten
+entstehen. Noch nicht vollständig aufgebaute Seiten werden nach `PageAdded`
+weiter beobachtet und registriert, sobald ihre erforderlichen Zellen vorhanden
+sind.
+
+#### Gemeinsamer Ablauf
+
+1. Ein Page-Controller beobachtet ShapeSheet-Änderungen der zugehörigen Seite.
+   Bewegungen werden über `PinX` und `PinY`, explizite `extends`-Änderungen über
+   die jeweilige Property- bzw. Hyperlink-Zelle erkannt.
+2. Der Handler betrachtet nur passende Referenz-Shapes auf der aktuell
+   erweiterten Hintergrundseite.
+3. Liegen die Mittelpunkte in X- **und** Y-Richtung jeweils höchstens 20 mm
+   auseinander, öffnet sich der lokalisierte Dialog **Snap-Einstellungen**.
+   Eine bereits praktisch identische X-Position wird dabei unterdrückt, damit
+   das exakt ausgerichtete Shape nicht sofort erneut angeboten wird.
+4. **Ja** speichert die Zuordnung und richtet das Extension-Shape exakt auf der
+   Referenz aus. Seine Breite und Höhe werden jeweils auf die Referenzgröße plus
+   5 mm gesetzt; dadurch bleibt das überlagernde Extension-Shape sichtbar.
+5. Bewegt sich die Referenz später auf einer als Hintergrund verwendeten Seite,
+   wird das gekoppelte Extension-Shape erneut ausgerichtet und skaliert.
+6. **Nein** entfernt eine bestehende Zuordnung und bereinigt die
+   typabhängigen `extends`-Daten.
+
+Wenn mehrere passende Referenzen gleichzeitig im 20-mm-Bereich liegen, kann
+der Bestätigungsdialog nacheinander für jede mögliche Zuordnung erscheinen.
+Die fachlich richtige Referenz ist dann anhand der angezeigten Shape-Namen zu
+wählen.
+
+#### Unterschiede zwischen SID und SBD
+
+| Verhalten | SID-Snapping | SBD-Snapping |
+| --- | --- | --- |
+| Vordergrund-Shape | Kategorie `ActorExtension` | Kategorie `StateExtension` |
+| Referenz auf der Hintergrundseite | Kategorie `StandardActor` | Kategorie `alpsSBDstate` |
+| Explizite Auflösung | Shape-Name aus `extendedSubject` | `modelComponentID` aus `Prop.extends.Value` |
+| Persistierte Referenz | Hyperlink `extendedSubject` als `<Layer>/<ShapeNameU>` und `Prop.extends.Value` als `<ModelURI>#<ShapeNameU>` | `Prop.extends.Value` mit der `modelComponentID` des Referenzzustands |
+| Entfernen aus dem Fangbereich | sofortiges Unsnap | Dialog, ob die Kopplung beibehalten werden soll |
+| Zusätzliche Semantik | synchronisiert nach Möglichkeit die verknüpften SBD-Seiten beider Subjekte | betrifft die Zustandsreferenz innerhalb der bereits festgelegten SBD-Seitenbeziehung |
+
+##### SID: Subjekt- und Verhaltensvererbung
+
+Ein `ActorExtension` kann nur auf einen `StandardActor` der erweiterten
+SID-Hintergrundseite snappen. Nach der Bestätigung schreibt der Handler:
+
+- den Navigations-Hyperlink `extendedSubject` mit Hintergrund-Layer und
+  Shape-`NameU`;
+- die vollständige `extends`-Referenz aus Modell-URI und Shape-`NameU`;
+- die Vordergrund-/Hintergrundbeziehung der beiden verknüpften SBD-Seiten,
+  sofern beide Subjekte einen gültigen `linkedSBD`-Hyperlink besitzen.
+
+Wird eine bestehende SID-Kopplung gelöst, werden Hyperlink und `extends`-Wert
+geleert. Die SBD-Seite des Vordergrundsubjekts erweitert dann nicht länger das
+Verhalten der alten Referenz; auch die bisher als erweitert markierte
+Hintergrund-SBD wird freigegeben. Beim Wechsel auf eine andere Referenz wird
+eine vorherige SBD-Beziehung entsprechend entfernt.
+
+`MacroExtension` ist ein Sonderfall: Geometrie, Subjekt-Hyperlink und
+Shape-`extends` werden gesetzt, die SBD-Seiten werden jedoch bewusst nicht als
+Verhaltensvererbung miteinander verbunden.
+
+##### SBD: Zustandsvererbung
+
+Ein `StateExtension` kann auf jedes Hintergrund-Shape mit der Kategorie
+`alpsSBDstate` snappen. Die semantische Referenz verwendet nicht den sichtbaren
+Shape-Namen, sondern die stabile `modelComponentID` des Zustands. Wird eine ID
+manuell in `Prop.extends.Value` eingetragen, versucht der Handler dieselbe
+Zuordnung wiederherzustellen; bei einer unbekannten ID erscheint eine
+Fehlermeldung.
+
+Wird ein bereits gekoppeltes `StateExtension` aus dem 20-mm-Bereich gezogen,
+fragt **Snap-Einstellungen**, ob es gekoppelt bleiben soll:
+
+- **Ja** behält die `extends`-Referenz und richtet Größe und Position bei Bedarf
+  wieder an der Referenz aus.
+- **Nein** entfernt die Zuordnung und leert `Prop.extends.Value`.
+
+#### Hintergrunddarstellung und Seitenbeziehungen
+
+Beim Erweitern einer SID- oder SBD-Seite verwaltet der Page-Controller neben
+dem SnapHandler die Visio-Hintergrundseite. Ein Separator-Shape aus der
+SID-Schablone visualisiert die Trennung zwischen Vorder- und Hintergrund und
+wird auf die Größe der erweiterten Seite gebracht. Die Eigenschaftsdialoge
+bieten dafür drei Darstellungen:
+
+- **No separation:** vollständig transparent;
+- **Standard separation:** stark transparent;
+- **Full separation:** undurchsichtig.
+
+Ändert sich die Größe der Hintergrundseite, wird auch der Separator neu
+dimensioniert. Beim Entfernen der Seitenbeziehung werden Hintergrund und
+Separator entfernt. Die Shape-Zuordnungen werden über die oben beschriebenen
+SID-/SBD-spezifischen Unsnap-Pfade und ihre ShapeSheet-Referenzen bereinigt.
+
+#### Lebenszyklus und Wiederherstellung
+
+`ThisAddIn` besitzt genau einen `ModelController` für das zuletzt aktive
+Zeichnungsdokument. Er registriert SID-/SBD-Seiten, erstellt pro Seite den
+passenden Controller und rekonstruiert vorhandene Beziehungen aus den
+ShapeSheet-Zellen. Beim Dokumentwechsel, Import oder Explorer-Refresh werden
+alte Page-Controller zuerst freigegeben und ihre COM-Events abgemeldet. Dadurch
+bleiben Snapping-Aktionen dokumentbezogen und alte Dokumente reagieren nach
+einem Refresh nicht weiter.
+
+Die gespeicherten Hyperlinks und `extends`-Werte sind daher entscheidend: Die
+In-Memory-Zuordnung selbst ist nur für die aktuelle Controller-Laufzeit gültig
+und wird beim Neuaufbau aus dem Visio-Dokument wiederhergestellt.
 
 ### OWL-/RDF-Import
 
@@ -332,6 +469,12 @@ Coverage misst die verwaltete, automatisierbare Kernlogik. COM-/VSTO-Code wird
 bewusst über die manuelle Abnahme abgesichert und darf nicht durch eine hohe
 Gesamtprozentzahl vorgetäuscht werden.
 
+Für den SnapHandler prüfen die automatisierten Tests die COM-freie
+Abstandsgeometrie und ihre 20-mm-Grenze. Die vollständige Ereigniskette aus
+`CellChanged`, Visio-Hintergrundseite, Bestätigungsdialog, ShapeSheet-Schreibzugriff
+und Weitergabe an verknüpfte SBD-Seiten benötigt eine echte Visio-Instanz und
+gehört deshalb zusätzlich in die manuelle Abnahme.
+
 ### Manuelle Visio-Abnahme
 
 Nach Änderungen an Ribbon, Import, Stencils, Connectoren, Auto-Arrange,
@@ -382,6 +525,13 @@ COM-Operationen gehören nach `VisioInfrastructure/`; neue Tests in das separate
 - Die Qualität der optionalen Namensvorschläge hängt vom gewählten externen
   Anbieter und Modell ab; der lokale Klassifikator bleibt die einzige
   Offline-Komponente dieses Vorschlagspfads.
+- Der SnapHandler unterstützt ausschließlich die vorgesehenen Kategorien und
+  ShapeSheet-Zellen der ALPS/PASS-Schablonen. Shapes ohne diese Kategorien und
+  unvollständig initialisierte Seiten werden nicht semantisch gekoppelt.
+- Das automatische Nachführen einer verschobenen Hintergrundreferenz ist für
+  die fachlich vorgesehene eindeutige Extension-Zuordnung ausgelegt. Mehrere
+  Extension-Shapes auf derselben Referenz müssen in der manuellen Abnahme
+  besonders geprüft werden.
 - Visuelle Qualität, Makro-Vertrauen und COM-Event-Lebenszyklen lassen sich
   nicht vollständig in einem Headless-Test nachbilden.
 
@@ -412,6 +562,25 @@ exakte Funktionsabgrenzung in [FUNCTIONAL_SCOPE.md](FUNCTIONAL_SCOPE.md).
 - Sicherstellen, dass `%LOCALAPPDATA%\ALPS-Visio-Add-In\Ontologies` für den
   Benutzer beschreibbar ist.
 - Ausnahme, Eingabedatei und betroffene Seite für einen Fehlerbericht sichern.
+
+### Extension-Shapes snappen nicht
+
+- Prüfen, ob die Vordergrundseite tatsächlich über `extends` mit der richtigen
+  SID- bzw. SBD-Hintergrundseite verbunden ist und diese in Visio sichtbar ist.
+- Ausschließlich die Extension-Shapes aus den ALPS/PASS-Schablonen verwenden:
+  `ActorExtension` im SID oder `StateExtension` im SBD.
+- Das Shape so bewegen, dass sein Mittelpunkt in beiden Achsen höchstens 20 mm
+  von der Referenz entfernt ist. Für einen neuen Snap nicht bereits exakt auf
+  derselben X-Position starten.
+- Im SID muss die Referenz ein `StandardActor` sein; im SBD muss sie die
+  Kategorie `alpsSBDstate` und eine `modelComponentID` besitzen.
+- Bei SID-Verhaltensvererbung zusätzlich die `linkedSBD`-Hyperlinks beider
+  Subjekte prüfen. `MacroExtension` erzeugt absichtlich keine SBD-Vererbung.
+- Den Layer Explorer neu öffnen oder aktualisieren, damit die dokumentbezogenen
+  Controller aus den ShapeSheet-Daten neu aufgebaut werden.
+- Falls ein Dialog oder eine Bewegung mehrfach verarbeitet wird, Dokumentname,
+  Seite, Shape-Namen und die genaue Aktion notieren und den Event-Lebenszyklus
+  nach [MANUAL_TESTING.md](MANUAL_TESTING.md) prüfen.
 
 ### Provider oder Modelle können nicht geladen werden
 
