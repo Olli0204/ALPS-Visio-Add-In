@@ -21,11 +21,6 @@ namespace VisioAddIn.Snapping
         private string modelUri;
         private bool disposed;
 
-        /// <summary>
-        /// To save the current x-coordinate of the moved shape
-        /// </summary>
-        private string xCoordinate = "";
-
         private SIDPageController(ALPS_Visio_AddIn_rewrite.ThisAddIn addIn, ModelController modelController, string modelUri, Page page) : base(page)
         {
             Debug.Print("Creating SIDPageController for " + page.NameU);
@@ -116,33 +111,27 @@ namespace VisioAddIn.Snapping
                     uUpdateExtends(visioPage.PageSheet.CellsU[ALPSConstants.cellValuePropertyExtends].Formula);
                     break;
                 case ALPSConstants.shapeCellShapeTransformPinX:
+                case ALPSConstants.shapeCellShapeTransformPinY:
                 {
-                    // x and y always get updated, even if the value did not change.
-                    // Only call method once -> remember initial x value and do not call if the value stays the same.
-
-                    string newXCoordinate = cell.Formula.Replace("\"", "");
-                    if (!newXCoordinate.Equals(xCoordinate))
+                    // Visio reports PinX and PinY independently. The handler
+                    // de-duplicates candidate prompts and ignores its own
+                    // alignment writes, so both events can be processed
+                    // without a page-global coordinate cache suppressing a
+                    // different shape at the same X position.
+                    if (extends != null)
                     {
-                        xCoordinate = newXCoordinate;
-                            
-                        if (extends != null)
-                        {
-                            snapHandler.checkForSnapping(cell.Shape);
-                        }
-                        //not else, bc a page could be in the middle (is extending and is extended)
-                        if (controlledSidPage.getForeground() != null)
-                        {
-                            //if the page is a background page, listen if subjects are moved
-                            //(and snapped extensions should move, too)
-                            modelController.backgroundShapeMoved(cell.Shape, controlledSidPage.getForeground());
-                        }
+                        snapHandler.checkForSnapping(cell.Shape);
+                    }
+                    // Not else: a page can extend another page while being
+                    // extended by a foreground page itself.
+                    if (controlledSidPage.getForeground() != null)
+                    {
+                        modelController.backgroundShapeMoved(
+                            cell.Shape, controlledSidPage.getForeground());
                     }
 
                     break;
                 }
-                case ALPSConstants.shapeCellShapeTransformPinY:
-                    xCoordinate = "";
-                    break;
                 case ALPSConstants.cellPropertyCategoryPrefix + ALPSConstants.alpsPropertieTypePageModelURI:
                 {
                     string newModelURI = visioPage.PageSheet.CellsU[ALPSConstants.cellValuePropertyPageModelURI].Formula;

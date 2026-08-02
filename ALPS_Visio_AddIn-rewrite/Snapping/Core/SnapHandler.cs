@@ -1,148 +1,291 @@
 ﻿using Microsoft.Office.Interop.Visio;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace VisioAddIn.Snapping
 {
     public abstract class SnapHandler
     {
+        private static readonly IEqualityComparer<Shape> ShapeComparer =
+            new ShapeIdComparer();
+
         protected IDictionary<Shape, Shape> snappedShapes;
+        private readonly ISet<Shape> shapesBeingAdjusted;
+        private readonly ISet<Shape> shapesWithOpenMaintenanceDecision;
+        private readonly IDictionary<int, int> lastPromptedCandidateByShapeId;
 
         /// <summary>
-        /// const for distance btw 2 shapes
+        /// Maximum center-to-center snap distance in millimeters.
         /// </summary>
         public const int SNAP_RANGE = 20;
 
         protected SnapHandler()
         {
-            snappedShapes = new Dictionary<Shape, Shape>();
+            snappedShapes = CreateShapeDictionary();
+            shapesBeingAdjusted = new HashSet<Shape>(ShapeComparer);
+            shapesWithOpenMaintenanceDecision =
+                new HashSet<Shape>(ShapeComparer);
+            lastPromptedCandidateByShapeId = new Dictionary<int, int>();
         }
 
-        public virtual void performSnap(Shape snappingShape, Shape backgroundReferenceShape)
+        public virtual void performSnap(
+            Shape snappingShape, Shape backgroundReferenceShape)
         {
-            if (!snappedShapes.ContainsKey(snappingShape))
-            {
-                snappedShapes.Add(snappingShape, backgroundReferenceShape);
-            }
+            if (snappingShape == null || backgroundReferenceShape == null)
+                return;
 
-            // Delete inconsistent entries where the snapping snappingShape is still snapped with other shapes
-            else if (snappedShapes[snappingShape] != backgroundReferenceShape)
-            {
-                snappedShapes.Remove(snappingShape);
-                snappedShapes.Add(snappingShape, backgroundReferenceShape);
-            }
-
+            snappedShapes[snappingShape] = backgroundReferenceShape;
+            lastPromptedCandidateByShapeId.Remove(GetShapeId(snappingShape));
             adjustSize(snappingShape, backgroundReferenceShape);
         }
 
-
         /// <summary>
-        /// checks for the given snappingShape if it should be snapping to a snappingShape on the given backPage
+        /// Checks whether the shape is close enough to the single nearest
+        /// compatible background shape to offer a snap.
         /// </summary>
-        /// <param name="snappingShape">given snappingShape</param>
         public void checkForSnapping(Shape snappingShape)
         {
-            if (!isShapeSnappable(snappingShape)) return;
-
-            //check if on the backPage is sth it could be snapping to.
-            IEnumerable<Shape> snappableActorShapes = getSnappableShapesOnBackgroundPage();
-
-            //eventually unsnap here.
-            if (snappedShapes.ContainsKey(snappingShape) && !isLocatedClosely(snappingShape, snappedShapes[snappingShape]))
+            if (snappingShape == null
+                || shapesBeingAdjusted.Contains(snappingShape)
+                || !isShapeSnappable(snappingShape))
             {
-                handleDistantSnappedShapes(snappingShape);
+                return;
             }
 
-            foreach (Shape possibleReferenceBackgroundShape in snappableActorShapes)
+            int snappingShapeId = GetShapeId(snappingShape);
+            if (snappedShapes.TryGetValue(
+                snappingShape, out Shape currentReference))
             {
-                bool snapValid = isLocatedClosely(snappingShape, possibleReferenceBackgroundShape);
+                if (isLocatedClosely(snappingShape, currentReference))
+                {
+                    shapesWithOpenMaintenanceDecision.Remove(snappingShape);
+                    // PinX and PinY events may still arrive after Visio has
+                    // completed the drag. Reassert the exact overlay without
+                    // showing another confirmation dialog.
+                    adjustSize(snappingShape, currentReference);
+                    return;
+                }
 
-                // TODO why is a short x distance a criteria to skip this snappingShape? 
-                // ME: problem occurs when unsnapping...
-                if (!snapValid || isLocatedCloselyInXDirection(snappingShape, possibleReferenceBackgroundShape, 0.01)) continue;
+                if (shapesWithOpenMaintenanceDecision.Add(snappingShape))
+                    handleDistantSnappedShapes(snappingShape);
 
-                // Bug: Method gets called 5 times, window can only be opened once
-                WindowSnapConfirmation snapConf = new WindowSnapConfirmation(this, snappingShape, possibleReferenceBackgroundShape);
-                snapConf.ShowDialog();
+                if (!snappedShapes.TryGetValue(
+                        snappingShape, out Shape maintainedReference)
+                    || isLocatedClosely(
+                        snappingShape, maintainedReference))
+                {
+                    shapesWithOpenMaintenanceDecision.Remove(snappingShape);
+                }
+                // A maintenance dialog may keep or remove the binding. Never
+                // offer a different target in the same movement event.
+                return;
             }
+
+            shapesWithOpenMaintenanceDecision.Remove(snappingShape);
+
+            Shape nearestCandidate = getSnappableShapesOnBackgroundPage()
+                .Where(candidate => candidate != null
+                    && isLocatedClosely(snappingShape, candidate))
+                .OrderBy(candidate => GetDistanceSquared(
+                    snappingShape, candidate))
+                .ThenBy(GetShapeId)
+                .FirstOrDefault();
+
+            if (nearestCandidate == null)
+            {
+                lastPromptedCandidateByShapeId.Remove(snappingShapeId);
+                return;
+            }
+
+            int candidateId = GetShapeId(nearestCandidate);
+            if (lastPromptedCandidateByShapeId.TryGetValue(
+                snappingShapeId, out int promptedCandidateId)
+                && promptedCandidateId == candidateId)
+            {
+                return;
+            }
+
+            // CellChanged is raised independently for PinX and PinY. Remember
+            // the offered pair before opening the modal dialog so the second
+            // event cannot display the same question again.
+            lastPromptedCandidateByShapeId[snappingShapeId] = candidateId;
+            WindowSnapConfirmation confirmation =
+                new WindowSnapConfirmation(
+                    this, snappingShape, nearestCandidate);
+            confirmation.ShowDialog();
         }
 
         protected abstract bool isShapeSnappable(IVShape shape);
-        protected abstract void handleDistantSnappedShapes(Shape snappingShape);
-        protected abstract IEnumerable<Shape> getSnappableShapesOnBackgroundPage();
+        protected abstract void handleDistantSnappedShapes(
+            Shape snappingShape);
+        protected abstract IEnumerable<Shape>
+            getSnappableShapesOnBackgroundPage();
 
-
-        public abstract void snap(Shape snappingShape, string backgroundReferenceShapeName);
+        public abstract void snap(
+            Shape snappingShape, string backgroundReferenceShapeName);
         public abstract void unsnap(Shape shape);
+
         /// <summary>
-        /// sets the BackPage-Property to the newProperty given
+        /// Sets the referenced background page, including clearing it with
+        /// null.
         /// </summary>
-        /// <param name="newProperty">new back page</param>
         protected abstract void setBackPage(DiagramPage newProperty);
 
-        /// <summary>
-        /// sets the background page and resets all the snapped shapes.
-        /// </summary>
-        /// <param name="newProperty">new background page; null if there is no background</param>
         public void setBackgroundPage(DiagramPage newProperty)
         {
-            IList<Shape> listSnappedShapes = snappedShapes.Keys.ToList();
-            foreach (Shape shape in listSnappedShapes)
-            {
+            foreach (Shape shape in snappedShapes.Keys.ToList())
                 unsnap(shape);
-            }
-            snappedShapes = new Dictionary<Shape, Shape>();
+
+            snappedShapes = CreateShapeDictionary();
+            shapesWithOpenMaintenanceDecision.Clear();
+            lastPromptedCandidateByShapeId.Clear();
             setBackPage(newProperty);
         }
 
-        protected void adjustSize(Shape snappingShape, Shape backgroundReferenceShape)
+        protected void adjustSize(
+            Shape snappingShape, Shape backgroundReferenceShape)
         {
-            // Position the snappingShape exactly over the reference
-            snappingShape.CellsU[ALPSConstants.shapeCellShapeTransformPinX].Formula =
-                backgroundReferenceShape.CellsU[ALPSConstants.shapeCellShapeTransformPinX].Formula;
-            snappingShape.CellsU[ALPSConstants.shapeCellShapeTransformPinY].Formula =
-                backgroundReferenceShape.CellsU[ALPSConstants.shapeCellShapeTransformPinY].Formula;
+            if (snappingShape == null || backgroundReferenceShape == null
+                || !shapesBeingAdjusted.Add(snappingShape))
+            {
+                return;
+            }
 
-            // Adjust boundaries
-            double width = backgroundReferenceShape.CellsU[ALPSConstants.shapeCellShapeTransformWidth].Result[VisUnitCodes.visMillimeters] + 5;
-            double height = backgroundReferenceShape.CellsU[ALPSConstants.shapeCellShapeTransformHeight].Result[VisUnitCodes.visMillimeters] + 5;
-            snappingShape.CellsU[ALPSConstants.shapeCellShapeTransformWidth].Formula = width + " mm";
-            snappingShape.CellsU[ALPSConstants.shapeCellShapeTransformHeight].Formula = height + " mm";
-        }
+            try
+            {
+                double x = GetMillimeters(
+                    backgroundReferenceShape,
+                    ALPSConstants.shapeCellShapeTransformPinX);
+                double y = GetMillimeters(
+                    backgroundReferenceShape,
+                    ALPSConstants.shapeCellShapeTransformPinY);
+                double width = GetMillimeters(
+                    backgroundReferenceShape,
+                    ALPSConstants.shapeCellShapeTransformWidth) + 5d;
+                double height = GetMillimeters(
+                    backgroundReferenceShape,
+                    ALPSConstants.shapeCellShapeTransformHeight) + 5d;
 
-        protected bool isLocatedCloselyInXDirection(Shape shape, Shape snapToShape, double snapRange)
-        {
-            double shapeX = shape.CellsU["PinX"].Result[VisUnitCodes.visMillimeters];
-
-            double snapToShapeX = snapToShape.CellsU["PinX"].Result[VisUnitCodes.visMillimeters];
-
-            return Math.Abs(shapeX - snapToShapeX) <= snapRange;
+                SetMillimeters(snappingShape,
+                    ALPSConstants.shapeCellShapeTransformPinX, x);
+                SetMillimeters(snappingShape,
+                    ALPSConstants.shapeCellShapeTransformPinY, y);
+                SetMillimeters(snappingShape,
+                    ALPSConstants.shapeCellShapeTransformWidth, width);
+                SetMillimeters(snappingShape,
+                    ALPSConstants.shapeCellShapeTransformHeight, height);
+            }
+            finally
+            {
+                shapesBeingAdjusted.Remove(snappingShape);
+            }
         }
 
         protected bool isLocatedClosely(Shape shape, Shape snapToShape)
         {
-            double shapeX = shape.CellsU["PinX"].Result[VisUnitCodes.visMillimeters];
-            double shapeY = shape.CellsU["PinY"].Result[VisUnitCodes.visMillimeters];
+            double deltaX = GetMillimeters(shape, "PinX")
+                - GetMillimeters(snapToShape, "PinX");
+            double deltaY = GetMillimeters(shape, "PinY")
+                - GetMillimeters(snapToShape, "PinY");
+            return IsWithinSnapRange(deltaX, deltaY, SNAP_RANGE);
+        }
 
-            double snapToShapeX = snapToShape.CellsU["PinX"].Result[VisUnitCodes.visMillimeters];
-            double snapToShapeY = snapToShape.CellsU["PinY"].Result[VisUnitCodes.visMillimeters];
+        internal static bool IsWithinSnapRange(
+            double deltaX, double deltaY, double snapRange)
+        {
+            if (snapRange < 0d)
+                throw new ArgumentOutOfRangeException(nameof(snapRange));
 
-            //Debug.Print("Snapping distance between: " + shape.NameU + " and: " + snapToShape.NameU + " - calc xdif: " + Math.Abs(shapeX - snapToShapeX) + " YDiff: " + Math.Abs(shapeY - snapToShapeY));
-            //Debug.Print("-snaprange: " + SNAP_RANGE +  " do snap: " + (Math.Abs(shapeX - snapToShapeX) <= SNAP_RANGE && Math.Abs(shapeY - snapToShapeY) <= SNAP_RANGE));
-            return Math.Abs(shapeX - snapToShapeX) <= SNAP_RANGE && Math.Abs(shapeY - snapToShapeY) <= SNAP_RANGE;
+            return deltaX * deltaX + deltaY * deltaY
+                <= snapRange * snapRange;
         }
 
         public void notifyBackgroundShapeMoved(Shape snapToShape)
         {
-            //if something is snapped to this snappingShape.
-            if (!snappedShapes.Values.Contains(snapToShape)) return;
-            Shape shape = snappedShapes.FirstOrDefault(x => x.Value == snapToShape).Key;
+            if (snapToShape == null) return;
+
+            List<Shape> affectedShapes = snappedShapes
+                .Where(pair => ShapeComparer.Equals(
+                    pair.Value, snapToShape))
+                .Select(pair => pair.Key)
+                .ToList();
+
+            foreach (Shape shape in affectedShapes)
                 adjustSize(shape, snapToShape);
         }
 
+        protected static bool AreSameShape(Shape first, Shape second)
+        {
+            return ShapeComparer.Equals(first, second);
+        }
 
+        protected static int GetShapeId(Shape shape)
+        {
+            if (shape == null) return -1;
+            try
+            {
+                return shape.ID;
+            }
+            catch (COMException)
+            {
+                return RuntimeHelpers.GetHashCode(shape);
+            }
+        }
+
+        private static IDictionary<Shape, Shape> CreateShapeDictionary()
+        {
+            return new Dictionary<Shape, Shape>(ShapeComparer);
+        }
+
+        private static double GetDistanceSquared(
+            Shape first, Shape second)
+        {
+            double deltaX = GetMillimeters(first, "PinX")
+                - GetMillimeters(second, "PinX");
+            double deltaY = GetMillimeters(first, "PinY")
+                - GetMillimeters(second, "PinY");
+            return deltaX * deltaX + deltaY * deltaY;
+        }
+
+        private static double GetMillimeters(Shape shape, string cellName)
+        {
+            return shape.CellsU[cellName]
+                .Result[VisUnitCodes.visMillimeters];
+        }
+
+        private static void SetMillimeters(
+            Shape shape, string cellName, double value)
+        {
+            double currentValue = GetMillimeters(shape, cellName);
+            if (Math.Abs(currentValue - value) <= 0.001d)
+                return;
+
+            shape.CellsU[cellName].FormulaU =
+                value.ToString(CultureInfo.InvariantCulture) + " mm";
+        }
+
+        /// <summary>
+        /// A handler observes one foreground and at most one background page,
+        /// so the stable Visio shape ID is sufficient and avoids unreliable
+        /// RCW reference equality across COM events.
+        /// </summary>
+        private sealed class ShapeIdComparer : IEqualityComparer<Shape>
+        {
+            public bool Equals(Shape first, Shape second)
+            {
+                if (ReferenceEquals(first, second)) return true;
+                if (first == null || second == null) return false;
+                return GetShapeId(first) == GetShapeId(second);
+            }
+
+            public int GetHashCode(Shape shape)
+            {
+                return GetShapeId(shape);
+            }
+        }
     }
 }
-

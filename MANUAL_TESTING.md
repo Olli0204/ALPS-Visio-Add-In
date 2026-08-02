@@ -107,6 +107,24 @@ Import `docs/[Test]_Vacation_Request.owl`.
 
 ## 5. Editing and Layout
 
+### Snap handlers
+
+- On a SID extension page, move an actor extension within 20 mm of two
+  background actors. Exactly one confirmation dialog must open, and it must
+  offer the geometrically nearest actor even when both shapes share the same
+  X-coordinate.
+- Accept the SID snap. The extension must align to the background actor and be
+  5 mm wider and higher. Moving the background actor must update every
+  extension snapped to it, not only the first one.
+- Reject a snap and continue moving within the same candidate's range. No
+  duplicate dialog may appear until the extension has left and re-entered the
+  20-mm range.
+- Remove the SID or SBD background-page relation and move an extension. It must
+  not snap to a shape from the formerly referenced page.
+- Repeat the nearest-candidate, accept, maintain, and unsnap checks for an SBD
+  state extension. Choosing to maintain a distant snap must restore the exact
+  overlay without opening parallel maintenance windows.
+
 - On both SID and SBD pages, run **Auto-Arrange → Top-down** and **Left-right**.
   Connectors must remain glued to their original source and target.
 - In **Left-right**, long message labels must reserve enough horizontal space

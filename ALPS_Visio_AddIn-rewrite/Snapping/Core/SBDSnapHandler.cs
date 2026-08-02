@@ -4,9 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Windows;
-using System.Windows.Forms;
 using VisioAddIn;
-using VisioAddIn.util;
 using MessageBox = System.Windows.MessageBox;
 
 namespace VisioAddIn.Snapping
@@ -50,8 +48,7 @@ namespace VisioAddIn.Snapping
 
         protected override void setBackPage(DiagramPage newProperty)
         {
-            if (newProperty is SBDPage sbdPage)
-                this.referencedBackgroundPage = sbdPage;
+            referencedBackgroundPage = newProperty as SBDPage;
         }
         
         /// <summary>
@@ -62,11 +59,14 @@ namespace VisioAddIn.Snapping
         {
             // Ask if the shapes should stay snapped
             WindowSnapMaintenance snapMain = new WindowSnapMaintenance(this, snappingShape, snappedShapes[snappingShape]);
-            snapMain.Show();
+            snapMain.ShowDialog();
         }
 
         protected override IEnumerable<Shape> getSnappableShapesOnBackgroundPage()
         {
+            if (referencedBackgroundPage == null)
+                return Enumerable.Empty<Shape>();
+
             SBDPageController referencedBackgroundPageController = modelController.getSbdPageController(referencedBackgroundPage);
             
             if (referencedBackgroundPageController == null) return new List<Shape>();
@@ -82,66 +82,43 @@ namespace VisioAddIn.Snapping
         public override void snap(Shape snappingShape, string backgroundReferenceShapeName)
         {
             if (!isShapeSnappable(snappingShape)) return;
-            backgroundReferenceShapeName = backgroundReferenceShapeName.Trim('\\', '"');
-            if ((!snappedShapes.ContainsKey(snappingShape) || snappedShapes[snappingShape].Name.Equals(backgroundReferenceShapeName)) &&
-                snappedShapes.ContainsKey(snappingShape)) return;
+            backgroundReferenceShapeName =
+                (backgroundReferenceShapeName ?? string.Empty)
+                .Trim('\\', '"');
             if (string.IsNullOrWhiteSpace(backgroundReferenceShapeName))
             {
-                if (snappedShapes.ContainsKey(snappingShape))
-                {
-                    unsnap(snappingShape);
-                }
+                unsnap(snappingShape);
+                return;
             }
-            else
-            {
-                IEnumerable<Shape> snappableShapes = getSnappableShapesOnBackgroundPage();
-                bool found = false;
 
-                foreach (Shape snappable in snappableShapes)
-                {
-                    string modelCompId = snappable.CellsU["Prop.modelComponentID.Value"].ResultStr[""];
-                    if (!modelCompId.Equals(backgroundReferenceShapeName)) continue;
-                    performSnap(snappingShape, snappable);
-                    found = true;
-                }
-                if (found == false)
-                {
-                    // Deprecated
-                    // UserInputNotFound notFound = UserInputNotFound.GetInstance(ModelController, backgroundReferenceShapeName, snappingShape.nameU);
-                    // notFound.Show();
-                    MessageBox.Show(string.Format(ALPSConstants.InputNotFound, backgroundReferenceShapeName, snappingShape.NameU), "Error", MessageBoxButton.OK);
-                }
+            if (snappedShapes.TryGetValue(
+                snappingShape, out Shape currentReference)
+                && MatchesReference(
+                    currentReference, backgroundReferenceShapeName))
+            {
+                return;
             }
+
+            Shape reference = getSnappableShapesOnBackgroundPage()
+                .FirstOrDefault(shape => MatchesReference(
+                    shape, backgroundReferenceShapeName));
+            if (reference != null)
+            {
+                performSnap(snappingShape, reference);
+                return;
+            }
+
+            unsnap(snappingShape);
+            MessageBox.Show(
+                string.Format(ALPSConstants.InputNotFound,
+                    backgroundReferenceShapeName, snappingShape.NameU),
+                "Error", MessageBoxButton.OK);
         }
 
         public void maintainSnap(Shape shape, Shape snapToShape)
         {
-            if (!checkBorders(shape, snapToShape))
-            {
-                adjustSize(shape, snapToShape);
-            }
+            adjustSize(shape, snapToShape);
         }
-
-        /// <summary>
-        /// checks if the corners of two shapes are near to each other
-        /// </summary>
-        /// <param name="shape"></param>
-        /// <param name="snapToShape"></param>
-        /// <returns>true if minimum one corner is near, false otherwise</returns>
-        private static bool checkBorders(IVShape shape, IVShape snapToShape)
-        {
-            //check if one of the borders is near
-            //subj ext: *0.5, Width, Height
-            //state the same. :)
-
-            //Check if outer borders are near to each other.
-            ShapeCorners snappingShapeVectors = new ShapeCorners(shape);
-            ShapeCorners referenceBackgroundShapeVectors = new ShapeCorners(snapToShape);
-
-            return snappingShapeVectors.isCloseToAtLeastOneOtherCorner(referenceBackgroundShapeVectors);
-        }
-
-
 
         /// <summary>
         /// unsnaps a snappingShape
@@ -179,6 +156,29 @@ namespace VisioAddIn.Snapping
                 //string snapToShapeLable = backgroundReferenceShape.CellsU["Prop." + ALPSConstants.alpsPropertieTypeLable + ".Value"].ResultStr[""];
                 //cell.Formula = "\"" + GlobalVariables.LableExtension + snapToShapeLable + "\"";
             }
+        }
+
+        private static bool MatchesReference(
+            Shape shape, string reference)
+        {
+            if (shape == null || string.IsNullOrWhiteSpace(reference))
+                return false;
+
+            string modelComponentId = null;
+            if (shape.CellExistsU[
+                ALPSConstants.cellValuePropertyModelComponentId, 0] != 0)
+            {
+                modelComponentId = shape.CellsU[
+                    ALPSConstants.cellValuePropertyModelComponentId]
+                    .ResultStr[""];
+            }
+
+            return string.Equals(modelComponentId, reference,
+                    StringComparison.OrdinalIgnoreCase)
+                || string.Equals(shape.Name, reference,
+                    StringComparison.OrdinalIgnoreCase)
+                || string.Equals(shape.NameU, reference,
+                    StringComparison.OrdinalIgnoreCase);
         }
 
         

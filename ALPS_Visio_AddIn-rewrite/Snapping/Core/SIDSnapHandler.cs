@@ -3,8 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Windows;
-using System.Windows.Forms;
 using VisioAddIn;
 
 namespace VisioAddIn.Snapping
@@ -36,14 +34,6 @@ namespace VisioAddIn.Snapping
             referencedBackgroundPage = null;
         }
 
-        /*public void notifyBackgroundShapeMoved(Shape movedReferenceBackgroundShape)
-        {
-            if (!snappedShapes.Values.Contains(movedReferenceBackgroundShape)) return;
-
-            Shape shape = snappedShapes.FirstOrDefault(x => x.Value == movedReferenceBackgroundShape).Key;
-            adjustSize(shape, movedReferenceBackgroundShape);
-        }*/
-
         /// <summary>
         /// checks for given snappingShape if it should snap
         /// shapes should snap when they are actor extensions.
@@ -60,8 +50,7 @@ namespace VisioAddIn.Snapping
 
         protected override void setBackPage(DiagramPage newProperty)
         {
-            if (newProperty is SIDPage sidPage)
-                this.referencedBackgroundPage = sidPage;
+            referencedBackgroundPage = newProperty as SIDPage;
         }
 
         /// <summary>
@@ -73,10 +62,9 @@ namespace VisioAddIn.Snapping
         {
             if (!isShapeSnappable(snappingShape)) return;
 
-            backgroundReferenceShapeName = backgroundReferenceShapeName.Trim('\\', '"');
-
-            //Debug.Print("backgroundReferenceShapeName: " + backgroundReferenceShapeName);
-            if (snappedShapes.ContainsKey(snappingShape) && snappedShapes[snappingShape].Name.Equals(backgroundReferenceShapeName)) return;
+            backgroundReferenceShapeName =
+                (backgroundReferenceShapeName ?? string.Empty)
+                .Trim('\\', '"');
 
             if (string.IsNullOrWhiteSpace(backgroundReferenceShapeName))
             {
@@ -84,13 +72,26 @@ namespace VisioAddIn.Snapping
                 return;
             }
 
-            IEnumerable<Shape> snappableShapes = getSnappableShapesOnBackgroundPage();
-
-            foreach (Shape snappable in snappableShapes)
+            if (snappedShapes.TryGetValue(
+                snappingShape, out Shape currentReference)
+                && MatchesReference(
+                    currentReference, backgroundReferenceShapeName))
             {
-                if (!snappable.Name.Equals(backgroundReferenceShapeName)) continue;
-                performSnap(snappingShape, snappable);
+                return;
             }
+
+            Shape reference = getSnappableShapesOnBackgroundPage()
+                .FirstOrDefault(shape => MatchesReference(
+                    shape, backgroundReferenceShapeName));
+            if (reference != null)
+            {
+                performSnap(snappingShape, reference);
+                return;
+            }
+
+            // Do not retain a stale physical binding when a persisted
+            // reference can no longer be resolved on the background page.
+            unsnap(snappingShape);
         }
 
         /// <summary>
@@ -107,8 +108,15 @@ namespace VisioAddIn.Snapping
         /// <param name="shape">snappingShape to unsnap</param>
         public override void unsnap(Shape shape)
         {
-            if (!snappedShapes.ContainsKey(shape)) return;
-            Shape referenceBackgroundShape = snappedShapes[shape];
+            if (!snappedShapes.TryGetValue(
+                shape, out Shape referenceBackgroundShape))
+            {
+                return;
+            }
+
+            // Always remove the in-memory relation, even when an associated
+            // SBD page or controller is missing during document teardown.
+            snappedShapes.Remove(shape);
             SBDPage shapePage = null;
             SBDPage snapToShapePage = null;
 
@@ -127,7 +135,8 @@ namespace VisioAddIn.Snapping
             {
                 shapePage = foregroundPage.getSbdPage(shape.Hyperlinks.ItemU[ALPSConstants.alpsHyperlinkTypeLinkedSBD].SubAddress);
             }
-            if (referenceBackgroundShape.CellExistsU["Hyperlink." + ALPSConstants.alpsHyperlinkTypeLinkedSBD, 0] != 0)
+            if (referencedBackgroundPage != null
+                && referenceBackgroundShape.CellExistsU["Hyperlink." + ALPSConstants.alpsHyperlinkTypeLinkedSBD, 0] != 0)
             {
                 snapToShapePage = referencedBackgroundPage.getSbdPage(referenceBackgroundShape.Hyperlinks.ItemU[ALPSConstants.alpsHyperlinkTypeLinkedSBD].SubAddress);
             }
@@ -137,12 +146,15 @@ namespace VisioAddIn.Snapping
             if (shapePage != null )
             {
                 Debug.Print("setting to null");
-                modelController.getSbdPageController(shapePage).setExtends(null);               
-                snappedShapes.Remove(shape);
+                SBDPageController shapeController =
+                    modelController.getSbdPageController(shapePage);
+                shapeController?.setExtends(null);
             }
             if(snapToShapePage != null)
             {
-                modelController.getSbdPageController(snapToShapePage).setNotExtended();
+                SBDPageController snapToController =
+                    modelController.getSbdPageController(snapToShapePage);
+                snapToController?.setNotExtended();
             }
 
             // Clear snappingShape contents that are related to snapping
@@ -189,6 +201,8 @@ namespace VisioAddIn.Snapping
         /// <param name="backgroundReferenceShape"></param>
         public override void performSnap(Shape snappingShape, Shape backgroundReferenceShape)
         {
+            if (referencedBackgroundPage == null) return;
+
             base.performSnap(snappingShape, backgroundReferenceShape);
             //Debug.Print("perform snap for: " + snappingShape.NameU + " and: " + backgroundReferenceShape.NameU);
 
@@ -250,6 +264,9 @@ namespace VisioAddIn.Snapping
             // Do not set Extends for SBD if it is a makro extension
             if (!snappingShape.HasCategory(ALPSConstants.MacroExtension))
             {
+                if (snapToShapePageC == null || shapePageC == null)
+                    return;
+
                 snapToShapePageC.setExtended(shapePage);
                 //Debug.Print("extension set");
                 shapePageC.setExtends(snapToShapePage);
@@ -257,7 +274,7 @@ namespace VisioAddIn.Snapping
 
             if (oldExtends == null) return;
             SBDPageController oldExtendsC = modelController.getSbdPageController(oldExtends);
-            oldExtendsC.setNotExtended();
+            oldExtendsC?.setNotExtended();
 
         }
 
@@ -268,10 +285,27 @@ namespace VisioAddIn.Snapping
         /// <returns></returns>
         protected override IEnumerable<Shape> getSnappableShapesOnBackgroundPage()
         {
+            if (referencedBackgroundPage == null)
+                return Enumerable.Empty<Shape>();
+
             SIDPageController referencedBackgroundPageController = modelController.getSidPageController(referencedBackgroundPage);
             return referencedBackgroundPageController == null ? new List<Shape>() :
                 referencedBackgroundPageController.getPage().Shapes.Cast<Shape>()
                     .Where(shape => shape.HasCategory(ALPSConstants.alpsShapeCategoryStandardActor)).ToList();
+        }
+
+        private static bool MatchesReference(
+            Shape shape, string reference)
+        {
+            if (shape == null || string.IsNullOrWhiteSpace(reference))
+                return false;
+
+            return string.Equals(
+                    shape.Name, reference,
+                    StringComparison.OrdinalIgnoreCase)
+                || string.Equals(
+                    shape.NameU, reference,
+                    StringComparison.OrdinalIgnoreCase);
         }
     }
 }

@@ -189,6 +189,7 @@ namespace VisioAddIn.Snapping
                 setBackgroundForThis("");
                 deleteBackRectangle();
                 sbdPage.setExtends(null);
+                snapHandler.setBackgroundPage(null);
             }
             //SBDPage.SetExtends(newProperty);
             //SnapHandler.SetBackgroundPage(newProperty);
