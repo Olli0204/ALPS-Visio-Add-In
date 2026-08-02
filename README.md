@@ -203,7 +203,11 @@ entstehen. Noch nicht vollständig aufgebaute Seiten werden nach `PageAdded`
 weiter beobachtet und registriert, sobald ihre erforderlichen Zellen vorhanden
 sind. SID-`extends`-Referenzen werden sowohl über den fachlichen `pageLayer`
 als auch über den universellen Visio-Seitennamen (`NameU`, etwa `SID_1`)
-aufgelöst, da die Stencil-Makros Letzteren verwenden.
+aufgelöst, da die Stencil-Makros Letzteren verwenden. Für ältere Stencils wird
+außerdem die in `SID_<ID>` kodierte Visio-Seiten-ID unterstützt. Ist die
+Zielseite während eines Makros noch nicht vollständig initialisiert, bleibt die
+Beziehung vorgemerkt und wird nach ihrer Registrierung automatisch aufgelöst,
+ohne einen modalen Fehlerdialog für den Zwischenzustand zu öffnen.
 
 #### Gemeinsamer Ablauf
 

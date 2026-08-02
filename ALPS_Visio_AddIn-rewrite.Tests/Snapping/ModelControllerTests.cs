@@ -26,5 +26,19 @@ namespace ALPS_Visio_AddIn_rewrite.Tests.Snapping
             Assert.IsFalse(ModelController.MatchesSidPageReference(
                 "SID_7", "Base Layer", "SID_1"));
         }
+
+        [TestMethod]
+        public void MatchesDocumentSidPageReference_EncodedPageId_ReturnsTrue()
+        {
+            Assert.IsTrue(ModelController.MatchesDocumentSidPageReference(
+                "SID_1", "Base Layer", "LayerPage", "Base", 1));
+        }
+
+        [TestMethod]
+        public void MatchesDocumentSidPageReference_DisplayName_ReturnsTrue()
+        {
+            Assert.IsTrue(ModelController.MatchesDocumentSidPageReference(
+                "Base SID", "Layer A", "SID_9", "Base SID", 9));
+        }
     }
 }

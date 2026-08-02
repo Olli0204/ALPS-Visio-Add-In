@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.Windows;
 using VisioAddIn;
 
 namespace VisioAddIn.Snapping
@@ -26,6 +25,9 @@ namespace VisioAddIn.Snapping
             sidPageToSbdController;
         private readonly IDictionary<int, Page> possibleSidOrSbdPages =
             new Dictionary<int, Page>();
+        private readonly IDictionary<SIDPageController, string>
+            pendingSidExtends =
+                new Dictionary<SIDPageController, string>();
         private bool disposed;
 
         public ModelController(ALPS_Visio_AddIn_rewrite.ThisAddIn addIn)
@@ -47,9 +49,12 @@ namespace VisioAddIn.Snapping
             if (DiagramPageClassifier.IsSid(page))
             {
                 registerNewSidPage(page);
-                if (!possibleSidOrSbdPages.ContainsKey(page.ID)) return;
-                possibleSidOrSbdPages.Remove(page.ID);
-                page.CellChanged -= onCellChangedOnPossibleSidOrSbdPage;
+                if (possibleSidOrSbdPages.ContainsKey(page.ID))
+                {
+                    possibleSidOrSbdPages.Remove(page.ID);
+                    page.CellChanged -= onCellChangedOnPossibleSidOrSbdPage;
+                }
+                resolvePendingSidExtends();
             }
             // Check if page is a fully functional SBD page (all cells created correctly)
             else if (DiagramPageClassifier.IsSbd(page))
@@ -141,10 +146,23 @@ namespace VisioAddIn.Snapping
         /// <param name="userInput"></param>
         public void updateExtends(SIDPageController modifiedC, SIDPage modifiedP, string userInput)
         {
-            SIDPage extending = getSidPage(userInput);
+            string normalizedInput = NormalizeSidPageReference(userInput);
+            SIDPage extending = getSidPage(normalizedInput)
+                ?? tryRegisterSidPageReference(normalizedInput);
+
+            if (extending == null
+                && !string.IsNullOrWhiteSpace(normalizedInput))
+            {
+                pendingSidExtends[modifiedC] = normalizedInput;
+                Debug.Print("Deferring unresolved SID extends reference '"
+                    + normalizedInput + "' on " + modifiedC.getNameU());
+                return;
+            }
+
+            pendingSidExtends.Remove(modifiedC);
 
             SIDPage oldExtends = modifiedC.getExtends();
-            if (extending != null || string.IsNullOrWhiteSpace(userInput))
+            if (extending != null || string.IsNullOrWhiteSpace(normalizedInput))
             {
                 SIDPageController extendingC = getSidPageController(extending);
 
@@ -161,12 +179,76 @@ namespace VisioAddIn.Snapping
                     oldExtendsC.setNotExtended();
                 }
             }
-            else
+        }
+
+        private SIDPage tryRegisterSidPageReference(string reference)
+        {
+            if (string.IsNullOrWhiteSpace(reference)) return null;
+
+            Document document = addIn.GetDrawingDocument();
+            if (document == null) return null;
+
+            foreach (Page page in document.Pages.Cast<Page>())
             {
-                //page does not exist. show userinputNotFound.
-                MessageBox.Show(string.Format(ALPSConstants.InputNotFound, userInput, modifiedC.getNameU()), "Error", MessageBoxButton.OK);
-                //UserInputNotFound notFound = UserInputNotFound.GetInstance(this, userInput, modifiedC.getNameU());
-                //notFound.Show();
+                if (!MatchesDocumentSidPageReference(page, reference))
+                    continue;
+
+                pageAdded(page);
+                return getSidPage(reference) ?? getSidPage(page.NameU);
+            }
+
+            return null;
+        }
+
+        private static bool MatchesDocumentSidPageReference(
+            Page page, string reference)
+        {
+            if (page == null) return false;
+
+            try
+            {
+                string layerName = string.Empty;
+                if (page.PageSheet.CellExistsU[
+                        ALPSConstants.cellValuePropertyPageLayer, 1] != 0)
+                {
+                    layerName = page.PageSheet.CellsU[
+                        ALPSConstants.cellValuePropertyPageLayer].Formula;
+                }
+
+                return MatchesDocumentSidPageReference(
+                    reference, layerName, page.NameU, page.Name, page.ID);
+            }
+            catch (COMException)
+            {
+                return false;
+            }
+        }
+
+        internal static bool MatchesDocumentSidPageReference(
+            string reference, string layerName, string pageNameU,
+            string pageName, int pageId)
+        {
+            string normalizedReference = NormalizeSidPageReference(reference);
+            return MatchesSidPageReference(
+                    normalizedReference, layerName, pageNameU)
+                || string.Equals(normalizedReference,
+                    NormalizeSidPageReference(pageName),
+                    StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalizedReference, "SID_" + pageId,
+                    StringComparison.OrdinalIgnoreCase);
+        }
+
+        private void resolvePendingSidExtends()
+        {
+            foreach (KeyValuePair<SIDPageController, string> pending
+                in pendingSidExtends.ToList())
+            {
+                SIDPage extending = getSidPage(pending.Value);
+                if (extending == null) continue;
+
+                pendingSidExtends.Remove(pending.Key);
+                updateExtends(pending.Key, pending.Key.getSidPage(),
+                    pending.Value);
             }
         }
 
@@ -179,10 +261,20 @@ namespace VisioAddIn.Snapping
         /// <returns>sidPage if found, null otherwise</returns>
         public SIDPage getSidPage(string layerOrPageName)
         {
-            return models.SelectMany(model => model.getSidPages())
+            SIDPage match = models.SelectMany(model => model.getSidPages())
                 .FirstOrDefault(sidPage => MatchesSidPageReference(
                     layerOrPageName, sidPage.getLayerForUser(),
                     sidPage.getNameU()));
+            if (match != null) return match;
+
+            // Legacy stencil macros can encode the Visio page ID as SID_<ID>
+            // even when neither pageLayer nor NameU carries that value.
+            SIDPageController matchingController = modelToSidController.Values
+                .SelectMany(controllers => controllers)
+                .FirstOrDefault(controller =>
+                    MatchesDocumentSidPageReference(
+                        controller.getPage(), layerOrPageName));
+            return matchingController?.getSidPage();
         }
 
         internal static bool MatchesSidPageReference(
@@ -395,6 +487,7 @@ namespace VisioAddIn.Snapping
             }
 
             possibleSidOrSbdPages.Clear();
+            pendingSidExtends.Clear();
 
             foreach (SIDPageController controller
                 in modelToSidController.Values.SelectMany(controllers => controllers))

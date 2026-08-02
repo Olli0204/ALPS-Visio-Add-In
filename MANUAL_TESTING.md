@@ -37,7 +37,10 @@ with the **ALPS/PASS ADDIN** Ribbon tab.
   extending SID page; no `Eingabe \"SID_1\" wurde nicht gefunden` dialog may
   appear. Repeat with a base page whose visible `pageLayer` label differs from
   its universal page name `SID_1`; the stencil's NameU-based `extends`
-  reference must still resolve, without duplicate dialogs.
+  reference must still resolve, without duplicate dialogs. Also verify a
+  legacy drawing where `SID_1` encodes the Visio page ID but neither the
+  display name nor `NameU` equals that value; the page must be registered on
+  demand and the pending relation resolved automatically.
 - Create a blank document, open another document, switch between windows, and
   close one document. No exception dialog should appear.
 - Import an OWL file. Exactly one macro security dialog should appear: accept it

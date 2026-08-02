@@ -362,9 +362,20 @@ namespace VisioAddIn.Snapping
             userInput = userInput.Trim('\\', '"');
             SIDPage extending = controlledSidPage.getExtends();
             bool isNull = string.IsNullOrWhiteSpace(userInput);
-            if ((!isNull && extending != null && !extending.getLayerForUser().Equals(userInput))
-                || !isNull && extending == null
-                || isNull && extending != null)
+            bool matchesCurrent = extending != null
+                && ModelController.MatchesSidPageReference(
+                    userInput, extending.getLayerForUser(),
+                    extending.getNameU());
+            if (!matchesCurrent && extending != null)
+            {
+                SIDPage referencedPage = modelController.getSidPage(userInput);
+                matchesCurrent = referencedPage != null
+                    && referencedPage.getNameU().Equals(
+                        extending.getNameU(),
+                        StringComparison.OrdinalIgnoreCase);
+            }
+            if ((!isNull && !matchesCurrent)
+                || (isNull && extending != null))
             {
                 modelController.updateExtends(this, controlledSidPage, userInput);
             }
