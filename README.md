@@ -201,7 +201,9 @@ Die Seitenbeziehung kann über den Layer Explorer, die vorhandenen
 Eigenschaftsdialoge, die Schablonenmakros oder gültige ShapeSheet-Daten
 entstehen. Noch nicht vollständig aufgebaute Seiten werden nach `PageAdded`
 weiter beobachtet und registriert, sobald ihre erforderlichen Zellen vorhanden
-sind.
+sind. SID-`extends`-Referenzen werden sowohl über den fachlichen `pageLayer`
+als auch über den universellen Visio-Seitennamen (`NameU`, etwa `SID_1`)
+aufgelöst, da die Stencil-Makros Letzteren verwenden.
 
 #### Gemeinsamer Ablauf
 

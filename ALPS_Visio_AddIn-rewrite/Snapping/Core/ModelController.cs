@@ -171,13 +171,39 @@ namespace VisioAddIn.Snapping
         }
 
         /// <summary>
-        /// searches after a sidPage specified by its layerName
+        /// Searches for a SID page by either its semantic layer name or its
+        /// universal Visio page name. Stencil VBA stores NameU values such as
+        /// SID_1 in extends, while imported pages can store the layer label.
         /// </summary>
-        /// <param name="layerName">name of sidPage</param>
+        /// <param name="layerOrPageName">layer name or Visio NameU</param>
         /// <returns>sidPage if found, null otherwise</returns>
-        public SIDPage getSidPage(string layerName)
+        public SIDPage getSidPage(string layerOrPageName)
         {
-            return models.SelectMany(model => model.getSidPages()).FirstOrDefault(sidPage => sidPage.getLayerForUser().Equals(layerName));
+            return models.SelectMany(model => model.getSidPages())
+                .FirstOrDefault(sidPage => MatchesSidPageReference(
+                    layerOrPageName, sidPage.getLayerForUser(),
+                    sidPage.getNameU()));
+        }
+
+        internal static bool MatchesSidPageReference(
+            string reference, string layerName, string pageNameU)
+        {
+            string normalizedReference = NormalizeSidPageReference(reference);
+            if (string.IsNullOrWhiteSpace(normalizedReference)) return false;
+
+            return string.Equals(normalizedReference,
+                       NormalizeSidPageReference(layerName),
+                       StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalizedReference,
+                       NormalizeSidPageReference(pageNameU),
+                       StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string NormalizeSidPageReference(string value)
+        {
+            return string.IsNullOrWhiteSpace(value)
+                ? string.Empty
+                : value.Trim().Trim('\\', '"', '\'');
         }
 
 

@@ -35,7 +35,9 @@ with the **ALPS/PASS ADDIN** Ribbon tab.
   as `SID_1` is already open. The startup log must create its
   `SIDPageController` immediately. Drop a `GuardExtension` that creates a new
   extending SID page; no `Eingabe \"SID_1\" wurde nicht gefunden` dialog may
-  appear.
+  appear. Repeat with a base page whose visible `pageLayer` label differs from
+  its universal page name `SID_1`; the stencil's NameU-based `extends`
+  reference must still resolve, without duplicate dialogs.
 - Create a blank document, open another document, switch between windows, and
   close one document. No exception dialog should appear.
 - Import an OWL file. Exactly one macro security dialog should appear: accept it
