@@ -70,6 +70,9 @@ Import `docs/[Test]_Vacation_Request.owl`.
 - Every SID message connector remains glued to both semantic subjects; no
   detached horizontal or vertical connector fragment remains beside a Message
   Box, including after the Message Box has moved to its final layout position.
+- In Top-down layout, the Employee-to-Manager channel and its `Vacation Request`
+  box share the right outer corridor; the Manager-to-Employee channel and its
+  `Approval`/`Denial` box share the left outer corridor.
 - Verify both directions independently: `Vacation Request` must connect
   Employee to Manager, while the combined `Approval`/`Denial` channel must
   connect Manager back to Employee. Both channels must remain attached and

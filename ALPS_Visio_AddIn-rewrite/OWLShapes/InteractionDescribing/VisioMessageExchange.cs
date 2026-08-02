@@ -122,7 +122,9 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             Visio.Shape endpointShape, bool isSource,
             double relativeX, double relativeY)
         {
-            string endpointCellName = isSource ? "BeginX" : "EndX";
+            // Preserve the BeginX/EndY endpoint convention of the grouped SID
+            // stencil master; its legacy geometry was authored with these cells.
+            string endpointCellName = isSource ? "BeginX" : "EndY";
             try
             {
                 connector.CellsU[endpointCellName].GlueToPos(

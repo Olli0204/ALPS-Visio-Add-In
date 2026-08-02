@@ -49,8 +49,6 @@
                 "alpsAutoArrangeSourceShapeId";
             public const string AutoArrangeTargetShapeId =
                 "alpsAutoArrangeTargetShapeId";
-            public const string AutoArrangeReversePhysicalEndpoints =
-                "alpsAutoArrangeReversePhysicalEndpoints";
         }
 
         public static class Properties
