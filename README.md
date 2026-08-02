@@ -35,7 +35,7 @@ BPMN-2.0-Export.
 | Ribbon-Gruppe | Befehl | Ergebnis |
 | --- | --- | --- |
 | Standard Functions | **Open ALPS/PASS Stencils** | Öffnet die benötigten SID-/SBD-Schablonen für die interaktive Modellierung. |
-| ALPS Layer Editing | **Show layer Explorer** | Zeigt Modelle, Layer und verknüpfte SID-/SBD-Seiten in einem navigierbaren Explorer. |
+| ALPS Layer Editing | **Show layer Explorer** | Navigiert, sortiert und bearbeitet Modelle, SID-Layer und verknüpfte SBD-Seiten. |
 | OWL PASS Tools | **Import OWL** | Importiert PASS-/ALPS-Modelle aus `.owl` oder `.rdf` nach Visio. |
 | OWL PASS Tools | **Auto-Arrange → Top-down** | Ordnet das aktive SID- oder SBD-Diagramm von oben nach unten an. |
 | OWL PASS Tools | **Auto-Arrange → Left-right** | Ordnet das aktive SID- oder SBD-Diagramm von links nach rechts an. |
@@ -45,6 +45,7 @@ BPMN-2.0-Export.
 | NLP PASS Checking | **Retrain** | Trainiert den lokalen Klassifikator erneut aus 680 mitgelieferten Beispielen. |
 | NLP PASS Checking | **Provider Settings** | Konfiguriert optionale Vorschlagsanbieter und deren Modelle. |
 | Automatisch | **SID-/SBD-SnapHandler** | Koppelt Extension-Shapes geometrisch und semantisch an Elemente einer erweiterten Hintergrundseite. |
+| Automatisch | **ShapeSheet-Synchronisierung** | Übernimmt Änderungen an Seitenbeziehungen, Modell-URI und SID-Priorität in die Add-in-interne Modellstruktur. |
 
 Die Kernfunktionen zum Importieren, Prüfen und lokalen Klassifizieren arbeiten
 offline. Nur optionale NLP-Namensvorschläge greifen auf einen vom Benutzer
@@ -139,12 +140,34 @@ Connectoren und das dokumentbezogene Snapping.
 ### Layer Explorer
 
 **Show layer Explorer** öffnet den WPF-basierten Modell-Explorer. Er zeigt die
-Modellhierarchie, SID-Layer und verknüpfte SBD-Seiten. Der Explorer aktualisiert
-sich beim Wechsel von Dokumenten und Seiten und unterstützt Navigation sowie
-die vorhandenen Bearbeitungsdialoge.
+Modellhierarchie, SID-Layer und verknüpfte SBD-Seiten. Ein Klick aktiviert die
+gewählte SID- oder SBD-Seite. Doppelklick und Kontextmenü öffnen die verfügbaren
+Bearbeitungsfunktionen:
+
+- SID-Layer umbenennen, ihre Priorität ändern sowie eine erweiterte SID-Seite
+  und den Separationsstil auswählen;
+- SID-Layer nach oben oder unten verschieben, per Drag-and-drop neu anordnen
+  oder einem anderen Prozessmodell zuweisen;
+- bei erweiterten SBD-Seiten den Separationsstil ändern.
+
+**Refresh** baut Modellstruktur und Ereignisbehandlung aus dem Dokument neu auf.
+Dies geschieht außerdem beim Dokumentwechsel, Import und Hinzufügen einer Seite,
+nicht jedoch bei jedem Seitenwechsel innerhalb desselben Dokuments. Doppelte
+SID-Prioritäten werden beim Baumaufbau automatisch auf einen freien Wert oberhalb
+der bisherigen Prioritäten gesetzt und im ShapeSheet gespeichert.
 
 Die zugehörigen Controller sind dokumentbezogen. Beim Aktualisieren werden alte
 COM-Events gelöst, damit Aktionen nicht mehrfach ausgelöst werden.
+
+### Automatische ShapeSheet-Synchronisierung
+
+Das Add-in reagiert ohne eigenen Ribbon-Befehl auf Änderungen zentraler
+PageSheet-Zellen. `extends` setzt oder entfernt die zugehörige Hintergrundseite,
+eine geänderte SID-Priorität aktualisiert die Explorer-Sortierung und eine neue
+Modell-URI verschiebt den SID-Layer in die entsprechende Modellgruppe. Ein leerer
+Modell-URI wird dabei durch den bisherigen Wert ersetzt. Die vom Import und
+Snapping erzeugten `linkedSBD`-, `linkedSIDPage`- und `extendedSubject`-Hyperlinks
+ermöglichen zusätzlich die Navigation zwischen fachlich verknüpften Elementen.
 
 ### SnapHandler: semantisches SID-/SBD-Snapping
 
@@ -238,7 +261,8 @@ Ein `StateExtension` kann auf jedes Hintergrund-Shape mit der Kategorie
 Shape-Namen, sondern die stabile `modelComponentID` des Zustands. Wird eine ID
 manuell in `Prop.extends.Value` eingetragen, versucht der Handler dieselbe
 Zuordnung wiederherzustellen; bei einer unbekannten ID erscheint eine
-Fehlermeldung.
+Fehlermeldung. Neu abgelegte `StateExtension`-Shapes werden auf einer erweiterten
+SBD-Seite sofort auf mögliche Referenzen geprüft.
 
 Wird ein bereits gekoppeltes `StateExtension` aus dem 20-mm-Bereich gezogen,
 fragt **Snap-Einstellungen**, ob es gekoppelt bleiben soll:
@@ -317,8 +341,9 @@ Endpunkte zurückgebunden. Wiederholte Läufe sollen dasselbe Ergebnis erzeugen.
 ### Lokale Prüfung von PASS-Elementnamen
 
 **Check Model Naming** sammelt unterstützte Shapes aus allen Seiten und zeigt
-Seite, Shape-ID, Elementtyp, Label, Klassifikation und Konfidenz. Unterstützt
-werden derzeit:
+Seite, Shape-ID, Elementtyp, Label, Klassifikation und Konfidenz. Über **Copy
+results** lässt sich die vollständige Tabelle einschließlich Vorschlägen
+tab-separiert in die Zwischenablage kopieren. Unterstützt werden derzeit:
 
 - `FullySpecifiedSubject`
 - `InterfaceSubject`
