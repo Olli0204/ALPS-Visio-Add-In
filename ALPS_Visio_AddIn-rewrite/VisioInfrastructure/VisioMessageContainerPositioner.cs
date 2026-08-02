@@ -125,6 +125,17 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
             RemoveListMembers(container, members);
             VisioShapeSheet.SetNumber(container, "PinX", x);
             VisioShapeSheet.SetNumber(container, "PinY", y);
+            try
+            {
+                // Native SID connectors must stay above the subject fills so
+                // their arrowheads remain visible. Keep the message container
+                // above those connectors so no route crosses its label area.
+                container.BringToFront();
+            }
+            catch (System.Runtime.InteropServices.COMException)
+            {
+                // Positioning and list recovery still work on protected pages.
+            }
 
             int listPosition = 1;
             foreach (Visio.Shape member in members)

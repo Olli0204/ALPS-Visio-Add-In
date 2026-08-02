@@ -77,6 +77,12 @@ Import `docs/[Test]_Vacation_Request.owl`.
   connector remains on the hidden, non-printing `ALPS Internal SID Semantics`
   layer, while its native visual connector stays attached after repeated
   Top-down and Left-right Auto-Arrange runs.
+- Reopen a document previously arranged with an older Add-in build and run
+  Auto-Arrange again. Guarded legacy group geometry, including horizontal
+  cross-lines, vertical leaders, and line jumps, must no longer be visible.
+- The target arrowhead of each native SID connector remains visible above the
+  subject fill, while message containers and their list entries stay above the
+  connector line so their labels remain unobstructed.
 - Verify both directions independently: `Vacation Request` must connect
   Employee to Manager, while the combined `Approval`/`Denial` channel must
   connect Manager back to Employee. Both channels must remain attached and

@@ -79,12 +79,14 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
                 HideSemanticConnector(page, semanticConnector);
                 try
                 {
-                    visualConnector.SendToBack();
+                    // Keep endpoint arrows above the subject fill. Message
+                    // containers are brought forward again after placement.
+                    visualConnector.BringToFront();
                 }
                 catch (COMException)
                 {
-                    // Z-order is cosmetic. The connector remains functional
-                    // in protected documents that reject the operation.
+                    // The connector remains functional in protected documents
+                    // that reject the z-order operation.
                 }
             }
         }
@@ -183,25 +185,48 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
                         Constants.Layers.InternalSidSemantics);
                 }
 
-                layer.CellsC[4].FormulaU = "0";
-                layer.CellsC[5].FormulaU = "0";
-                layer.Add(semanticConnector, (short)1);
+                layer.CellsC[4].FormulaForceU = "0";
+                layer.CellsC[5].FormulaForceU = "0";
+                // Reassign every component of the grouped SmartShape. Keeping
+                // its old subshape memberships can leave the internal link
+                // geometries visible even though the group is on this layer.
+                layer.Add(semanticConnector, (short)0);
             }
             catch (COMException)
             {
-                // If a protected document rejects layers, make the complete
-                // group transparent instead of leaving duplicate geometry.
-                HideLineRecursively(semanticConnector);
+                // Geometry suppression below is independent of page layers.
             }
+
+            HideGeometryRecursively(semanticConnector);
         }
 
-        private static void HideLineRecursively(Visio.Shape shape)
+        private static void HideGeometryRecursively(Visio.Shape shape)
         {
-            TrySetFormula(shape, "LineColorTrans", "100%");
+            // FormulaForceU is intentional: the legacy SID master protects
+            // several geometry cells with GUARD. Geometry*.NoShow suppresses
+            // both stroke and fill without changing the connector's semantic
+            // properties, message-box formulas, or endpoint IDs.
+            try
+            {
+                for (int index = 1; index <= shape.GeometryCount; index++)
+                {
+                    string noShowCell = "Geometry"
+                        + index.ToString(CultureInfo.InvariantCulture)
+                        + ".NoShow";
+                    if (shape.CellExistsU[noShowCell, 0] != 0)
+                        shape.CellsU[noShowCell].FormulaForceU = "TRUE";
+                }
+            }
+            catch (COMException)
+            {
+                // Continue with child shapes and the transparency fallback.
+            }
+
+            TrySetFormulaForce(shape, "LineColorTrans", "100%");
             try
             {
                 foreach (Visio.Shape child in shape.Shapes)
-                    HideLineRecursively(child);
+                    HideGeometryRecursively(child);
             }
             catch (COMException)
             {
@@ -258,17 +283,18 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
             }
         }
 
-        private static void TrySetFormula(
+        private static void TrySetFormulaForce(
             Visio.Shape shape, string cellName, string formula)
         {
             try
             {
                 if (shape.CellExistsU[cellName, 0] != 0)
-                    shape.CellsU[cellName].FormulaU = formula;
+                    shape.CellsU[cellName].FormulaForceU = formula;
             }
             catch (COMException)
             {
-                // The hidden layer is the primary suppression mechanism.
+                // Geometry*.NoShow and the hidden layer are independent
+                // suppression mechanisms; one failed cell is non-fatal.
             }
         }
 
