@@ -48,6 +48,38 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
                 VH.AutoArrangePage(
                     page, VH.GraphLayoutDirection.TopDown);
             }
+
+            // Bind imported SID connectors once more through their model
+            // objects. This is deliberately the final page operation: unlike
+            // the generic page scan, it directly owns the concrete connector,
+            // sender shape, and receiver shape even when the stencil master no
+            // longer reports a complete Connects collection.
+            if (usesFallbackLayout)
+            {
+                RebindMessageExchanges(
+                    page, VH.GraphLayoutDirection.TopDown);
+            }
+        }
+
+        private void RebindMessageExchanges(
+            Visio.IVPage page, VH.GraphLayoutDirection direction)
+        {
+            IEnumerable<VisioMessageExchange> directExchanges =
+                getElements().Values.OfType<VisioMessageExchange>();
+            IEnumerable<VisioMessageExchange> listedExchanges =
+                getElements().Values
+                    .OfType<IMessageExchangeList>()
+                    .SelectMany(list => list.getMessageExchanges().Values)
+                    .OfType<VisioMessageExchange>();
+
+            foreach (VisioMessageExchange exchange in directExchanges
+                .Concat(listedExchanges)
+                .Where(candidate => candidate.GetShape() != null)
+                .GroupBy(candidate => candidate.GetShape().ID)
+                .Select(group => group.First()))
+            {
+                exchange.RebindToSemanticEndpoints(page, direction);
+            }
         }
 
         private static int GetExportOrder(IPASSProcessModelElement element)

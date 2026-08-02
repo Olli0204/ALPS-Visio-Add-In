@@ -1,8 +1,12 @@
 using alps.net.api.ALPS;
 using alps.net.api.parsing;
 using alps.net.api.StandardPASS;
+using ALPS_Visio_AddIn_rewrite.VisioInfrastructure;
+using System.Runtime.InteropServices;
 using VH = ALPS_Visio_AddIn_rewrite.VisioHelper;
 using Visio = Microsoft.Office.Interop.Visio;
+using LayoutDirection =
+    ALPS_Visio_AddIn_rewrite.VisioHelper.GraphLayoutDirection;
 
 namespace ALPS_Visio_AddIn_rewrite.OWLShapes
 {
@@ -21,6 +25,16 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             if (GetShape() != null) return;
 
             export.Export(shapeType, page, VH.GetBounds(this));
+            RebindToSemanticEndpoints();
+
+            // TODO: AbstractMessageExchange
+            // TODO: FinalizedMessageExchange -> alps.net.api
+        }
+
+        internal bool RebindToSemanticEndpoints()
+        {
+            Visio.Shape connector = GetShape();
+            if (connector == null) return false;
 
             // Keep the semantic endpoints on the connector itself. Some
             // message connector masters temporarily lose one glue entry while
@@ -45,6 +59,7 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             // The SID master can remove a Glue entry when its coupled Message
             // Box moves; a page-local ID restores the exact original shape
             // without depending on the master's Shape Data formulas.
+            bool sourceBound = false;
             if (sender is IVisioExportableWithShape exportableSender
                 && exportableSender.GetShape() != null)
             {
@@ -52,8 +67,11 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
                 VH.SetUser(GetShape(),
                     Constants.UserCells.AutoArrangeSourceShapeId,
                     senderShape.ID);
-                GetShape().CellsU["BeginX"].GlueToPos(senderShape, 1, 0.5);
+                sourceBound = TryGlueEndpoint(
+                    connector, senderShape, true, 1, 0.5);
             }
+
+            bool targetBound = false;
             if (receiver is IVisioExportableWithShape exportableReceiver
                 && exportableReceiver.GetShape() != null)
             {
@@ -61,11 +79,102 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
                 VH.SetUser(GetShape(),
                     Constants.UserCells.AutoArrangeTargetShapeId,
                     receiverShape.ID);
-                GetShape().CellsU["EndX"].GlueToPos(receiverShape, 0, 0.5);
+                targetBound = TryGlueEndpoint(
+                    connector, receiverShape, false, 0, 0.5);
             }
 
-            // TODO: AbstractMessageExchange
-            // TODO: FinalizedMessageExchange -> alps.net.api
+            return sourceBound && targetBound;
+        }
+
+        internal bool RebindToSemanticEndpoints(
+            Visio.IVPage page, LayoutDirection direction)
+        {
+            Visio.Shape connector = GetShape();
+            IVisioExportableWithShape exportableSender =
+                getSender() as IVisioExportableWithShape;
+            IVisioExportableWithShape exportableReceiver =
+                getReceiver() as IVisioExportableWithShape;
+            if (connector == null
+                || exportableSender == null
+                || exportableReceiver == null
+                || exportableSender.GetShape() == null
+                || exportableReceiver.GetShape() == null)
+            {
+                return false;
+            }
+
+            Visio.Shape senderShape = exportableSender.GetShape();
+            Visio.Shape receiverShape = exportableReceiver.GetShape();
+            if (IsEndpointGluedTo(connector, senderShape, true)
+                && IsEndpointGluedTo(connector, receiverShape, false))
+            {
+                return true;
+            }
+
+            bool rebound = VisioConnectorRebinder.RebindKnownConnector(
+                page, connector, senderShape, receiverShape, direction);
+            return rebound
+                && IsEndpointGluedTo(connector, senderShape, true)
+                && IsEndpointGluedTo(connector, receiverShape, false);
+        }
+
+        private static bool TryGlueEndpoint(Visio.Shape connector,
+            Visio.Shape endpointShape, bool isSource,
+            double relativeX, double relativeY)
+        {
+            string endpointCellName = isSource ? "BeginX" : "EndX";
+            try
+            {
+                connector.CellsU[endpointCellName].GlueToPos(
+                    endpointShape, relativeX, relativeY);
+                if (IsEndpointGluedTo(
+                    connector, endpointShape, isSource))
+                {
+                    return true;
+                }
+            }
+            catch (COMException)
+            {
+                // Retry below with Visio's dynamic glue target.
+            }
+
+            try
+            {
+                connector.CellsU[endpointCellName]
+                    .GlueTo(endpointShape.CellsU["PinX"]);
+                return IsEndpointGluedTo(
+                    connector, endpointShape, isSource);
+            }
+            catch (COMException)
+            {
+                return false;
+            }
+        }
+
+        private static bool IsEndpointGluedTo(Visio.Shape connector,
+            Visio.Shape endpointShape, bool isSource)
+        {
+            int minimumFromPart = isSource ? 7 : 10;
+            int maximumFromPart = isSource ? 9 : 12;
+            try
+            {
+                foreach (Visio.Connect connection in connector.Connects)
+                {
+                    if (connection.FromPart >= minimumFromPart
+                        && connection.FromPart <= maximumFromPart
+                        && connection.ToSheet != null
+                        && connection.ToSheet.ID == endpointShape.ID)
+                    {
+                        return true;
+                    }
+                }
+            }
+            catch (COMException)
+            {
+                return false;
+            }
+
+            return false;
         }
 
         public bool PrepareDimensions() // TODO: prepare dimensions

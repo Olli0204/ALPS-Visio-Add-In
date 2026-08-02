@@ -23,7 +23,7 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
 
             foreach (Visio.Shape shape in page.Shapes)
             {
-                if (shape.OneD == 0
+                if (!HasConnectorEndpoints(shape)
                     || !TryGetConnectedShapes(page, shape,
                         out Visio.Shape source, out Visio.Shape target))
                 {
@@ -76,6 +76,60 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
                         orderedEndpoints[index],
                         GetPortPosition(index, orderedEndpoints.Count));
                 }
+            }
+        }
+
+        internal static bool HasConnectorEndpoints(Visio.Shape shape)
+        {
+            try
+            {
+                return shape != null
+                    && shape.CellExistsU["BeginX", 0] != 0
+                    && shape.CellExistsU["EndX", 0] != 0;
+            }
+            catch (System.Runtime.InteropServices.COMException)
+            {
+                return false;
+            }
+        }
+
+        internal static bool RebindKnownConnector(Visio.IVPage page,
+            Visio.Shape shape, Visio.Shape source, Visio.Shape target,
+            LayoutDirection direction)
+        {
+            if (page == null || shape == null
+                || !IsNode(source) || !IsNode(target))
+            {
+                return false;
+            }
+
+            AutoArrangeConnector connector =
+                new AutoArrangeConnector(shape, source, target);
+            double pageCenterX =
+                VisioShapeSheet.GetNumber(page.PageSheet, "PageWidth") / 2d;
+            double pageCenterY =
+                VisioShapeSheet.GetNumber(page.PageSheet, "PageHeight") / 2d;
+            int lowerSideCount = 0;
+            int upperSideCount = 0;
+            AssignConnectionSides(connector, direction,
+                pageCenterX, pageCenterY,
+                ref lowerSideCount, ref upperSideCount);
+
+            VisioRouting.TrySetCell(shape, "ConFixedCode", 0, false);
+            VisioRouting.TrySetCell(shape, "ShapeRouteStyle", 1, false);
+            VisioRouting.TrySetCell(shape, "ConLineJumpCode", 0, false);
+
+            try
+            {
+                GlueEndpointToSide(
+                    new ConnectorEndpoint(connector, true), 0.5);
+                GlueEndpointToSide(
+                    new ConnectorEndpoint(connector, false), 0.5);
+                return true;
+            }
+            catch (System.Runtime.InteropServices.COMException)
+            {
+                return false;
             }
         }
 

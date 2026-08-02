@@ -27,7 +27,7 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
                 new Dictionary<int, Visio.Shape>();
             foreach (Visio.Shape shape in page.Shapes)
             {
-                if (shape.OneD != 0)
+                if (VisioConnectorRebinder.HasConnectorEndpoints(shape))
                     connectors[shape.ID] = shape;
             }
             double pageWidth =
