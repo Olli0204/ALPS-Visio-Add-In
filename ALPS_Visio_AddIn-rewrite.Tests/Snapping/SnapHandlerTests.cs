@@ -31,5 +31,33 @@ namespace ALPS_Visio_AddIn_rewrite.Tests.Snapping
             Assert.ThrowsException<ArgumentOutOfRangeException>(() =>
                 SnapHandler.IsWithinSnapRange(0d, 0d, -1d));
         }
+
+        [TestMethod]
+        public void IsActorExtensionIdentity_GuardExtensionMaster_ReturnsTrue()
+        {
+            Assert.IsTrue(SidSnapHandler.IsActorExtensionIdentity(
+                false, "GuardExtension", null));
+        }
+
+        [TestMethod]
+        public void IsActorExtensionIdentity_GuardExtensionInstance_ReturnsTrue()
+        {
+            Assert.IsTrue(SidSnapHandler.IsActorExtensionIdentity(
+                false, null, "GuardExtension.42"));
+        }
+
+        [TestMethod]
+        public void IsActorExtensionIdentity_StandardActor_ReturnsFalse()
+        {
+            Assert.IsFalse(SidSnapHandler.IsActorExtensionIdentity(
+                false, "StandardActor", "StandardActor.42"));
+        }
+
+        [TestMethod]
+        public void IsActorExtensionIdentity_CategoryPresent_ReturnsTrue()
+        {
+            Assert.IsTrue(SidSnapHandler.IsActorExtensionIdentity(
+                true, null, null));
+        }
     }
 }

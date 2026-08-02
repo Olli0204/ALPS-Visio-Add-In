@@ -33,6 +33,7 @@ namespace VisioAddIn.Snapping
             snapHandler = new SidSnapHandler(modelController, controlledSidPage);
 
             visioPage.CellChanged += onCellChanged;
+            visioPage.ShapeAdded += shapeAdded;
         }
 
 
@@ -58,11 +59,22 @@ namespace VisioAddIn.Snapping
             try
             {
                 visioPage.CellChanged -= onCellChanged;
+                visioPage.ShapeAdded -= shapeAdded;
             }
             catch (COMException)
             {
                 // The page may already be closing with its document.
             }
+        }
+
+        /// <summary>
+        /// A stencil drop can already have its final PinX/PinY values before
+        /// Visio raises a CellChanged event. Evaluate newly added extension
+        /// shapes explicitly, matching the existing SBD controller behavior.
+        /// </summary>
+        private void shapeAdded(Shape shape)
+        {
+            snapHandler.checkForSnapping(shape);
         }
 
         /// <summary>

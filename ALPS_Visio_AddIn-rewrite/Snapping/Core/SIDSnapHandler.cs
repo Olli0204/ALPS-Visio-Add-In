@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.InteropServices;
 using VisioAddIn;
 
 namespace VisioAddIn.Snapping
@@ -42,10 +43,79 @@ namespace VisioAddIn.Snapping
         /// <returns>true if snappable, false otherwise</returns>
         protected override bool isShapeSnappable(IVShape shape)
         {
-            //check for category of snappingShape - should it snap to other shapes?
-            //Debug.Print("testing shape: " + shape.NameU + " - is snappable: " + shape.HasCategory(ALPSConstants.alpsShapeCategoryActorExtension) + 
-            //             " in page: " + this.foregroundPage.getNameU() + " with background: " + this.referencedBackgroundPage.getNameU());
-            return shape.HasCategory(ALPSConstants.alpsShapeCategoryActorExtension);
+            if (shape == null) return false;
+
+            bool hasActorExtensionCategory = false;
+            string masterName = null;
+            string shapeName = null;
+
+            try
+            {
+                hasActorExtensionCategory = shape.HasCategory(
+                    ALPSConstants.alpsShapeCategoryActorExtension);
+            }
+            catch (COMException)
+            {
+                // Category rows can be initialized after ShapeAdded.
+            }
+
+            try
+            {
+                masterName = shape.Master?.NameU;
+            }
+            catch (COMException)
+            {
+                // Keep the independent name/category fallbacks available.
+            }
+
+            try
+            {
+                shapeName = shape.NameU;
+            }
+            catch (COMException)
+            {
+                // A later PinX/PinY event retries the same classification.
+            }
+
+            bool isSnappable = IsActorExtensionIdentity(
+                hasActorExtensionCategory, masterName, shapeName);
+            Debug.Print("SID snap candidate: "
+                + (shapeName ?? "<unknown>")
+                + "; master=" + (masterName ?? "<none>")
+                + "; actorExtensionCategory="
+                + hasActorExtensionCategory
+                + "; snappable=" + isSnappable);
+            return isSnappable;
+        }
+
+        internal static bool IsActorExtensionIdentity(
+            bool hasActorExtensionCategory,
+            string masterName, string shapeName)
+        {
+            return hasActorExtensionCategory
+                || HasMasterIdentity(masterName,
+                    ALPSConstants.alpsSIDMasterActorExtension)
+                || HasMasterIdentity(masterName,
+                    ALPSConstants.alpsSIDMasterActorGuardExtension)
+                || HasMasterIdentity(masterName,
+                    ALPSConstants.alpsSIDMasterActorMacroExtension)
+                || HasMasterIdentity(shapeName,
+                    ALPSConstants.alpsSIDMasterActorExtension)
+                || HasMasterIdentity(shapeName,
+                    ALPSConstants.alpsSIDMasterActorGuardExtension)
+                || HasMasterIdentity(shapeName,
+                    ALPSConstants.alpsSIDMasterActorMacroExtension);
+        }
+
+        private static bool HasMasterIdentity(
+            string candidate, string expectedMasterName)
+        {
+            if (string.IsNullOrWhiteSpace(candidate)) return false;
+
+            return string.Equals(candidate, expectedMasterName,
+                    StringComparison.OrdinalIgnoreCase)
+                || candidate.StartsWith(expectedMasterName + ".",
+                    StringComparison.OrdinalIgnoreCase);
         }
 
         protected override void setBackPage(DiagramPage newProperty)

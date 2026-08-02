@@ -113,6 +113,10 @@ Import `docs/[Test]_Vacation_Request.owl`.
   background actors. Exactly one confirmation dialog must open, and it must
   offer the geometrically nearest actor even when both shapes share the same
   X-coordinate.
+- Drop a `GuardExtension` directly onto a background subject without moving it
+  again. The SID `ShapeAdded` event must immediately evaluate the extension and
+  open the same single snap confirmation. The debug output must identify the
+  shape or master as `GuardExtension` and report `snappable=True`.
 - Accept the SID snap. The extension must align to the background actor and be
   5 mm wider and higher. Moving the background actor must update every
   extension snapped to it, not only the first one.

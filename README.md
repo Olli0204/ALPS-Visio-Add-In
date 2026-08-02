@@ -189,8 +189,11 @@ Snapping wird nur auf vollständig initialisierten ALPS/PASS-Seiten aktiviert:
 - Die Vordergrundseite muss über ihre `extends`-Eigenschaft eine andere SID-
   bzw. SBD-Seite erweitern. Der Controller setzt diese Seite zugleich als
   Visio-`BackPage`.
-- Das bewegte Shape benötigt die richtige Kategorie aus der ALPS/PASS-Schablone;
-  gewöhnliche Visio-Shapes werden ignoriert.
+- Das bewegte Shape benötigt die richtige Kategorie oder einen bekannten
+  Extension-Master aus der ALPS/PASS-Schablone; gewöhnliche Visio-Shapes werden
+  ignoriert. SID-Drops werden bereits über `ShapeAdded` geprüft, damit ein
+  direkt auf dem Hintergrundsubjekt abgelegtes Shape nicht erst erneut bewegt
+  werden muss.
 
 Die Seitenbeziehung kann über den Layer Explorer, die vorhandenen
 Eigenschaftsdialoge, die Schablonenmakros oder gültige ShapeSheet-Daten
@@ -226,7 +229,7 @@ wählen.
 
 | Verhalten | SID-Snapping | SBD-Snapping |
 | --- | --- | --- |
-| Vordergrund-Shape | Kategorie `ActorExtension` | Kategorie `StateExtension` |
+| Vordergrund-Shape | Kategorie `ActorExtension` oder Master `ActorExtension`, `GuardExtension`, `MakroExtension` | Kategorie `StateExtension` |
 | Referenz auf der Hintergrundseite | Kategorie `StandardActor` | Kategorie `alpsSBDstate` |
 | Explizite Auflösung | Shape-Name aus `extendedSubject` | `modelComponentID` aus `Prop.extends.Value` |
 | Persistierte Referenz | Hyperlink `extendedSubject` als `<Layer>/<ShapeNameU>` und `Prop.extends.Value` als `<ModelURI>#<ShapeNameU>` | `Prop.extends.Value` mit der `modelComponentID` des Referenzzustands |
@@ -235,8 +238,9 @@ wählen.
 
 ##### SID: Subjekt- und Verhaltensvererbung
 
-Ein `ActorExtension` kann nur auf einen `StandardActor` der erweiterten
-SID-Hintergrundseite snappen. Nach der Bestätigung schreibt der Handler:
+Ein Actor-, Guard- oder Makro-Extension-Shape kann nur auf einen
+`StandardActor` der erweiterten SID-Hintergrundseite snappen. Nach der
+Bestätigung schreibt der Handler:
 
 - den Navigations-Hyperlink `extendedSubject` mit Hintergrund-Layer und
   Shape-`NameU`;
