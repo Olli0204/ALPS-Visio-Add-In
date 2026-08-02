@@ -191,9 +191,11 @@ Snapping wird nur auf vollständig initialisierten ALPS/PASS-Seiten aktiviert:
   Visio-`BackPage`.
 - Das bewegte Shape benötigt die richtige Kategorie oder einen bekannten
   Extension-Master aus der ALPS/PASS-Schablone; gewöhnliche Visio-Shapes werden
-  ignoriert. SID-Drops werden bereits über `ShapeAdded` geprüft, damit ein
-  direkt auf dem Hintergrundsubjekt abgelegtes Shape nicht erst erneut bewegt
-  werden muss.
+  ignoriert. SID-Drops werden über `ShapeAdded` registriert und nach Abschluss
+  des Stencil-Makros geprüft. Dadurch kann das Makro zuerst die zugehörige
+  Verhaltensseite und Hyperlinks anlegen, während ein direkt auf dem
+  Hintergrundsubjekt abgelegtes Shape trotzdem nicht erneut bewegt werden
+  muss.
 
 Die Seitenbeziehung kann über den Layer Explorer, die vorhandenen
 Eigenschaftsdialoge, die Schablonenmakros oder gültige ShapeSheet-Daten

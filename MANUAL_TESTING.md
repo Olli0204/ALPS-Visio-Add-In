@@ -114,9 +114,12 @@ Import `docs/[Test]_Vacation_Request.owl`.
   offer the geometrically nearest actor even when both shapes share the same
   X-coordinate.
 - Drop a `GuardExtension` directly onto a background subject without moving it
-  again. The SID `ShapeAdded` event must immediately evaluate the extension and
-  open the same single snap confirmation. The debug output must identify the
-  shape or master as `GuardExtension` and report `snappable=True`.
+  again. Its stencil macro must finish creating and linking the GBD page before
+  the deferred SID snap check runs and opens the single snap confirmation. In
+  the debug output, `Creating SBDPageController` must precede `Running deferred
+  SID snap check`; the candidate must then report `GuardExtension` and
+  `snappable=True`. Pin changes raised by the macro must not open an earlier
+  confirmation dialog.
 - Accept the SID snap. The extension must align to the background actor and be
   5 mm wider and higher. Moving the background actor must update every
   extension snapped to it, not only the first one.

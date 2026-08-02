@@ -1,8 +1,10 @@
 ﻿using Microsoft.Office.Interop.Visio;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Windows.Threading;
 using VisioAddIn;
 
 
@@ -18,6 +20,8 @@ namespace VisioAddIn.Snapping
         private readonly ModelController modelController;
         private readonly SIDPage controlledSidPage;
         private readonly SidSnapHandler snapHandler;
+        private readonly Dispatcher eventDispatcher;
+        private readonly ISet<int> shapesWaitingForStencilMacro;
         private string modelUri;
         private bool disposed;
 
@@ -27,6 +31,8 @@ namespace VisioAddIn.Snapping
             this.addIn = addIn;
             this.modelController = modelController;
             this.modelUri = modelUri;
+            eventDispatcher = Dispatcher.CurrentDispatcher;
+            shapesWaitingForStencilMacro = new HashSet<int>();
 
             controlledSidPage = createSidPage();
 
@@ -69,12 +75,79 @@ namespace VisioAddIn.Snapping
 
         /// <summary>
         /// A stencil drop can already have its final PinX/PinY values before
-        /// Visio raises a CellChanged event. Evaluate newly added extension
-        /// shapes explicitly, matching the existing SBD controller behavior.
+        /// Visio raises a CellChanged event. Defer the check until the UI is
+        /// idle, because GuardExtension is assembled by a VBA drop macro that
+        /// must finish creating its GBD page and hyperlinks first.
         /// </summary>
         private void shapeAdded(Shape shape)
         {
-            snapHandler.checkForSnapping(shape);
+            if (shape == null || disposed
+                || eventDispatcher.HasShutdownStarted)
+            {
+                return;
+            }
+
+            int shapeId;
+            try
+            {
+                shapeId = shape.ID;
+            }
+            catch (COMException)
+            {
+                return;
+            }
+
+            if (!shapesWaitingForStencilMacro.Add(shapeId)) return;
+
+            Debug.Print("Queueing deferred SID snap check for shape ID "
+                + shapeId);
+            try
+            {
+                eventDispatcher.BeginInvoke(
+                    DispatcherPriority.ApplicationIdle,
+                    new Action(() =>
+                        checkAddedShapeAfterStencilMacro(shapeId)));
+            }
+            catch (InvalidOperationException)
+            {
+                shapesWaitingForStencilMacro.Remove(shapeId);
+            }
+        }
+
+        private void checkAddedShapeAfterStencilMacro(int shapeId)
+        {
+            if (disposed) return;
+
+            try
+            {
+                Shape shape = visioPage.Shapes.get_ItemFromID(shapeId);
+                shapesWaitingForStencilMacro.Remove(shapeId);
+                Debug.Print("Running deferred SID snap check for "
+                    + shape.NameU);
+                snapHandler.checkForSnapping(shape);
+            }
+            catch (COMException)
+            {
+                // The macro may have replaced or removed the temporary shape.
+            }
+            finally
+            {
+                shapesWaitingForStencilMacro.Remove(shapeId);
+            }
+        }
+
+        private bool isWaitingForStencilMacro(Shape shape)
+        {
+            if (shape == null) return false;
+
+            try
+            {
+                return shapesWaitingForStencilMacro.Contains(shape.ID);
+            }
+            catch (COMException)
+            {
+                return false;
+            }
         }
 
         /// <summary>
@@ -130,7 +203,8 @@ namespace VisioAddIn.Snapping
                     // alignment writes, so both events can be processed
                     // without a page-global coordinate cache suppressing a
                     // different shape at the same X position.
-                    if (extends != null)
+                    if (extends != null
+                        && !isWaitingForStencilMacro(cell.Shape))
                     {
                         snapHandler.checkForSnapping(cell.Shape);
                     }
