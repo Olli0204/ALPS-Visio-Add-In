@@ -40,5 +40,29 @@ namespace ALPS_Visio_AddIn_rewrite.Tests.Snapping
             Assert.IsTrue(ModelController.MatchesDocumentSidPageReference(
                 "Base SID", "Layer A", "SID_9", "Base SID", 9));
         }
+
+        [TestMethod]
+        public void MatchesSbdPageReference_UniversalPageName_ReturnsTrue()
+        {
+            Assert.IsTrue(ModelController.MatchesSbdPageReference(
+                "SID_1_FullySpecifiedSubject_2",
+                "SID_1_FullySpecifiedSubject_2", "Employee behavior"));
+        }
+
+        [TestMethod]
+        public void MatchesSbdPageReference_QuotedDisplayName_ReturnsTrue()
+        {
+            Assert.IsTrue(ModelController.MatchesSbdPageReference(
+                "\"Employee behavior\"",
+                "SID_1_FullySpecifiedSubject_2", "Employee behavior"));
+        }
+
+        [TestMethod]
+        public void MatchesSbdPageReference_UnrelatedPage_ReturnsFalse()
+        {
+            Assert.IsFalse(ModelController.MatchesSbdPageReference(
+                "SID_1_FullySpecifiedSubject_2",
+                "SID_1_FullySpecifiedSubject_9", "Manager behavior"));
+        }
     }
 }

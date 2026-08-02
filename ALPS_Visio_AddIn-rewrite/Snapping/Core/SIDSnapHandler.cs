@@ -45,6 +45,24 @@ namespace VisioAddIn.Snapping
         {
             if (shape == null) return false;
 
+            try
+            {
+                Shape containingShape = shape.ContainingShape;
+                if (containingShape != null
+                    && containingShape.Type
+                    == (short)VisShapeTypes.visTypeGroup)
+                {
+                    Debug.Print("Ignoring SID extension subshape: "
+                        + shape.NameU);
+                    return false;
+                }
+            }
+            catch (COMException)
+            {
+                // Continue with identity checks for top-level RCWs that do
+                // not expose ContainingShape reliably during a drop.
+            }
+
             bool hasActorExtensionCategory = false;
             string masterName = null;
             string shapeName = null;
@@ -389,7 +407,7 @@ namespace VisioAddIn.Snapping
         /// while the final shape lives on SID_5). The stable suffix beginning
         /// with the master identity still identifies the behavior uniquely.
         /// </summary>
-        private static SBDPage resolveLinkedSbdPage(
+        private SBDPage resolveLinkedSbdPage(
             SIDPage sidPage, Shape subjectShape)
         {
             if (sidPage == null || subjectShape == null) return null;
@@ -415,6 +433,11 @@ namespace VisioAddIn.Snapping
             SBDPage exact = sidPage.getSbdPage(linkedPageReference);
             if (exact != null) return exact;
 
+            SBDPage registered =
+                modelController.ensureLinkedSbdPageRegistered(
+                    sidPage, linkedPageReference);
+            if (registered != null) return registered;
+
             string shapeName = null;
             string masterName = null;
             try
@@ -426,6 +449,14 @@ namespace VisioAddIn.Snapping
             {
                 // A unique page is still a safe final fallback.
             }
+
+            // FullySpecifiedSubject behavior pages conventionally use the
+            // subject shape's NameU. This fallback also covers legacy stencil
+            // instances whose linkedSBD hyperlink is empty or initialized
+            // after the first controller scan.
+            registered = modelController.ensureLinkedSbdPageRegistered(
+                sidPage, shapeName);
+            if (registered != null) return registered;
 
             string identitySuffix = getMasterIdentitySuffix(
                 shapeName, masterName);

@@ -345,7 +345,84 @@ namespace VisioAddIn.Snapping
         public SBDPage getSbdPage(string nameU)
         {
             return (from model in models from sidPage in model.getSidPages() from sbdPage in sidPage.getSbdPages() select sbdPage)
-                .FirstOrDefault(sbdPage => sbdPage.getNameU().Equals(nameU));
+                .FirstOrDefault(sbdPage => MatchesSbdPageReference(
+                    nameU, sbdPage.getNameU(), null));
+        }
+
+        /// <summary>
+        /// Ensures that the SBD addressed by a subject's linkedSBD hyperlink
+        /// is registered. Some stencil-created behavior pages exist in the
+        /// document before their LinkedSubjectID row is complete, so the
+        /// generic page classifier can legitimately miss them at startup.
+        /// The subject hyperlink is an explicit association and can safely be
+        /// used to register that page with its owning SID on demand.
+        /// </summary>
+        internal SBDPage ensureLinkedSbdPageRegistered(
+            SIDPage owner, string pageReference)
+        {
+            if (owner == null || string.IsNullOrWhiteSpace(pageReference))
+                return null;
+
+            SBDPage existing = owner.getSbdPage(pageReference)
+                ?? getSbdPage(pageReference);
+            if (existing != null) return existing;
+
+            Document document = addIn.GetDrawingDocument();
+            if (document == null) return null;
+
+            Page linkedPage = document.Pages.Cast<Page>()
+                .FirstOrDefault(page => MatchesSbdPageReference(
+                    pageReference, page.NameU, page.Name));
+            if (linkedPage == null)
+            {
+                Debug.Print("The linked SBD page '" + pageReference
+                    + "' does not exist in the drawing document.");
+                return null;
+            }
+
+            SIDPageController ownerController = getSidPageController(owner);
+            if (ownerController == null) return null;
+
+            if (ownerController.addSbdPageAndCreateNewController(
+                    linkedPage, out SBDPageController sbdController))
+            {
+                sidPageToSbdController[owner].Add(sbdController);
+                if (possibleSidOrSbdPages.Remove(linkedPage.ID))
+                {
+                    linkedPage.CellChanged -=
+                        onCellChangedOnPossibleSidOrSbdPage;
+                }
+
+                Debug.Print("Registered linked SBD page on demand: "
+                    + linkedPage.NameU + " for " + owner.getNameU());
+                return sbdController.getSbdPage();
+            }
+
+            return owner.getSbdPage(linkedPage.NameU)
+                ?? getSbdPage(linkedPage.NameU);
+        }
+
+        internal static bool MatchesSbdPageReference(
+            string reference, string pageNameU, string pageName)
+        {
+            string normalizedReference = NormalizeSbdPageReference(
+                reference);
+            if (string.IsNullOrWhiteSpace(normalizedReference))
+                return false;
+
+            return string.Equals(normalizedReference,
+                       NormalizeSbdPageReference(pageNameU),
+                       StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalizedReference,
+                       NormalizeSbdPageReference(pageName),
+                       StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string NormalizeSbdPageReference(string value)
+        {
+            return string.IsNullOrWhiteSpace(value)
+                ? string.Empty
+                : value.Trim().Trim('\\', '"', '\'', '/', '#');
         }
 
         public SBDPageController getSbdPageController(DiagramPage toFind)

@@ -39,6 +39,24 @@ namespace VisioAddIn.Snapping
         {
             if (shape == null) return false;
 
+            try
+            {
+                Shape containingShape = shape.ContainingShape;
+                if (containingShape != null
+                    && containingShape.Type
+                    == (short)VisShapeTypes.visTypeGroup)
+                {
+                    Debug.Print("Ignoring StateReference subshape: "
+                        + shape.NameU);
+                    return false;
+                }
+            }
+            catch (COMException)
+            {
+                // Continue with identity checks for top-level RCWs that do
+                // not expose ContainingShape reliably during a drop.
+            }
+
             bool hasStateExtensionCategory = false;
             string masterName = null;
             string shapeName = null;
