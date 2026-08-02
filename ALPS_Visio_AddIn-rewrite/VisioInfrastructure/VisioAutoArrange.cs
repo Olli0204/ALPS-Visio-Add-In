@@ -48,6 +48,15 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
                 VisioMessageContainerPositioner.Reposition(page, direction);
             }
             VisioConnectorRebinder.Rebind(page, direction);
+            if (diagramKind == AlpsDiagramKind.Sid)
+            {
+                // Visio collapses two same-side endpoints onto the subject
+                // border when their coordinates align. Rebuild SID channels
+                // last so their explicit message corridors cannot be rerouted
+                // by a later layout or endpoint-binding operation.
+                VisioSidMessageConnectorRenderer
+                    .RouteAlongMessageCorridors(page, direction);
+            }
         }
 
         private static void ConfigureSpacing(Visio.Shape pageSheet,

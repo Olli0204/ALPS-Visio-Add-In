@@ -83,6 +83,10 @@ Import `docs/[Test]_Vacation_Request.owl`.
 - The target arrowhead of each native SID connector remains visible above the
   subject fill, while message containers and their list entries stay above the
   connector line so their labels remain unobstructed.
+- For vertically aligned subjects, neither native channel may coincide with a
+  left or right subject border. Each route must contain two horizontal legs and
+  one vertical leg through its left or right message corridor. The MessageBox
+  outline must remain visible after migrating a diagram from an older build.
 - Verify both directions independently: `Vacation Request` must connect
   Employee to Manager, while the combined `Approval`/`Denial` channel must
   connect Manager back to Employee. Both channels must remain attached and

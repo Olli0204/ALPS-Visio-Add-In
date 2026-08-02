@@ -13,6 +13,9 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
     /// </summary>
     internal static class VisioSidMessageConnectorRenderer
     {
+        private const double CorridorClearance = 0.55;
+        private const double CoordinateTolerance = 0.05;
+
         private static readonly string[] LineCells =
         {
             "LineWeight",
@@ -91,6 +94,74 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
             }
         }
 
+        /// <summary>
+        /// Replaces Visio's shortest-path result with an explicit orthogonal
+        /// route through the corridor occupied by the corresponding message
+        /// container.
+        /// </summary>
+        public static void RouteAlongMessageCorridors(
+            Visio.IVPage page, LayoutDirection direction)
+        {
+            if (page == null) throw new ArgumentNullException(nameof(page));
+
+            List<Visio.Shape> semanticConnectors =
+                new List<Visio.Shape>();
+            foreach (Visio.Shape shape in page.Shapes)
+            {
+                if (!IsVisualConnector(shape)
+                    && VisioConnectorRebinder.IsStencilSidMessageConnector(
+                        shape))
+                {
+                    semanticConnectors.Add(shape);
+                }
+            }
+
+            foreach (Visio.Shape semanticConnector in semanticConnectors)
+            {
+                if (!VisioConnectorRebinder.TryGetConnectedShapes(
+                    page, semanticConnector,
+                    out Visio.Shape source, out Visio.Shape target))
+                {
+                    continue;
+                }
+
+                HideSemanticConnector(page, semanticConnector);
+                Visio.Shape messageContainer = FindMessageContainer(
+                    page, semanticConnector.ID);
+                double[] points = BuildCorridorPoints(
+                    source, target, messageContainer, direction,
+                    out double sourceRelativeX,
+                    out double sourceRelativeY,
+                    out double targetRelativeX,
+                    out double targetRelativeY);
+
+                Visio.Shape previousVisual = FindVisualConnector(
+                    page, semanticConnector.ID);
+                Visio.Shape replacement = CreateCorridorConnector(
+                    page, semanticConnector, points);
+                if (replacement == null) continue;
+
+                MarkVisualConnector(
+                    replacement, semanticConnector, source, target);
+                if (!TryGlueCorridorConnector(
+                    replacement, source, target,
+                    sourceRelativeX, sourceRelativeY,
+                    targetRelativeX, targetRelativeY))
+                {
+                    TryDelete(replacement);
+                    continue;
+                }
+
+                TryBringToFront(replacement);
+                BringMessageContainerToFront(page, messageContainer);
+                if (previousVisual != null
+                    && previousVisual.ID != replacement.ID)
+                {
+                    TryDelete(previousVisual);
+                }
+            }
+        }
+
         internal static bool IsVisualConnector(Visio.Shape shape)
         {
             return GetUserFlag(
@@ -150,6 +221,149 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
             }
         }
 
+        private static Visio.Shape CreateCorridorConnector(
+            Visio.IVPage page, Visio.Shape semanticConnector,
+            double[] points)
+        {
+            try
+            {
+                Array coordinateArray = points;
+                Visio.Shape connector = page.DrawPolyline(
+                    ref coordinateArray,
+                    (short)Visio.VisDrawSplineFlags.visPolyline1D);
+                CopyLineFormatting(semanticConnector, connector);
+                VisioRouting.TrySetCell(
+                    connector, "ObjType", 2, false);
+                VisioRouting.TrySetCell(
+                    connector, "GlueType", 2, false);
+                VisioRouting.TrySetCell(
+                    connector, "ShapeRouteStyle", 1, false);
+                VisioRouting.TrySetCell(
+                    connector, "ConFixedCode", 2, false);
+                VisioRouting.TrySetCell(
+                    connector, "ConLineRouteExt", 1, false);
+                VisioRouting.TrySetCell(
+                    connector, "ConLineJumpCode", 0, false);
+                VisioRouting.TrySetCell(
+                    connector, "BeginArrow", 0, false);
+                return connector;
+            }
+            catch (COMException)
+            {
+                return null;
+            }
+        }
+
+        private static double[] BuildCorridorPoints(
+            Visio.Shape source, Visio.Shape target,
+            Visio.Shape messageContainer, LayoutDirection direction,
+            out double sourceRelativeX, out double sourceRelativeY,
+            out double targetRelativeX, out double targetRelativeY)
+        {
+            double sourceX = GetNumber(source, "PinX");
+            double sourceY = GetNumber(source, "PinY");
+            double sourceWidth = GetNumber(source, "Width");
+            double sourceHeight = GetNumber(source, "Height");
+            double targetX = GetNumber(target, "PinX");
+            double targetY = GetNumber(target, "PinY");
+            double targetWidth = GetNumber(target, "Width");
+            double targetHeight = GetNumber(target, "Height");
+            bool selfLoop = source.ID == target.ID;
+
+            if (direction == LayoutDirection.TopDown)
+            {
+                bool useLeft = !selfLoop
+                    && sourceY < targetY - CoordinateTolerance;
+                sourceRelativeX = useLeft ? 0d : 1d;
+                targetRelativeX = sourceRelativeX;
+                sourceRelativeY = selfLoop ? 0.65 : 0.5;
+                targetRelativeY = selfLoop ? 0.35 : 0.5;
+
+                double sourceEdgeX = sourceX
+                    + (useLeft ? -sourceWidth / 2d : sourceWidth / 2d);
+                double targetEdgeX = targetX
+                    + (useLeft ? -targetWidth / 2d : targetWidth / 2d);
+                double sourcePortY = sourceY
+                    + (sourceRelativeY - 0.5) * sourceHeight;
+                double targetPortY = targetY
+                    + (targetRelativeY - 0.5) * targetHeight;
+                double outsideX = useLeft
+                    ? Math.Min(sourceEdgeX, targetEdgeX)
+                        - CorridorClearance
+                    : Math.Max(sourceEdgeX, targetEdgeX)
+                        + CorridorClearance;
+                double corridorX = messageContainer == null
+                    ? outsideX
+                    : GetNumber(messageContainer, "PinX");
+                corridorX = useLeft
+                    ? Math.Min(corridorX, outsideX)
+                    : Math.Max(corridorX, outsideX);
+
+                return new[]
+                {
+                    sourceEdgeX, sourcePortY,
+                    corridorX, sourcePortY,
+                    corridorX, targetPortY,
+                    targetEdgeX, targetPortY
+                };
+            }
+
+            bool useBottom = !selfLoop
+                && sourceX > targetX + CoordinateTolerance;
+            sourceRelativeX = selfLoop ? 0.35 : 0.5;
+            targetRelativeX = selfLoop ? 0.65 : 0.5;
+            sourceRelativeY = useBottom ? 0d : 1d;
+            targetRelativeY = sourceRelativeY;
+
+            double sourceEdgeY = sourceY
+                + (useBottom ? -sourceHeight / 2d : sourceHeight / 2d);
+            double targetEdgeY = targetY
+                + (useBottom ? -targetHeight / 2d : targetHeight / 2d);
+            double sourcePortX = sourceX
+                + (sourceRelativeX - 0.5) * sourceWidth;
+            double targetPortX = targetX
+                + (targetRelativeX - 0.5) * targetWidth;
+            double outsideY = useBottom
+                ? Math.Min(sourceEdgeY, targetEdgeY) - CorridorClearance
+                : Math.Max(sourceEdgeY, targetEdgeY) + CorridorClearance;
+            double corridorY = messageContainer == null
+                ? outsideY
+                : GetNumber(messageContainer, "PinY");
+            corridorY = useBottom
+                ? Math.Min(corridorY, outsideY)
+                : Math.Max(corridorY, outsideY);
+
+            return new[]
+            {
+                sourcePortX, sourceEdgeY,
+                sourcePortX, corridorY,
+                targetPortX, corridorY,
+                targetPortX, targetEdgeY
+            };
+        }
+
+        private static bool TryGlueCorridorConnector(
+            Visio.Shape connector, Visio.Shape source, Visio.Shape target,
+            double sourceRelativeX, double sourceRelativeY,
+            double targetRelativeX, double targetRelativeY)
+        {
+            try
+            {
+                connector.CellsU["BeginX"].GlueToPos(
+                    source, sourceRelativeX, sourceRelativeY);
+                connector.CellsU["EndX"].GlueToPos(
+                    target, targetRelativeX, targetRelativeY);
+                VisioRouting.TrySetCell(
+                    connector, "ConFixedCode", 2, false);
+                return VisioConnectorRebinder.AreSemanticEndpointsBound(
+                    connector, source, target);
+            }
+            catch (COMException)
+            {
+                return false;
+            }
+        }
+
         private static void MarkVisualConnector(Visio.Shape visualConnector,
             Visio.Shape semanticConnector, Visio.Shape source,
             Visio.Shape target)
@@ -165,11 +379,90 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
                 Constants.UserCells.AutoArrangeTargetShapeId, target.ID);
         }
 
+        private static Visio.Shape FindMessageContainer(
+            Visio.IVPage page, int semanticConnectorId)
+        {
+            const string correspondingShapeCell =
+                "User.idOfCorrespondingShape";
+            foreach (Visio.Shape shape in page.Shapes)
+            {
+                try
+                {
+                    if (shape.OneD != 0
+                        || shape.CellExistsU[
+                            correspondingShapeCell, 0] == 0)
+                    {
+                        continue;
+                    }
+
+                    int correspondingId = Convert.ToInt32(Math.Round(
+                        shape.CellsU[correspondingShapeCell].Result[""]));
+                    if (correspondingId == semanticConnectorId)
+                        return shape;
+                }
+                catch (COMException)
+                {
+                    // Continue with the remaining page shapes.
+                }
+            }
+
+            return null;
+        }
+
+        private static void BringMessageContainerToFront(
+            Visio.IVPage page, Visio.Shape messageContainer)
+        {
+            if (messageContainer == null) return;
+
+            try
+            {
+                messageContainer.BringToFront();
+                Array memberIds = messageContainer.ContainerProperties
+                    .GetListMembers();
+                if (memberIds == null) return;
+
+                foreach (object memberIdValue in memberIds)
+                {
+                    int memberId = Convert.ToInt32(memberIdValue);
+                    if (memberId <= 0) continue;
+                    page.Shapes.get_ItemFromID(memberId).BringToFront();
+                }
+            }
+            catch (COMException)
+            {
+                // Routing stays valid on protected pages without z-ordering.
+            }
+        }
+
+        private static void TryBringToFront(Visio.Shape shape)
+        {
+            try
+            {
+                shape?.BringToFront();
+            }
+            catch (COMException)
+            {
+                // Endpoint binding is independent of z-order.
+            }
+        }
+
+        private static double GetNumber(
+            Visio.Shape shape, string cellName)
+        {
+            return VisioShapeSheet.GetNumber(shape, cellName);
+        }
+
         private static void HideSemanticConnector(
             Visio.IVPage page, Visio.Shape semanticConnector)
         {
             VisioShapeSheet.SetUserCell(semanticConnector,
                 Constants.UserCells.AutoArrangeSidSemanticShadow, 1);
+
+            // Older builds used line transparency as a fallback. The linked
+            // MessageBox inherits that value, which also removed its border.
+            // Restore the semantic line style and suppress only its geometry.
+            TrySetFormulaForce(
+                semanticConnector, "LineColorTrans", "0%");
 
             try
             {
@@ -219,10 +512,8 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
             }
             catch (COMException)
             {
-                // Continue with child shapes and the transparency fallback.
+                // Continue with child shapes; the hidden layer is independent.
             }
-
-            TrySetFormulaForce(shape, "LineColorTrans", "100%");
             try
             {
                 foreach (Visio.Shape child in shape.Shapes)
@@ -293,8 +584,8 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
             }
             catch (COMException)
             {
-                // Geometry*.NoShow and the hidden layer are independent
-                // suppression mechanisms; one failed cell is non-fatal.
+                // Geometry*.NoShow and the hidden layer remain independent;
+                // restoring one inherited style cell is non-fatal.
             }
         }
 
@@ -306,8 +597,8 @@ namespace ALPS_Visio_AddIn_rewrite.VisioInfrastructure
             }
             catch (COMException)
             {
-                // The semantic stencil remains visible when a protected page
-                // rejects cleanup, so the failed proxy cannot hide model data.
+                // Prevent a failed cleanup from leaving duplicate geometry.
+                HideGeometryRecursively(shape);
             }
         }
     }
