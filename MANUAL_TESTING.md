@@ -22,7 +22,11 @@ with the **ALPS/PASS ADDIN** Ribbon tab.
 - **ALPS Layer Editing** contains **Show layer Explorer**.
 - **OWL PASS Tools** contains **Import OWL**, the **Auto-Arrange** split button,
   and **Verify ALPS Models**.
-- **Model Conversion** contains **Convert PASS to BPMN**.
+- **Verify ALPS Models** is a split button with file selection plus the two
+  current-model roles **Aktuelles Modell als Spezifikation** and **Aktuelles
+  Modell als Implementierung**.
+- **Model Conversion** contains the **Convert PASS to BPMN** split button with
+  **OWL/RDF-Datei auswählen** and **Aktuelles Visio-Modell**.
 - **NLP PASS Checking** contains the **Check Model Naming** split button with
   **Check Model Naming**, **Retrain**, and **Provider Settings** menu entries.
 - Click **Verify ALPS Models**, cancel the first file dialog, and confirm that
@@ -218,6 +222,16 @@ implementation respectively.
   relationships appear as structured findings.
 - Repeat with a malformed OWL file and confirm that a single error dialog is
   shown and Visio remains responsive.
+- Save and activate a Visio drawing containing the specification model. Choose
+  **Aktuelles Modell als Spezifikation**, select the implementation fixture,
+  accept the stencil macro prompt if shown, and confirm that the generated OWL
+  path is used as the specification in the results dialog.
+- Repeat with the implementation drawing and **Aktuelles Modell als
+  Implementierung**. Confirm that the selected fixture remains the
+  specification and the generated OWL is the implementation.
+- Repeat once with an unsaved drawing and once with disabled SID-stencil
+  macros. Each case must show one actionable error and must not open a stale
+  verification result.
 
 ## 8. PASS to BPMN Conversion
 
@@ -250,6 +264,13 @@ implementation respectively.
   cancellation may show an error.
 - Select a malformed OWL/RDF file and confirm that one error dialog is shown
   and Visio remains usable.
+- Save and activate `Vacation Request.vsdx`, open the dropdown, and choose
+  **Aktuelles Visio-Modell**. Confirm that the SID-stencil reports an OWL file
+  named `Vacation_Request.owl` next to the drawing, the BPMN save dialog opens
+  afterwards, and the produced BPMN uses the current Visio coordinates.
+- With an unsaved drawing, choose **Aktuelles Visio-Modell** and confirm that a
+  single instruction to save the drawing is shown before any BPMN output
+  dialog opens.
 
 Record failures with the input OWL file, page name, action, exception text, and
 a before/after screenshot.

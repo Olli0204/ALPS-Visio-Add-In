@@ -39,8 +39,8 @@ BPMN-2.0-Export.
 | OWL PASS Tools | **Import OWL** | Importiert PASS-/ALPS-Modelle aus `.owl` oder `.rdf` nach Visio. |
 | OWL PASS Tools | **Auto-Arrange → Top-down** | Ordnet das aktive SID- oder SBD-Diagramm von oben nach unten an. |
 | OWL PASS Tools | **Auto-Arrange → Left-right** | Ordnet das aktive SID- oder SBD-Diagramm von links nach rechts an. |
-| OWL PASS Tools | **Verify ALPS Models** | Vergleicht eine abstrakte ALPS-Spezifikation mit einem implementierenden Modell. |
-| Model Conversion | **Convert PASS to BPMN** | Konvertiert ein PASS-/ALPS-OWL/RDF-Modell in eine BPMN-2.0-Datei mit Diagrammkoordinaten. |
+| OWL PASS Tools | **Verify ALPS Models** | Vergleicht eine abstrakte ALPS-Spezifikation mit einem implementierenden Modell; das Dropdown kann das aktuelle Visio-Modell als eine der beiden Rollen verwenden. |
+| Model Conversion | **Convert PASS to BPMN** | Konvertiert eine OWL/RDF-Datei oder über das Dropdown das aktuell geöffnete Visio-Modell in eine BPMN-2.0-Datei mit Diagrammkoordinaten. |
 | NLP PASS Checking | **Check Model Naming** | Bewertet unterstützte Elementnamen mit einem lokalen, eingebetteten Klassifikator. |
 | NLP PASS Checking | **Retrain** | Trainiert den lokalen Klassifikator erneut aus 680 mitgelieferten Beispielen. |
 | NLP PASS Checking | **Provider Settings** | Konfiguriert optionale Vorschlagsanbieter und deren Modelle. |
@@ -398,6 +398,13 @@ SID-Umfang:
 - mehrdeutige Mehrfachimplementierungen;
 - nicht auflösbare Korrespondenten, Sender und Empfänger.
 
+Der Hauptbereich des Split-Buttons behält die Dateiauswahl bei. Im Dropdown
+kann **Aktuelles Modell als Spezifikation** oder **Aktuelles Modell als
+Implementierung** gewählt werden. Das Add-in ruft dann den originalen
+`ALPS_RDFOWLExporter.createProcessRDFOWL` aus dem SID-Stencil auf und verwendet
+die erzeugte OWL-Datei unmittelbar für die ausgewählte Verifikationsrolle. Das
+zweite Modell wird weiterhin als OWL/RDF-Datei ausgewählt.
+
 Das Ergebnisfenster trennt Fehler, Warnungen und Scope-Hinweise. Ein
 tab-separierter Bericht inklusive beider Dateipfade kann in die Zwischenablage
 kopiert werden. Deterministische Regression-Fixtures liegen in
@@ -419,6 +426,15 @@ Converter erzeugt unter anderem:
 - BPMN-DI-Shapes und orthogonal geroutete Kanten;
 - kompakte Pool- und Prozesslayouts;
 - XML-konforme, eindeutige IDs und auflösbare Referenzen.
+
+Über **Aktuelles Visio-Modell** im Dropdown wird zuerst derselbe OWL-Export des
+SID-Stencils für die aktive Zeichnung ausgeführt. Dabei aktiviert das Add-in
+die minimale 2D-Visualisierung des Exporters, sodass vorhandene
+Visio-Koordinaten an den BPMN-Layoutpfad weitergegeben werden. Danach wird die
+OWL-Datei ohne erneute Eingabeauswahl an den BPMN-Converter übergeben. Die
+Zeichnung muss zuvor lokal gespeichert worden sein; der Stencil legt die
+OWL-Datei neben der Visio-Datei ab. Der Hauptbereich des Buttons öffnet
+weiterhin die vorhandene OWL/RDF-Dateiauswahl.
 
 Vor der Erfolgsmeldung validiert das Add-in das serialisierte Ergebnis. Es
 verwirft unter anderem ungültige oder doppelte IDs, unbekannte Referenzen,
@@ -559,6 +575,10 @@ COM-Operationen gehören nach `VisioInfrastructure/`; neue Tests in das separate
   formal verifiziert.
 - Der BPMN-Befehl konvertiert das erste lesbare Prozessmodell der ausgewählten
   Datei, nicht mehrere Modelle in eine gemeinsame BPMN-Datei.
+- Die direkte Weitergabe des aktuell geöffneten Modells an BPMN-Export oder
+  Verifikation benötigt eine lokal gespeicherte Zeichnung und aktivierte,
+  vertrauenswürdige VBA-Makros für den SID-Stencil. Reine SharePoint-/Webpfade
+  müssen zuerst lokal synchronisiert oder gespeichert werden.
 - Die Qualität der optionalen Namensvorschläge hängt vom gewählten externen
   Anbieter und Modell ab; der lokale Klassifikator bleibt die einzige
   Offline-Komponente dieses Vorschlagspfads.

@@ -90,15 +90,8 @@ namespace ALPS_Visio_AddIn_rewrite
             RibbonSplitButton autoArrangeButton = CreateAutoArrangeButton();
             owlGroup.Items.Add(autoArrangeButton);
 
-            RibbonButton verificationButton = this.Factory.CreateRibbonButton();
-            verificationButton.Name = "verificationButton";
-            verificationButton.Label = "Verify ALPS Models";
-            verificationButton.SuperTip = "Select an abstract ALPS specification and an implementing OWL/RDF model. The add-in checks the SID implementation relationships, fully specified subjects, and communication restrictions supported by the ALPS verification thesis prototype.";
-            verificationButton.OfficeImageId = "AdpDiagramArrangeTables";
-            verificationButton.ShowImage = true;
-            verificationButton.ControlSize = RibbonControlSize.RibbonControlSizeLarge;
-            verificationButton.Click += new RibbonControlEventHandler(
-                this.RunAlpsVerification);
+            RibbonSplitButton verificationButton =
+                CreateVerificationButton();
             owlGroup.Items.Add(verificationButton);
 
             RibbonGroup conversionGroup = this.Factory.CreateRibbonGroup();
@@ -106,20 +99,8 @@ namespace ALPS_Visio_AddIn_rewrite
             conversionGroup.Label = "Model Conversion";
             alpsTab.Groups.Add(conversionGroup);
 
-            RibbonButton passToBpmnButton =
-                this.Factory.CreateRibbonButton();
-            passToBpmnButton.Name = "passToBpmnButton";
-            passToBpmnButton.Label = "Convert PASS to BPMN";
-            passToBpmnButton.ScreenTip = "Convert a PASS OWL model to BPMN";
-            passToBpmnButton.SuperTip =
-                "Select a PASS or ALPS OWL file and save the converted "
-                + "model as a BPMN 2.0 file.";
-            passToBpmnButton.OfficeImageId = "FileSaveAs";
-            passToBpmnButton.ShowImage = true;
-            passToBpmnButton.ControlSize =
-                RibbonControlSize.RibbonControlSizeLarge;
-            passToBpmnButton.Click += new RibbonControlEventHandler(
-                this.ConvertPassToBpmn);
+            RibbonSplitButton passToBpmnButton =
+                CreateBpmnConversionButton();
             conversionGroup.Items.Add(passToBpmnButton);
 
             RibbonGroup nlpGroup = this.Factory.CreateRibbonGroup();
@@ -219,6 +200,105 @@ namespace ALPS_Visio_AddIn_rewrite
             return button;
         }
 
+        private RibbonSplitButton CreateVerificationButton()
+        {
+            RibbonSplitButton button =
+                this.Factory.CreateRibbonSplitButton();
+            button.Name = "verificationButton";
+            button.Label = "Verify ALPS Models";
+            button.ScreenTip = "Verify an ALPS implementation";
+            button.SuperTip = "Compare an abstract ALPS specification "
+                + "with an implementation. Use the menu to export and "
+                + "verify the currently open Visio model directly.";
+            button.OfficeImageId = "AdpDiagramArrangeTables";
+            button.ShowLabel = true;
+            button.ControlSize =
+                RibbonControlSize.RibbonControlSizeLarge;
+            button.ItemSize =
+                RibbonControlSize.RibbonControlSizeRegular;
+            button.Click += new RibbonControlEventHandler(
+                this.RunAlpsVerification);
+
+            RibbonButton filesButton =
+                this.Factory.CreateRibbonButton();
+            filesButton.Name = "verificationFilesButton";
+            filesButton.Label = "OWL/RDF-Dateien auswählen";
+            filesButton.ScreenTip =
+                "Spezifikation und Implementierung aus Dateien prüfen";
+            filesButton.Click += new RibbonControlEventHandler(
+                this.RunAlpsVerification);
+            button.Items.Add(filesButton);
+
+            RibbonButton currentImplementationButton =
+                this.Factory.CreateRibbonButton();
+            currentImplementationButton.Name =
+                "verificationCurrentImplementationButton";
+            currentImplementationButton.Label =
+                "Aktuelles Modell als Implementierung";
+            currentImplementationButton.ScreenTip =
+                "Aktuelle Visio-Zeichnung per OWL-Makro exportieren";
+            currentImplementationButton.Click +=
+                new RibbonControlEventHandler(
+                    this.RunAlpsVerificationWithCurrentImplementation);
+            button.Items.Add(currentImplementationButton);
+
+            RibbonButton currentSpecificationButton =
+                this.Factory.CreateRibbonButton();
+            currentSpecificationButton.Name =
+                "verificationCurrentSpecificationButton";
+            currentSpecificationButton.Label =
+                "Aktuelles Modell als Spezifikation";
+            currentSpecificationButton.ScreenTip =
+                "Aktuelle Visio-Zeichnung per OWL-Makro exportieren";
+            currentSpecificationButton.Click +=
+                new RibbonControlEventHandler(
+                    this.RunAlpsVerificationWithCurrentSpecification);
+            button.Items.Add(currentSpecificationButton);
+
+            return button;
+        }
+
+        private RibbonSplitButton CreateBpmnConversionButton()
+        {
+            RibbonSplitButton button =
+                this.Factory.CreateRibbonSplitButton();
+            button.Name = "passToBpmnButton";
+            button.Label = "Convert PASS to BPMN";
+            button.ScreenTip = "Convert a PASS model to BPMN";
+            button.SuperTip = "Convert a selected PASS/ALPS OWL file or "
+                + "export the currently open Visio model through the SID "
+                + "stencil's OWL exporter before converting it.";
+            button.OfficeImageId = "FileSaveAs";
+            button.ShowLabel = true;
+            button.ControlSize =
+                RibbonControlSize.RibbonControlSizeLarge;
+            button.ItemSize =
+                RibbonControlSize.RibbonControlSizeRegular;
+            button.Click += new RibbonControlEventHandler(
+                this.ConvertPassToBpmn);
+
+            RibbonButton fileButton =
+                this.Factory.CreateRibbonButton();
+            fileButton.Name = "passToBpmnFileButton";
+            fileButton.Label = "OWL/RDF-Datei auswählen";
+            fileButton.Click += new RibbonControlEventHandler(
+                this.ConvertPassToBpmn);
+            button.Items.Add(fileButton);
+
+            RibbonButton currentModelButton =
+                this.Factory.CreateRibbonButton();
+            currentModelButton.Name = "passToBpmnCurrentModelButton";
+            currentModelButton.Label = "Aktuelles Visio-Modell";
+            currentModelButton.ScreenTip =
+                "Aktuelle Zeichnung per OWL-Makro exportieren und "
+                + "nach BPMN konvertieren";
+            currentModelButton.Click += new RibbonControlEventHandler(
+                this.ConvertCurrentVisioModelToBpmn);
+            button.Items.Add(currentModelButton);
+
+            return button;
+        }
+
         /// <summary>
         /// Open file dialog and import OWL file.
         /// </summary>
@@ -286,6 +366,20 @@ namespace ALPS_Visio_AddIn_rewrite
             verificationController.Run();
         }
 
+        private void RunAlpsVerificationWithCurrentImplementation(
+            object sender, RibbonControlEventArgs e)
+        {
+            verificationController
+                .RunWithCurrentModelAsImplementation();
+        }
+
+        private void RunAlpsVerificationWithCurrentSpecification(
+            object sender, RibbonControlEventArgs e)
+        {
+            verificationController
+                .RunWithCurrentModelAsSpecification();
+        }
+
         private async void CheckModelNaming(
             object sender, RibbonControlEventArgs e)
         {
@@ -308,6 +402,12 @@ namespace ALPS_Visio_AddIn_rewrite
             object sender, RibbonControlEventArgs e)
         {
             bpmnConversionController.Run();
+        }
+
+        private void ConvertCurrentVisioModelToBpmn(
+            object sender, RibbonControlEventArgs e)
+        {
+            bpmnConversionController.RunFromCurrentVisioModel();
         }
     }
 }

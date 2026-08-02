@@ -1,6 +1,7 @@
 using alps.net.api.parsing;
 using alps.net.api.StandardPASS;
 using ALPS_Visio_AddIn_rewrite.Importing;
+using ALPS_Visio_AddIn_rewrite.VisioInfrastructure;
 using PassBpmnConverter.Bpmn;
 using PassBpmnConverter.Conversion;
 using System;
@@ -19,13 +20,51 @@ namespace ALPS_Visio_AddIn_rewrite.BpmnConversion
     /// </summary>
     internal sealed class BpmnConversionController
     {
+        private readonly Func<string> exportCurrentModel;
+
+        public BpmnConversionController()
+            : this(() =>
+                new CurrentVisioModelOwlExporter().Export())
+        {
+        }
+
+        internal BpmnConversionController(
+            Func<string> exportCurrentModel)
+        {
+            this.exportCurrentModel = exportCurrentModel
+                ?? throw new ArgumentNullException(
+                    nameof(exportCurrentModel));
+        }
+
         public void Run()
         {
-            string? inputFilePath = SelectInputFile();
-            if (inputFilePath == null) return;
+            Run(SelectInputFile);
+        }
+
+        public void RunFromCurrentVisioModel()
+        {
+            Run(() => exportCurrentModel());
+        }
+
+        private static void Run(Func<string?> inputFileProvider)
+        {
+            string? inputFilePath;
+            try
+            {
+                inputFilePath = inputFileProvider();
+            }
+            catch (Exception exception)
+            {
+                ShowError(exception);
+                return;
+            }
+
+            if (inputFilePath == null)
+                return;
 
             string? outputFilePath = SelectOutputFile(inputFilePath);
-            if (outputFilePath == null) return;
+            if (outputFilePath == null)
+                return;
 
             Cursor previousCursor = Cursor.Current;
             try
@@ -42,17 +81,22 @@ namespace ALPS_Visio_AddIn_rewrite.BpmnConversion
             }
             catch (Exception exception)
             {
-                MessageBox.Show(
-                    "Das PASS-Modell konnte nicht nach BPMN konvertiert werden.\n\n"
-                    + exception.Message,
-                    "PASS nach BPMN",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
+                ShowError(exception);
             }
             finally
             {
                 Cursor.Current = previousCursor;
             }
+        }
+
+        private static void ShowError(Exception exception)
+        {
+            MessageBox.Show(
+                "Das PASS-Modell konnte nicht nach BPMN konvertiert werden.\n\n"
+                + exception.Message,
+                "PASS nach BPMN",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
         }
 
         internal static void Convert(

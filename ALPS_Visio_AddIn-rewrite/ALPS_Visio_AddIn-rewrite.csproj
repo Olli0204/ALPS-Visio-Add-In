@@ -351,6 +351,7 @@
     <Compile Include="VisioInfrastructure\VisioSidMessageConnectorRenderer.cs" />
     <Compile Include="VisioInfrastructure\VisioStencilRepository.cs" />
     <Compile Include="VisioInfrastructure\VisioStencilSession.cs" />
+    <Compile Include="VisioInfrastructure\CurrentVisioModelOwlExporter.cs" />
     <Compile Include="VisioHelper.cs" />
     <Compile Include="Snapping\Core\DiagramPage.cs" />
     <Compile Include="Snapping\Core\DiagramPageClassifier.cs" />
