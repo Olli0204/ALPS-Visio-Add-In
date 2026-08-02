@@ -45,7 +45,15 @@ namespace ALPS_Visio_AddIn_rewrite
             // Set the current active document
             Visio.Document document = Application.ActiveDocument;
             if (IsDrawingDocument(document))
+            {
                 activeDoc = document;
+                // VSTO can start after Visio has already opened the drawing.
+                // In that case neither DocumentOpened nor WindowActivated
+                // rebuilds the model, so existing base layers such as SID_1
+                // would be missing when a stencil macro creates SID_5 as an
+                // extension. Register every existing page immediately.
+                modelManager.updateWholeController(document.Pages);
+            }
         }
 
         private void ThisAddIn_Shutdown(object sender, System.EventArgs e)

@@ -31,6 +31,11 @@ with the **ALPS/PASS ADDIN** Ribbon tab.
 
 ## 3. Lifecycle and Stencils
 
+- Start the Add-in while a drawing containing an existing base SID layer such
+  as `SID_1` is already open. The startup log must create its
+  `SIDPageController` immediately. Drop a `GuardExtension` that creates a new
+  extending SID page; no `Eingabe \"SID_1\" wurde nicht gefunden` dialog may
+  appear.
 - Create a blank document, open another document, switch between windows, and
   close one document. No exception dialog should appear.
 - Import an OWL file. Exactly one macro security dialog should appear: accept it
