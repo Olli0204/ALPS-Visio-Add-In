@@ -16,7 +16,7 @@ namespace ALPS_Visio_AddIn_rewrite
             this.RibbonType = "Microsoft.Visio.Drawing";
 
             RibbonTab alpsTab = this.Factory.CreateRibbonTab();
-            alpsTab.Label = "ALPS/PASS ADDIN";
+            alpsTab.Label = "VisioALPS Claude";
             this.Tabs.Add(alpsTab);
 
             // Group order and labels mirror the original add-in (upstream/main);

@@ -54,8 +54,8 @@
     <ProductName>ALPS_Visio_AddIn-rewrite</ProductName>
     <PublisherName />
     <SupportUrl />
-    <FriendlyName>ALPS_Visio_AddIn-rewrite</FriendlyName>
-    <OfficeApplicationDescription />
+    <FriendlyName>VisioALPS AddIn Claude</FriendlyName>
+    <OfficeApplicationDescription>ALPS/PASS-Modellierung für Visio — Refactoring und Ausarbeitung mit Claude (Anthropic).</OfficeApplicationDescription>
     <LoadBehavior>3</LoadBehavior>
   </PropertyGroup>
   <ItemGroup>
