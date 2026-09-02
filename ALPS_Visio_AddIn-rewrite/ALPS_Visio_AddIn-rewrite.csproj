@@ -24,11 +24,16 @@
     <ProjectTypeGuids>{BAA0C2D2-18E2-41B9-852F-F413020CAA33};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{3502551C-12CA-4513-8F40-D23B97E2C764}</ProjectGuid>
+    <!-- Eigene Identitaet fuer die Claude-Ausarbeitung (Ä94): neuer AssemblyName +
+         neue ProjectGuid, damit sie PARALLEL zu einer anderen Ausarbeitung desselben
+         Ursprungs installierbar ist (eigener Registry-Schluessel unter
+         HKCU\...\Visio\Addins\, eigene Manifest-Dateien, fuer ClickOnce eine andere
+         Solution). Ordner-, Datei- und Namespace-Namen bleiben bewusst unveraendert. -->
+    <ProjectGuid>{1EAC7546-DD80-4A76-9424-1E60C6607ECE}</ProjectGuid>
     <OutputType>Library</OutputType>
     <NoStandardLibraries>false</NoStandardLibraries>
     <RootNamespace>ALPS_Visio_AddIn_rewrite</RootNamespace>
-    <AssemblyName>ALPS_Visio_AddIn-rewrite</AssemblyName>
+    <AssemblyName>ALPS_Visio_AddIn-claude</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <!-- C# 12: der portierte pass-bpmn-converter (BpmnConverter/) nutzt file-scoped
          Namespaces, required-Member und Collection-Expressions. Reine Compiler-Features
@@ -51,7 +56,7 @@
     <UpdateEnabled>true</UpdateEnabled>
     <UpdateInterval>7</UpdateInterval>
     <UpdateIntervalUnits>days</UpdateIntervalUnits>
-    <ProductName>ALPS_Visio_AddIn-rewrite</ProductName>
+    <ProductName>VisioALPS AddIn Claude</ProductName>
     <PublisherName />
     <SupportUrl />
     <FriendlyName>VisioALPS AddIn Claude</FriendlyName>
