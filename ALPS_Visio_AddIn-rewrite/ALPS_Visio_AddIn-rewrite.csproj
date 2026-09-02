@@ -44,11 +44,11 @@
     <UpdateInterval>7</UpdateInterval>
     <UpdateIntervalUnits>days</UpdateIntervalUnits>
     <IsWebBootstrapper>False</IsWebBootstrapper>
-    <ProductName>ALPS_Visio_AddIn-rewrite</ProductName>
+    <ProductName>Visio ALPS Add-In Codex</ProductName>
     <PublisherName />
     <SupportUrl />
-    <FriendlyName>ALPS_Visio_AddIn-rewrite</FriendlyName>
-    <OfficeApplicationDescription />
+    <FriendlyName>Visio ALPS Add-In Codex</FriendlyName>
+    <OfficeApplicationDescription>Mit Codex erstellte Ausarbeitung des ALPS Visio Add-Ins.</OfficeApplicationDescription>
     <LoadBehavior>3</LoadBehavior>
   </PropertyGroup>
   <ItemGroup>

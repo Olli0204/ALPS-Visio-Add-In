@@ -6,11 +6,11 @@ using System.Security;
 // Allgemeine Informationen über eine Assembly werden über folgende 
 // Attribute gesteuert. Ändern Sie diese Attributwerte, um die Informationen zu ändern,
 // die einer Assembly zugeordnet sind.
-[assembly: AssemblyTitle("ALPS_Visio_AddIn-rewrite")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyTitle("Visio ALPS Add-In Codex")]
+[assembly: AssemblyDescription("Mit Codex erstellte Ausarbeitung des ALPS Visio Add-Ins.")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("ALPS_Visio_AddIn-rewrite")]
+[assembly: AssemblyProduct("Visio ALPS Add-In Codex")]
 [assembly: AssemblyCopyright("Copyright ©  2025")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
