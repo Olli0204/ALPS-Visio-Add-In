@@ -104,6 +104,15 @@ namespace ALPS_Visio_AddIn_rewrite
                 throw new InvalidOperationException(
                     "Das aktive Dokument enthält keine SID-Seite mit Modell-URI (Prop.modelURI) — kein ALPS/PASS-Modell.");
 
+            // Die erste Seite wird Basis-Layer. Nicht die Dokument-Reihenfolge nehmen: Visio stellt
+            // Hintergrundseiten — also gerade die Basis-Ebene — immer ans Ende. Dann wurde z. B.
+            // eine Guard-Ebene zur Basis, das Basis-Modell war leer und die BPMN-Anzeige meldete
+            // "kein Diagramm-Layout". Basis = Ebene ohne extends, danach nach Prioritaet.
+            sidPages = sidPages
+                .OrderBy(page => string.IsNullOrWhiteSpace(GetProp(page.PageSheet, "extends")) ? 0 : 1)
+                .ThenBy(page => int.TryParse(GetProp(page.PageSheet, Constants.Properties.PriorityOrderNumber), out int priority) ? priority : int.MaxValue)
+                .ToList();
+
             ModelName = doc.Name.Replace(" ", "_").Replace(".vsdx", "").Replace(".vsdm", "");
 
             var model = new PASSProcessModel(modelUri, ModelName);
