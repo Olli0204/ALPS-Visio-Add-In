@@ -86,6 +86,9 @@ namespace ALPS_Visio_AddIn_rewrite
             // already exists (= 0) when the stencil's VBA initializes. Otherwise the stencil
             // runs its "Willkommen"-routine, which on close renames the freshly created SID
             // page back to the Visio default ("Zeichenblatt-2").
+            // Ohne offenes Dokument ist ActiveDocument null — dann eine neue Zeichnung anlegen.
+            if (Globals.ThisAddIn.Application.Documents.Count == 0)
+                Globals.ThisAddIn.Application.Documents.Add("");
             VH.setVBAListenersRunning(false);
 
             // open stencils to reduce load time

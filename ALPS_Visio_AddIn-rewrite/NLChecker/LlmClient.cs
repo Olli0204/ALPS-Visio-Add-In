@@ -40,6 +40,18 @@ namespace ALPS_Visio_AddIn_rewrite.NLChecker
         }
 
         /// <summary>
+        /// Fehlertext aus einer API-Antwort: OpenAI/Anthropic liefern {"error":{"message":…}},
+        /// LM Studio/Ollama dagegen {"error":"…"} — ein String-Indexer darauf wuerde werfen.
+        /// </summary>
+        private static string ErrorText(JObject json)
+        {
+            JToken error = json["error"];
+            if (error is JObject errorObj)
+                return (errorObj["message"] ?? errorObj).ToString();
+            return error?.ToString() ?? "<ohne Meldung>";
+        }
+
+        /// <summary>
         /// Fuehrt den HTTP-Aufruf aus und uebersetzt Netzwerkfehler in verstaendliche
         /// Meldungen: HttpRequestException traegt die eigentliche Ursache (DNS,
         /// Verbindung, TLS) unsichtbar in der InnerException; bei UniGPT kommt der
@@ -49,8 +61,8 @@ namespace ALPS_Visio_AddIn_rewrite.NLChecker
         {
             try
             {
-                var response = await _httpClient.SendAsync(request);
-                return await response.Content.ReadAsStringAsync();
+                using (var response = await _httpClient.SendAsync(request))
+                    return await response.Content.ReadAsStringAsync();
             }
             catch (HttpRequestException ex)
             {
@@ -275,9 +287,9 @@ namespace ALPS_Visio_AddIn_rewrite.NLChecker
                 if (parsed is JObject json)
                 {
                     if (json["error"] != null)
-                        throw new Exception("API Error (" + provider + "): " + json["error"]["message"]);
+                        throw new Exception("API Error (" + provider + "): " + ErrorText(json));
                     if (json["type"]?.ToString() == "error")
-                        throw new Exception("API Error (" + provider + "): " + json["error"]?["message"]);
+                        throw new Exception("API Error (" + provider + "): " + ErrorText(json));
                     data = json["data"] ?? json["models"] ?? new JArray();
                 }
 
@@ -361,9 +373,11 @@ namespace ALPS_Visio_AddIn_rewrite.NLChecker
 
                 JObject json = ParseResponse(responseString, _provider);
                 if (json["error"] != null)
-                    throw new Exception("API Error (" + _provider + "): " + json["error"]["message"]);
+                    throw new Exception("API Error (" + _provider + "): " + ErrorText(json));
 
-                string content = json["choices"]?[0]?["message"]?["content"]?.ToString();
+                string content = json["choices"] is JArray choices && choices.Count > 0
+                    ? choices[0]?["message"]?["content"]?.ToString()
+                    : null;
                 if (string.IsNullOrWhiteSpace(content))
                     throw new Exception("Leere Antwort von " + _provider + ".");
                 return content.Trim();
@@ -398,7 +412,7 @@ namespace ALPS_Visio_AddIn_rewrite.NLChecker
 
                 JObject json = ParseResponse(responseString, _provider);
                 if (json["type"]?.ToString() == "error")
-                    throw new Exception("API Error (" + _provider + "): " + json["error"]?["message"]);
+                    throw new Exception("API Error (" + _provider + "): " + ErrorText(json));
 
                 var sb = new StringBuilder();
                 foreach (JToken block in json["content"] ?? new JArray())

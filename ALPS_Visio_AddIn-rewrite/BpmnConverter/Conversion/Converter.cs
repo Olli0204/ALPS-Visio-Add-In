@@ -297,7 +297,7 @@ public class Converter
             if (!(edge.Transition is IReceiveTransition receiveTransition && edge.Source.State is IGuardReceiveState))
                 continue;
 
-            IMessageSpecification? messageSpecification = receiveTransition.getTransitionCondition().getReceptionOfMessage();
+            IMessageSpecification? messageSpecification = receiveTransition.getTransitionCondition()?.getReceptionOfMessage();
 
             INode exclusiveGatewayNode = new Node()
             {
@@ -462,7 +462,7 @@ public class Converter
             if (!(edge.Transition is ISendTransition sendTransition))
                 continue;
 
-            IMessageSpecification messageSpecification = sendTransition.getTransitionCondition().getRequiresSendingOfMessage();
+            IMessageSpecification? messageSpecification = sendTransition.getTransitionCondition()?.getRequiresSendingOfMessage();
 
             INode sendTaskNode = new Node()
             {
@@ -487,7 +487,7 @@ public class Converter
                     continue;
             }
 
-            IMessageSpecification messageSpecification = receiveTransition.getTransitionCondition().getReceptionOfMessage();
+            IMessageSpecification? messageSpecification = receiveTransition.getTransitionCondition()?.getReceptionOfMessage();
 
             INode receiveTaskNode = new Node()
             {

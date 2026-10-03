@@ -67,9 +67,19 @@ namespace ALPS_Visio_AddIn_rewrite
         /// <param name="window">The active window, not used by this function</param>
         private void Application_WindowActivated(Window window)
         {
+            // Kein Dokument offen (z. B. nach dem Schliessen des letzten) — nichts zu tun.
+            Visio.Document current = Application.ActiveDocument;
+            if (current == null) return;
+
+            // activeDoc kann null sein (Visio ohne Dokument gestartet) oder auf ein bereits
+            // geschlossenes Dokument zeigen — dann wirft FullName eine COMException.
+            string previous;
+            try { previous = activeDoc?.FullName; }
+            catch (System.Runtime.InteropServices.COMException) { previous = null; }
+
             // If no window change, return
-            if (activeDoc.FullName.Equals(Application.ActiveDocument.FullName)) return;
-            activeDoc = Application.ActiveDocument;
+            if (current.FullName.Equals(previous)) return;
+            activeDoc = current;
             reset();
         }
 
@@ -98,8 +108,9 @@ namespace ALPS_Visio_AddIn_rewrite
 
         internal void updateClicked()
         {
+            if (Application.ActiveDocument == null) return;
             modelManager.updateWholeController(Application.ActiveDocument.Pages);
-            layerExplorer.displayTreeView(modelManager.getTreeView());
+            layerExplorer?.displayTreeView(modelManager.getTreeView());
         }
 
         internal ModelController getModelController()
@@ -112,7 +123,7 @@ namespace ALPS_Visio_AddIn_rewrite
             modelManager.updateWholeController(Application.ActiveDocument.Pages);
             //if (changedPage.)
             modelManager.updateBackground(extends, changedPage);
-            layerExplorer.displayTreeView(modelManager.getTreeView());
+            layerExplorer?.displayTreeView(modelManager.getTreeView());
         }
 
         internal void showDirectoryClicked()
@@ -127,6 +138,8 @@ namespace ALPS_Visio_AddIn_rewrite
         }
         private void reset()
         {
+            if (Application.ActiveDocument == null) return;
+            this.modelManager?.detach();
             this.modelManager = new ModelController(this);
             modelManager.updateWholeController(Application.ActiveDocument.Pages);
             layerExplorer?.displayTreeView(modelManager.getTreeView());

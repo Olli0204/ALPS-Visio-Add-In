@@ -187,6 +187,9 @@ namespace ALPS_Visio_AddIn_rewrite.Verification
             // das Umbenennen der SID-Seite durch die Willkommens-Routine), SID-Stencil
             // oeffnen (Master + EventDrop-Logik der Message-Box), nur ScreenUpdating aus
             // (bewusst NICHT EventsEnabled/DeferRecalc — siehe OWLImporter).
+            // Ohne offenes Dokument ist ActiveDocument null — dann eine neue Zeichnung anlegen.
+            if (app.Documents.Count == 0)
+                app.Documents.Add("");
             VH.setVBAListenersRunning(false);
             VH.openStencil(VH.VisioStencils.SID_STENCIL);
 

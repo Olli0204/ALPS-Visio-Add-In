@@ -137,7 +137,7 @@ namespace ALPS_Visio_AddIn_rewrite
 
                 if (oldExtends == null) return;
                 SIDPageController oldExtendsC = getSidPageController(oldExtends);
-                if (extendingC == null || !oldExtendsC.getNameU().Equals(extendingC.getNameU()))
+                if (oldExtendsC != null && (extendingC == null || !oldExtendsC.getNameU().Equals(extendingC.getNameU())))
                     oldExtendsC.setNotExtended();
             }
             else
@@ -246,6 +246,7 @@ namespace ALPS_Visio_AddIn_rewrite
         /// </summary>
         internal void updateWholeController(Pages pages)
         {
+            detachSbdControllers();
             models = new HashSet<IVisioProcessModel>();
             this.modelToSidController = new Dictionary<IVisioProcessModel, ISet<SIDPageController>>();
             this.sidPageToSbdController = new Dictionary<SIDPage, ISet<SBDPageController>>();
@@ -256,6 +257,26 @@ namespace ALPS_Visio_AddIn_rewrite
                 registerNewSbdPage(page);
             foreach (var sidPageC in modelToSidController.SelectMany(pair => pair.Value))
                 sidPageC.updateExtends();
+        }
+
+        private void detachSbdControllers()
+        {
+            foreach (SBDPageController controller in sidPageToSbdController.Values.SelectMany(set => set))
+                controller.detach();
+        }
+
+        /// <summary>
+        /// Meldet alle Visio-Events dieses Controllers ab, bevor ThisAddIn.reset() ihn ersetzt.
+        /// </summary>
+        internal void detach()
+        {
+            detachSbdControllers();
+            foreach (Page page in possibleSidOrSbdPages.Values)
+            {
+                try { page.CellChanged -= onCellChangedOnPossibleSidOrSbdPage; }
+                catch (System.Runtime.InteropServices.COMException) { /* Seite bereits geschlossen */ }
+            }
+            possibleSidOrSbdPages.Clear();
         }
 
         public int getCurrentPriority(string modelUri)

@@ -81,8 +81,12 @@ namespace ALPS_Visio_AddIn_rewrite
 
             try
             {
-                Shape visioRectShape = visioPage.Drop(visioRectMaster, 1, 1);
-                visioPage.Layers.ItemU["BackgroundSeparatorLayer"].CellsC[7].Formula = "1";
+                visioPage.Drop(visioRectMaster, 1, 1);
+                // Den Trenn-Layer sperren, damit die Hintergrund-Flaeche nicht versehentlich
+                // ausgewaehlt wird (CellsC[7] war visLayerSnap, nicht das Sperren).
+                Layer backLayer = findBackLayer();
+                if (backLayer != null)
+                    backLayer.CellsC[(short)VisCellIndices.visLayerLock].FormulaU = "1";
             }
             catch (COMException)
             {
@@ -115,17 +119,13 @@ namespace ALPS_Visio_AddIn_rewrite
 
         protected void deleteBackRectangle()
         {
-            Layer backLayer = visioPage.Layers.Cast<Layer>()
-                .FirstOrDefault(layer => layer.NameU.Equals("alpsExtensionSeperator"));
+            // Bisher wurde ein Layer namens "alpsExtensionSeperator" (= Shape-Name) gesucht,
+            // den es nie gibt — die Trenn-Flaeche blieb nach dem Entfernen von extends stehen.
+            Layer backLayer = findBackLayer();
 
             if (backLayer == null) return;
 
-            short row = backLayer.CellsC[7].Row;
-
-            Cell cell = visioPage.PageSheet.CellsSRC[(short)VisSectionIndices.visSectionLayer,
-                (short)(VisRowIndices.visRowLayer + row),
-                (short)VisCellIndices.visLayerLock];
-            cell.Formula = "0";
+            backLayer.CellsC[(short)VisCellIndices.visLayerLock].FormulaU = "0";
             backLayer.Delete(1);
         }
 
@@ -134,8 +134,18 @@ namespace ALPS_Visio_AddIn_rewrite
         /// </summary>
         protected bool backLayerExists()
         {
-            return visioPage.Layers.Cast<Layer>()
-                .Any(layer => layer.NameU.Equals("BackgroundSeperatorLayer"));
+            return findBackLayer() != null;
+        }
+
+        /// <summary>
+        /// Der Trenn-Layer heisst in bestehenden Dokumenten/Stencils "BackgroundSeperatorLayer"
+        /// (Tippfehler im Stencil), teils auch korrekt geschrieben — beide Namen akzeptieren.
+        /// </summary>
+        private Layer findBackLayer()
+        {
+            return visioPage.Layers.Cast<Layer>().FirstOrDefault(layer =>
+                layer.NameU.Equals(Constants.Layers.BackgroundSeparatorAlt) ||
+                layer.NameU.Equals(Constants.Layers.BackgroundSeparator));
         }
 
         /// <summary>

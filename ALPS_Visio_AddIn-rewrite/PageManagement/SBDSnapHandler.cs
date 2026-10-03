@@ -37,8 +37,8 @@ namespace ALPS_Visio_AddIn_rewrite
 
         protected override void setBackPage(DiagramPage newProperty)
         {
-            if (newProperty is SBDPage sbdPage)
-                this.referencedBackgroundPage = sbdPage;
+            // Auch null uebernehmen (siehe SidSnapHandler.setBackPage).
+            this.referencedBackgroundPage = newProperty as SBDPage;
         }
 
         /// <summary>

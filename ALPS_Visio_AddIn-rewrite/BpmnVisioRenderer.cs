@@ -80,10 +80,16 @@ namespace ALPS_Visio_AddIn_rewrite
                         DrawPool(page, di, participant, maxYPx, shapeByElementId);
                 }
 
-                // 2. Flow-Elemente (Tasks, Events, Gateways, Sub-Prozesse).
+                // 2. Flow-Elemente. Sub-Prozesse zuerst: ihre (aufgeklappte) Box umschliesst
+                //    die enthaltenen Elemente und darf sie nicht ueberdecken.
                 foreach (IBpmnShape di in diShapes)
                 {
-                    if (!(di.BpmnElement is IParticipant))
+                    if (di.BpmnElement is ISubProcess)
+                        DropFlowNode(page, stencil, masterCache, di, maxYPx, shapeByElementId, warnings);
+                }
+                foreach (IBpmnShape di in diShapes)
+                {
+                    if (!(di.BpmnElement is IParticipant) && !(di.BpmnElement is ISubProcess))
                         DropFlowNode(page, stencil, masterCache, di, maxYPx, shapeByElementId, warnings);
                 }
 

@@ -29,6 +29,24 @@ namespace ALPS_Visio_AddIn_rewrite
             visioPage.ShapeAdded += shapeAdded;
         }
 
+        /// <summary>
+        /// Meldet die Visio-Events ab. ModelController baut die SBD-Controller bei jedem
+        /// reset()/updateWholeController neu — ohne Abmelden feuerten alle alten Controller
+        /// weiter (mehrfache Snap-Dialoge, wachsende Traegheit).
+        /// </summary>
+        internal void detach()
+        {
+            try
+            {
+                visioPage.CellChanged -= onCellChanged;
+                visioPage.ShapeAdded -= shapeAdded;
+            }
+            catch (System.Runtime.InteropServices.COMException)
+            {
+                // Seite/Dokument bereits geschlossen — es gibt nichts mehr abzumelden.
+            }
+        }
+
         public Page getPage()
         {
             return visioPage;

@@ -21,25 +21,25 @@ using alps.net.api.ALPS;
             int result = 0;
             Console.WriteLine("\nCheck Communication Restrictions:");
             foreach (ICommunicationRestriction r in SpecifiedRestrictions)
-
             {
-                ISubject A = r.getCorrespondentA();
-                ISubject B = r.getCorrespondentB();
+                // Spezifikation und Implementierung sind getrennt geparste Modelle — ihre
+                // Subjekt-Objekte sind nie identisch. Verglichen wird daher ueber die IDs:
+                // ein Implementierungs-Subjekt "ist" ein Spezifikations-Subjekt, wenn es
+                // dieselbe ID traegt oder per implements-Verweis darauf zeigt.
+                string a = r.getCorrespondentA()?.getUriModelComponentID();
+                string b = r.getCorrespondentB()?.getUriModelComponentID();
+                if (a == null || b == null) continue;
 
                 foreach (IMessageExchange m in ImplementingMessages)
                 {
-
-                    ISubject C = m.getSender();
-                    ISubject D = m.getReceiver();
-                    if ((C == A || C == B) && (D == A || D == B))
+                    ISet<string> sender = SpecIdsOf(m.getSender());
+                    ISet<string> receiver = SpecIdsOf(m.getReceiver());
+                    if ((sender.Contains(a) && receiver.Contains(b)) || (sender.Contains(b) && receiver.Contains(a)))
                     {
-                        Console.WriteLine(r + " violated!");
+                        Console.WriteLine(r.getUriModelComponentID() + " violated by " + m.getUriModelComponentID() + "!");
                         result++;
                     }
                 }
-                
-
-
             }
             if (result == 0)
             {
@@ -52,6 +52,22 @@ using alps.net.api.ALPS;
                 return 0;
             }
         }
+        /// <summary>
+        /// IDs der Spezifikations-Subjekte, die ein Implementierungs-Subjekt vertritt:
+        /// die eigene ID plus alle implements-Verweise.
+        /// </summary>
+        private static ISet<string> SpecIdsOf(ISubject subject)
+        {
+            var ids = new HashSet<string>();
+            if (subject == null) return ids;
+            ids.Add(subject.getUriModelComponentID());
+            var refs = subject.getImplementedInterfacesIDReferences();
+            if (refs != null)
+                foreach (string id in refs)
+                    if (id != null) ids.Add(id);
+            return ids;
+        }
+
     //This method checks whether the implementation references still fulfil the restrictions given by the specification 
     //-- example: a fully specified subect must be implemented as a fully specified subject and cannot be an abstract subject
     public bool CheckSubject(IList<Tuple<ISubject,ISubject>> Subjects)
