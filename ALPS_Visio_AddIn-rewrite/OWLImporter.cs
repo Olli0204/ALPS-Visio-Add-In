@@ -99,6 +99,9 @@ namespace ALPS_Visio_AddIn_rewrite
             // already exists (= 0) when the stencil's VBA initializes. Otherwise the stencil
             // runs its "Willkommen"-routine, which on close renames the freshly created SID
             // page back to the Visio default ("Zeichenblatt-2").
+            // Vor allen Zeichenschritten zuruecksetzen — auch CopyPatternMasters meldet hierher.
+            ImportDiagnostics.Reset();
+
             // Ohne aktive Zeichnung (keine oder nur eine Schablone offen) eine neue anlegen.
             Visio.Document drawing = VH.EnsureActiveDrawing();
             VH.setVBAListenersRunning(false);
@@ -124,7 +127,6 @@ namespace ALPS_Visio_AddIn_rewrite
             Visio.Application app = Globals.ThisAddIn.Application;
             short prevScreenUpdating = app.ScreenUpdating;
             app.ScreenUpdating = 0;
-            ImportDiagnostics.Reset();
             try
             {
                 importable.ImportToVisio(null); // FEAT: import into current page

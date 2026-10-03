@@ -30,13 +30,22 @@ namespace ALPS_Visio_AddIn_rewrite
         {
             Visio.IVDocument myActiveDocument = EnsureActiveDrawing();
 
-            if (myActiveDocument.DocumentSheet.CellExistsU["Prop." + Constants.Properties.InteropWithVSTOShouldListenersRun, 0] == 0)
+            string cellName = "Prop." + Constants.Properties.InteropWithVSTOShouldListenersRun;
+            string formula = newStatus ? "-1" : "0";
+            if (myActiveDocument.DocumentSheet.CellExistsU[cellName, 0] == 0)
             {
                 myActiveDocument.DocumentSheet.AddNamedRow((short)visSectionProp, Constants.Properties.InteropWithVSTOShouldListenersRun, (short)visTagDefault);
             }
+            else if (myActiveDocument.DocumentSheet.CellsU[cellName].FormulaU == formula)
+            {
+                // Bereits gesetzt: nicht erneut schreiben. Die Schablonen-VBA reagiert auf jede
+                // Aenderung dieser Zelle (StopCode); ein zweiter Import im selben Dokument loeste
+                // dadurch erneut StopCode auf bereits gestoppten Listenern aus — VBA-Laufzeitfehler,
+                // danach liefen die Makros nicht mehr und die Message-Boxen fehlten.
+                return;
+            }
 
-            myActiveDocument.DocumentSheet.CellsU["Prop." + Constants.Properties.InteropWithVSTOShouldListenersRun].Formula =
-                newStatus ? "-1" : "0";
+            myActiveDocument.DocumentSheet.CellsU[cellName].Formula = formula;
         }
 
         public enum VisioStencils
@@ -87,12 +96,17 @@ namespace ALPS_Visio_AddIn_rewrite
             return null;
         }
 
-        /// <summary>Checks whether a cached COM document is still open (RCW still valid).</summary>
+        /// <summary>
+        /// Checks whether a cached COM document is still open and usable. Die ID allein genuegt
+        /// nicht: ein Verweis kann noch eine ID liefern, waehrend der Zugriff auf Masters bereits
+        /// mit "Objekt kann nicht erstellt werden" scheitert.
+        /// </summary>
         private static bool IsAlive(Visio.Document doc)
         {
             try
             {
                 int _ = doc.ID;
+                int __ = doc.Masters.Count;
                 return true;
             }
             catch
@@ -117,20 +131,52 @@ namespace ALPS_Visio_AddIn_rewrite
 
             foreach (VisioStencils stencilKind in new[] { VisioStencils.SID_STENCIL, VisioStencils.SBD_STENCIL })
             {
-                Visio.Document stencil = openStencil(stencilKind);
-                if (stencil == null) continue; // openStencil hat den Fehler bereits gemeldet
-
-                foreach (Visio.Master master in stencil.Masters)
+                // Nur Kosmetik (Pfeilspitzen) — ein Fehler hier darf den Import nicht abbrechen.
+                // Typisch: der gecachte Schablonen-Verweis ist nach einem VBA-Fehler oder
+                // Schliessen der Schablone unbrauchbar ("Objekt kann nicht erstellt werden").
+                // Dann den Cache verwerfen und genau einmal frisch oeffnen.
+                try
                 {
-                    // Normale Shape-Master kommen regulaer per Drop ins Dokument;
-                    // hier interessieren nur die Muster-Typen (Fill/Line/LineEnd).
-                    if (master.Type == Visio.VisMasterTypes.visTypeMaster)
-                        continue;
-
-                    if (!HasMaster(targetDocument, master.NameU))
-                        targetDocument.Masters.Drop(master, 0, 0);
+                    CopyPatternMastersFrom(openStencil(stencilKind), targetDocument);
+                }
+                catch (System.Runtime.InteropServices.COMException)
+                {
+                    InvalidateStencil(stencilKind);
+                    try
+                    {
+                        CopyPatternMastersFrom(openStencil(stencilKind), targetDocument);
+                    }
+                    catch (System.Runtime.InteropServices.COMException e)
+                    {
+                        ImportDiagnostics.Report("Linienmuster der " + (stencilKind == VisioStencils.SID_STENCIL ? "SID" : "SBD")
+                            + "-Schablone (Verbinder evtl. ohne Pfeilspitzen)", e);
+                    }
                 }
             }
+        }
+
+        private static void CopyPatternMastersFrom(Visio.Document stencil, Visio.Document targetDocument)
+        {
+            if (stencil == null) return; // openStencil hat den Fehler bereits gemeldet
+
+            foreach (Visio.Master master in stencil.Masters)
+            {
+                // Normale Shape-Master kommen regulaer per Drop ins Dokument;
+                // hier interessieren nur die Muster-Typen (Fill/Line/LineEnd).
+                if (master.Type == Visio.VisMasterTypes.visTypeMaster)
+                    continue;
+
+                if (!HasMaster(targetDocument, master.NameU))
+                    targetDocument.Masters.Drop(master, 0, 0);
+            }
+        }
+
+        /// <summary>Verwirft den gecachten Schablonen-Verweis samt der daraus stammenden Master.</summary>
+        private static void InvalidateStencil(VisioStencils stencil)
+        {
+            _stencilCache.Remove(stencil);
+            foreach (string shapeType in _masterCache.Keys.Where(type => GetStencil(type) == stencil).ToList())
+                _masterCache.Remove(shapeType);
         }
 
         /// <summary>True, wenn das Dokument bereits einen Master mit diesem Universal-Namen hat.</summary>

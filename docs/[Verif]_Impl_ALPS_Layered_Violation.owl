@@ -12,11 +12,13 @@
 <!--
     Verifikations-Paar fuer Mehr-Ebenen-Modelle: IMPLEMENTIERUNG MIT REGELVERSTOSS
     ============================================================
-    Implementiert [Verif]_Spec_ALPS_Layered.owl. Zwei Ebenen:
-      - Impl_Layer_Base : Impl_Worker, Impl_Customer (+ Nachricht Worker -> Customer "Invoice")
-      - Impl_Layer_Guard: Impl_Auditor (erweitert die Basis-Ebene)
+    Implementiert [Verif]_Spec_ALPS_Layered.owl, aber in EINER Ebene (Impl_Layer_Base):
+      Impl_Worker, Impl_Customer, Impl_Auditor; Nachrichten Worker -> Customer "Invoice" und
+      Customer -> Auditor "Complaint".
+    Warum eine Ebene: eine Nachricht ist ein Verbinder auf einer SID-Seite und kann nur Subjekte
+    derselben Ebene verbinden. Die Abdeckung mehrerer Ebenen prueft [Verif]_Impl_ALPS_Layered.owl.
     Jedes Subjekt traegt abstract-pass-ont:implements auf sein Spezifikations-Subjekt.
-    ABSICHTLICHER VERSTOSS: Customer sendet dem Auditor (Ebene 2) eine Nachricht -> die Restriktion
+    ABSICHTLICHER VERSTOSS: Customer sendet dem Auditor eine Nachricht -> die Restriktion
     der Spezifikation (Customer darf nicht mit Auditor kommunizieren) ist verletzt.
 
     Test in Visio: diese Datei importieren, dann "ALPS Verification -> Aktuelles Modell pruefen"
@@ -44,11 +46,10 @@
         <standard-pass-ont:hasModelComponentID rdf:datatype="&xsd;string">Impl_Model</standard-pass-ont:hasModelComponentID>
         <standard-pass-ont:hasModelComponentLabel xml:lang="en">[Verif]_Impl_ALPS_Layered_Violation</standard-pass-ont:hasModelComponentLabel>
         <standard-pass-ont:contains rdf:resource="http://alps-visio-test.example/alps-layered-verif#Impl_Layer_Base"/>
-        <standard-pass-ont:contains rdf:resource="http://alps-visio-test.example/alps-layered-verif#Impl_Layer_Guard"/>
     </owl:NamedIndividual>
 
     <!-- =====================================================================
-         Ebene 1: Worker + Customer, Nachricht Worker -> Customer
+         Einzige Ebene: Worker, Customer, Auditor (+ verbotene Nachricht Customer -> Auditor)
          ===================================================================== -->
     <owl:NamedIndividual rdf:about="http://alps-visio-test.example/alps-layered-verif#Impl_Layer_Base">
         <rdf:type rdf:resource="&abstract-pass-ont;ModelLayer"/>
@@ -62,6 +63,11 @@
         <standard-pass-ont:contains rdf:resource="http://alps-visio-test.example/alps-layered-verif#MessageList_Worker_Customer"/>
         <standard-pass-ont:contains rdf:resource="http://alps-visio-test.example/alps-layered-verif#Msg_Invoice"/>
         <standard-pass-ont:contains rdf:resource="http://alps-visio-test.example/alps-layered-verif#Exchange_Invoice"/>
+        <standard-pass-ont:contains rdf:resource="http://alps-visio-test.example/alps-layered-verif#Impl_Auditor"/>
+        <standard-pass-ont:contains rdf:resource="http://alps-visio-test.example/alps-layered-verif#SBD_Auditor"/>
+        <standard-pass-ont:contains rdf:resource="http://alps-visio-test.example/alps-layered-verif#MessageList_Customer_Auditor"/>
+        <standard-pass-ont:contains rdf:resource="http://alps-visio-test.example/alps-layered-verif#Msg_Complaint"/>
+        <standard-pass-ont:contains rdf:resource="http://alps-visio-test.example/alps-layered-verif#Exchange_Complaint"/>
     </owl:NamedIndividual>
 
     <owl:NamedIndividual rdf:about="http://alps-visio-test.example/alps-layered-verif#Impl_Worker">
@@ -144,22 +150,6 @@
         <standard-pass-ont:hasMessageType rdf:resource="http://alps-visio-test.example/alps-layered-verif#Msg_Invoice"/>
         <standard-pass-ont:hasSender rdf:resource="http://alps-visio-test.example/alps-layered-verif#Impl_Worker"/>
         <standard-pass-ont:hasReceiver rdf:resource="http://alps-visio-test.example/alps-layered-verif#Impl_Customer"/>
-    </owl:NamedIndividual>
-
-    <!-- =====================================================================
-         Ebene 2: Auditor (erweitert die Basis-Ebene)
-         ===================================================================== -->
-    <owl:NamedIndividual rdf:about="http://alps-visio-test.example/alps-layered-verif#Impl_Layer_Guard">
-        <rdf:type rdf:resource="&abstract-pass-ont;ModelLayer"/>
-        <standard-pass-ont:hasModelComponentID rdf:datatype="&xsd;string">Impl_Layer_Guard</standard-pass-ont:hasModelComponentID>
-        <standard-pass-ont:hasModelComponentLabel xml:lang="en">Impl_Layer_Guard</standard-pass-ont:hasModelComponentLabel>
-        <standard-pass-ont:hasPriorityNumber rdf:datatype="&xsd;positiveInteger">2</standard-pass-ont:hasPriorityNumber>
-        <abstract-pass-ont:extends rdf:resource="http://alps-visio-test.example/alps-layered-verif#Impl_Layer_Base"/>
-        <standard-pass-ont:contains rdf:resource="http://alps-visio-test.example/alps-layered-verif#Impl_Auditor"/>
-        <standard-pass-ont:contains rdf:resource="http://alps-visio-test.example/alps-layered-verif#SBD_Auditor"/>
-        <standard-pass-ont:contains rdf:resource="http://alps-visio-test.example/alps-layered-verif#MessageList_Customer_Auditor"/>
-        <standard-pass-ont:contains rdf:resource="http://alps-visio-test.example/alps-layered-verif#Msg_Complaint"/>
-        <standard-pass-ont:contains rdf:resource="http://alps-visio-test.example/alps-layered-verif#Exchange_Complaint"/>
     </owl:NamedIndividual>
 
     <owl:NamedIndividual rdf:about="http://alps-visio-test.example/alps-layered-verif#Impl_Auditor">
