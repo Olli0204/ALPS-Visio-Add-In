@@ -105,7 +105,23 @@ namespace ALPS_Visio_AddIn_rewrite
             // Ohne aktive Zeichnung (keine oder nur eine Schablone offen) eine neue anlegen.
             Visio.Document drawing = VH.EnsureActiveDrawing();
             VH.setVBAListenersRunning(false);
+            try
+            {
+                ImportInto(drawing, importable);
+            }
+            finally
+            {
+                // Auch bei Abbruch/Fehler: die VBA erst nach Abschluss der zugestellten
+                // Import-Ereignisse wieder einschalten (siehe ReenableVBAListenersWhenIdle) —
+                // sonst blieb sie dauerhaft aus, u. a. das Umschalten des Shape-Sets
+                // (SID-/SBD-Schablone je nach Seite). Nicht synchron hier: die Willkommens-
+                // Routine der Schablone wuerde sonst die importierte SID-Seite umbenennen.
+                VH.ReenableVBAListenersWhenIdle(drawing);
+            }
+        }
 
+        private void ImportInto(Visio.Document drawing, IVisioImportable importable)
+        {
             // Beide Schablonen vorab oeffnen. Fehlt eine, hat openStencil das bereits gemeldet —
             // dann abbrechen, statt pro Element erneut einen Fehlerdialog zu zeigen und am Ende
             // leere Seiten als erfolgreichen Import zu hinterlassen.
@@ -159,13 +175,6 @@ namespace ALPS_Visio_AddIn_rewrite
                     ImportDiagnostics.Failures.Count + " Element(e) konnten nicht gezeichnet werden.",
                     string.Join("\n", ImportDiagnostics.Failures));
             }
-
-            // VBA listeners are intentionally NOT re-enabled here. The stencil's run-mode
-            // welcome routine renames the imported SID page when its popup is closed (which
-            // happens AFTER this method returns); re-enabling the flag would let that routine
-            // run. Keeping it at 0 keeps the stencil VBA quiet -- the rewrite manages page and
-            // model state itself.
-            // VH.setVBAListenersRunning(true);
         }
     }
 }

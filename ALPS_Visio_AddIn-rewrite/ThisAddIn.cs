@@ -128,6 +128,11 @@ namespace ALPS_Visio_AddIn_rewrite
             if (doc == null || doc.Type != VisDocumentTypes.visTypeDrawing) return;
             try
             {
+                // Dokumente aus einem frueheren Import tragen die Steuerzelle evtl. noch auf "aus"
+                // (wurde mit gespeichert) — dann lief u. a. das Umschalten des Shape-Sets nie mehr.
+                if (doc is Visio.Document drawing && VisioHelper.AreVBAListenersOff(drawing))
+                    VisioHelper.ReenableVBAListenersWhenIdle(drawing);
+
                 activeDoc = Application.ActiveDocument;
                 reset();
             }

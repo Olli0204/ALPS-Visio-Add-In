@@ -170,9 +170,19 @@ namespace ALPS_Visio_AddIn_rewrite
         {
             SBDPage extends = sbdPage.getExtends();
 
+            if (newProperty != null && extends != null && extends.getLayer().Equals(newProperty.getLayer()))
+            {
+                // Unveraendertes Ziel (wiederholter Aufruf, z. B. erneutes SID-Snapping): nur den
+                // Hintergrund sicherstellen. Frueher wurde hier vorab der Hintergrund GELOESCHT und
+                // mangels Aenderung nicht neu gesetzt — die Basis-SBD verschwand von der GBD,
+                // waehrend die graue Trennflaeche stehen blieb.
+                Page unchangedBackPage = Globals.ThisAddIn.getModelController().getSbdPageController(newProperty)?.getPage();
+                if (unchangedBackPage != null) setBackgroundForThis(unchangedBackPage.NameU);
+                return;
+            }
+
             setBackgroundForThis("");
-            if (newProperty != null && extends != null && !extends.getLayer().Equals(newProperty.getLayer())
-                || extends == null && newProperty != null)
+            if (newProperty != null)
             {
                 Page backPage = Globals.ThisAddIn.getModelController().getSbdPageController(newProperty).visioPage;
                 setBackgroundForThis(backPage.NameU);
@@ -191,9 +201,8 @@ namespace ALPS_Visio_AddIn_rewrite
                     placeBackRectangle(newProperty);
                 }
             }
-            else if (newProperty == null)
+            else
             {
-                setBackgroundForThis("");
                 deleteBackRectangle();
                 sbdPage.setExtends(null);
             }

@@ -264,6 +264,8 @@ namespace ALPS_Visio_AddIn_rewrite
             public const string SBDLinkedSubjectID = "subjectShapeID";
             public const string PriorityOrderNumber = "priorityOrder";
             public const string SBDPage = "SubjectBehavior";
+            /// <summary>Seitentyp einer GBD, wie ihn die Schablonen-VBA selbst vergibt.</summary>
+            public const string GBDPage = "SubjectGuardBehavior";
             public const string SIDPage = "SubjectInteraction";
             public const string LinkedSBD = "linkedSBD";
             public const string LinkedSIDPage = "linkedSIDPage";

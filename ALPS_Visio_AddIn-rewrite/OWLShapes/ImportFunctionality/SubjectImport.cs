@@ -102,9 +102,14 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
                         // GBD nur fuer Guard-Verhalten; andere Erweiterungsverhalten sind SBDs.
                         // Benannt nach dem ERWEITERTEN Subjekt ("GBD: Worker (Layer_Guard)"), sonst
                         // nach der Erweiterung selbst.
+                        // Seitentyp wie bei einer per Schablone angelegten GBD ("SubjectGuardBehavior").
+                        // Mit dem SBD-Typ behandelte die Schablonen-VBA die Seite wie eine normale SBD
+                        // und entfernte ihren Hintergrund (Basis-SBD nicht mehr sichtbar).
+                        bool isGuard = extensionBehavior is IGuardBehavior;
                         Visio.Page gbdPage = VH.CreateSBDPage(page,
-                            BehaviorPageName(extensionBehavior is IGuardBehavior ? "GBD" : "SBD", extended ?? subject, page),
-                            "" + extensionBehavior.getModelComponentID(), this.GetShape());
+                            BehaviorPageName(isGuard ? "GBD" : "SBD", extended ?? subject, page),
+                            "" + extensionBehavior.getModelComponentID(), this.GetShape(),
+                            isGuard ? Constants.Properties.GBDPage : Constants.Properties.SBDPage);
                         importable.ImportToVisio(gbdPage);
                     }
                     catch (System.Exception e)

@@ -28,8 +28,56 @@ namespace ALPS_Visio_AddIn_rewrite
 
         public static void setVBAListenersRunning(Boolean newStatus)
         {
-            Visio.IVDocument myActiveDocument = EnsureActiveDrawing();
+            SetVBAListenersRunning(EnsureActiveDrawing(), newStatus);
+        }
 
+        private const string VBAListenersCell = "Prop." + Constants.Properties.InteropWithVSTOShouldListenersRun;
+
+        /// <summary>True, wenn die Steuerzelle die Schablonen-VBA ausdruecklich abschaltet (Wert 0).</summary>
+        public static bool AreVBAListenersOff(Visio.Document document)
+        {
+            return document.DocumentSheet.CellExistsU[VBAListenersCell, 0] != 0
+                && document.DocumentSheet.CellsU[VBAListenersCell].FormulaU == "0";
+        }
+
+        /// <summary>
+        /// Schaltet die Schablonen-VBA wieder ein, sobald Visio das naechste Mal untaetig ist.
+        /// Nicht sofort am Ende des Imports: Visio stellt die waehrend des Imports entstandenen
+        /// Ereignisse erst danach zu — die Willkommens-Routine der Schablone (sie benannte sonst die
+        /// importierte SID-Seite um) laeuft so noch bei abgeschalteter VBA. Danach greifen die
+        /// VBA-Funktionen wieder, u. a. das Umschalten des Shape-Sets je nach SID-/SBD-Seite
+        /// (im Original-Add-In wurde die VBA nach dem Import ebenfalls wieder eingeschaltet).
+        /// </summary>
+        public static void ReenableVBAListenersWhenIdle(Visio.Document document)
+        {
+            Visio.Application app = Globals.ThisAddIn.Application;
+            Visio.EApplication_VisioIsIdleEventHandler handler = null;
+            handler = idleApp =>
+            {
+                app.VisioIsIdle -= handler;
+                try
+                {
+                    SetVBAListenersRunning(document, true);
+
+                    // Die Schablonen-VBA setzt beim Einschalten offenbar eigene Seiteneinstellungen
+                    // und entfernte dabei den Hintergrund der GBD-Seiten (Basis-SBD nicht mehr
+                    // sichtbar, State Reference nicht eingerastet). Danach die Seitenverwaltung
+                    // neu aufbauen, damit die Hintergruende erneut abgeleitet werden.
+                    Visio.Document active = app.ActiveDocument;
+                    if (active != null && active.ID == document.ID)
+                        Globals.ThisAddIn.updateClicked();
+                }
+                catch (System.Runtime.InteropServices.COMException e)
+                {
+                    // Dokument inzwischen geschlossen — nichts mehr einzuschalten.
+                    Debug.WriteLine("[VBA] re-enabling listeners failed: " + e.Message);
+                }
+            };
+            app.VisioIsIdle += handler;
+        }
+
+        private static void SetVBAListenersRunning(Visio.IVDocument myActiveDocument, Boolean newStatus)
+        {
             string cellName = "Prop." + Constants.Properties.InteropWithVSTOShouldListenersRun;
             string formula = newStatus ? "-1" : "0";
             if (myActiveDocument.DocumentSheet.CellExistsU[cellName, 0] == 0)
@@ -430,7 +478,10 @@ namespace ALPS_Visio_AddIn_rewrite
         /// Creates a new SBD diagram page linked to the given SID page and subject shape.
         /// Precondition: the SID page and document must already exist.
         /// </summary>
-        public static Visio.Page CreateSBDPage(Visio.Page sidPage, string name, string nameU, Visio.Shape subjectShape)
+        /// <param name="pageType">Seitentyp im Seitenblatt — wie bei den Seiten, die die Schablone selbst
+        /// anlegt: "SubjectBehavior" fuer SBDs, "SubjectGuardBehavior" fuer GBDs.</param>
+        public static Visio.Page CreateSBDPage(Visio.Page sidPage, string name, string nameU, Visio.Shape subjectShape,
+            string pageType = Constants.Properties.SBDPage)
         {
             Debug.Print("creating new SBD page");
             Visio.Page page = Globals.ThisAddIn.Application.ActiveDocument.Pages.Add();
@@ -450,7 +501,7 @@ namespace ALPS_Visio_AddIn_rewrite
             {
                 page.PageSheet.AddNamedRow((short)Visio.VisSectionIndices.visSectionProp, Constants.Properties.PageType, 0);
                 page.PageSheet.AddNamedRow((short)Visio.VisSectionIndices.visSectionProp, Constants.Properties.SBDLinkedSubjectID, 0);
-                page.PageSheet.CellsU["Prop." + Constants.Properties.PageType].FormulaU = QuoteLiteral(Constants.Properties.SBDPage);
+                page.PageSheet.CellsU["Prop." + Constants.Properties.PageType].FormulaU = QuoteLiteral(pageType);
                 page.PageSheet.CellsU["Prop." + Constants.Properties.SBDLinkedSubjectID].FormulaU = subjectShape.ID.ToString();
             }
 
