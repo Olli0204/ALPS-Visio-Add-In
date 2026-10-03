@@ -94,7 +94,7 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
         }
 
         /// <summary>Sprach-Tag als gueltiger ShapeSheet-Zeilennamen-Teil: nur A-Z, 0-9, _ ("de-DE" → "DE_DE").</summary>
-        internal static string RowNameSuffix(string languageTag)
+        public static string RowNameSuffix(string languageTag)
         {
             var sb = new System.Text.StringBuilder();
             foreach (char c in (languageTag ?? "").ToUpperInvariant())
