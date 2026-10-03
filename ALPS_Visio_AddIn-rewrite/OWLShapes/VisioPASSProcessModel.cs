@@ -27,7 +27,10 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             // Alle Layer-Seiten eines Modells tragen dieselbe Modell-URI. Frueher bekam jede Seite
             // die URI ihres Layers ("base#layerId"): Layer Explorer und VisioPassModelBuilder sahen
             // dann je Layer ein eigenes Modell, Verifikation/BPMN werteten nur einen Layer aus.
-            string modelUri = string.IsNullOrWhiteSpace(this.getBaseURI()) ? this.getUriModelComponentID() : this.getBaseURI();
+            // alps.net.api uebernimmt den Namensraum der Datei nicht: getBaseURI() liefert nur den
+            // Platzhalter "baseuri:", der fuer jedes importierte Modell gleich waere. Die URI der
+            // Modell-Komponente ("baseuri:<ModellID>") unterscheidet Modelle dagegen.
+            string modelUri = this.getUriModelComponentID();
 
             // First pass: one SID page per layer. The pageLayer cell gets the layer's model ID
             // (a stable, unique name) instead of the former " " placeholder — a blank pageLayer is

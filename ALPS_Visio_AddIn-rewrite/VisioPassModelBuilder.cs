@@ -82,23 +82,24 @@ namespace ALPS_Visio_AddIn_rewrite
             if (doc == null || doc.Type != Visio.VisDocumentTypes.visTypeDrawing)
                 throw new InvalidOperationException("Es ist kein Zeichnungsdokument aktiv.");
 
-            // SID-Seiten: tragen Prop.modelURI (SBD-Seiten nicht). Wie im VBA-Export
-            // bestimmt die erste gefundene Seite die Modell-URI; nur Seiten mit
-            // derselben URI werden Layer dieses Modells.
-            var sidPages = new List<Visio.Page>();
-            string modelUri = null;
+            // SID-Seiten: tragen Prop.modelURI (SBD-Seiten nicht); nur Seiten mit derselben URI
+            // werden Layer des Modells. Welches Modell: das der aktiven Seite, sonst das mit den
+            // meisten Shapes. Frueher gewann stets die ERSTE Seite — z. B. eine leere Seite, die
+            // die Schablone in einer neuen Zeichnung anlegt; geprueft wurde dann ein leeres Modell.
+            var pagesByUri = new Dictionary<string, List<Visio.Page>>();
             foreach (Visio.Page page in doc.Pages)
             {
-                if (page.PageSheet.CellExistsU["Prop." + Constants.Properties.PageModelURI, 0] == 0)
+                string pageUri = ModelUriOf(page);
+                if (pageUri == null)
                     continue;
-                string pageUri = page.PageSheet.CellsU["Prop." + Constants.Properties.PageModelURI].ResultStr[""];
-                if (string.IsNullOrWhiteSpace(pageUri))
-                    continue;
-                if (modelUri == null)
-                    modelUri = pageUri;
-                if (pageUri == modelUri)
-                    sidPages.Add(page);
+                if (!pagesByUri.TryGetValue(pageUri, out List<Visio.Page> pages))
+                    pagesByUri[pageUri] = pages = new List<Visio.Page>();
+                pages.Add(page);
             }
+
+            string modelUri = ActiveModelUri(app, doc, pagesByUri)
+                ?? pagesByUri.OrderByDescending(pair => pair.Value.Sum(p => p.Shapes.Count)).Select(pair => pair.Key).FirstOrDefault();
+            var sidPages = modelUri != null ? pagesByUri[modelUri] : new List<Visio.Page>();
             if (modelUri == null || sidPages.Count == 0)
                 throw new InvalidOperationException(
                     "Das aktive Dokument enthält keine SID-Seite mit Modell-URI (Prop.modelURI) — kein ALPS/PASS-Modell.");
@@ -585,6 +586,40 @@ namespace ALPS_Visio_AddIn_rewrite
                 if (trimmed.Length > 0)
                     implementing.addImplementedInterfaceIDReference(trimmed);
             }
+        }
+
+        /// <summary>Modell-URI einer SID-Seite, oder null (keine SID-Seite bzw. leere URI).</summary>
+        private static string ModelUriOf(Visio.Page page)
+        {
+            string uri = GetProp(page.PageSheet, Constants.Properties.PageModelURI);
+            return string.IsNullOrWhiteSpace(uri) ? null : uri;
+        }
+
+        /// <summary>
+        /// Modell-URI der aktiven Seite: direkt bei einer SID-Seite, bei einer SBD-Seite ueber die
+        /// SID-Seite mit demselben pageLayer. null, wenn die aktive Seite keinem Modell zuzuordnen ist.
+        /// </summary>
+        private static string ActiveModelUri(Visio.Application app, Visio.Document doc,
+            IDictionary<string, List<Visio.Page>> pagesByUri)
+        {
+            Visio.Page active;
+            try
+            {
+                active = app.ActivePage;
+                if (active == null || active.Document.ID != doc.ID) return null;
+            }
+            catch (System.Runtime.InteropServices.COMException)
+            {
+                return null;
+            }
+
+            string uri = ModelUriOf(active);
+            if (uri != null) return uri;
+
+            string layer = GetProp(active.PageSheet, Constants.Properties.PageLayer);
+            if (string.IsNullOrWhiteSpace(layer)) return null;
+            return pagesByUri.FirstOrDefault(pair =>
+                pair.Value.Any(sid => GetProp(sid.PageSheet, Constants.Properties.PageLayer) == layer)).Key;
         }
 
         /// <summary>Liest Prop.&lt;propName&gt; einer Shape (auch PageSheets sind Shapes); "" wenn Shape/Zelle fehlt.</summary>
