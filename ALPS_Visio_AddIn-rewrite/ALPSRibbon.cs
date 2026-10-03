@@ -734,7 +734,7 @@ namespace ALPS_Visio_AddIn_rewrite
                 }
 
                 var progress = new NLChecker.ProcessingForm();
-                progress.Show();
+                progress.Show(UI.VisioOwner.Win32Window);
 
                 string report;
                 try

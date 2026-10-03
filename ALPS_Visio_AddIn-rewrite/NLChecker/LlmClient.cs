@@ -62,7 +62,15 @@ namespace ALPS_Visio_AddIn_rewrite.NLChecker
             try
             {
                 using (var response = await _httpClient.SendAsync(request))
-                    return await response.Content.ReadAsStringAsync();
+                {
+                    string body = await response.Content.ReadAsStringAsync();
+                    // HTTP-Status auswerten: Fehlerkoerper ohne "error"-Feld (z. B. {"detail":…} von
+                    // vLLM/FastAPI) endeten sonst als nichtssagende "Leere Antwort".
+                    if (!response.IsSuccessStatusCode)
+                        throw new Exception("HTTP " + (int)response.StatusCode + " (" + response.ReasonPhrase + ") von "
+                            + provider + ": " + ErrorDetail(body));
+                    return body;
+                }
             }
             catch (HttpRequestException ex)
             {
@@ -76,6 +84,24 @@ namespace ALPS_Visio_AddIn_rewrite.NLChecker
             {
                 throw new Exception("Zeitüberschreitung beim Aufruf von " + provider + " (60 s).", ex);
             }
+        }
+
+        /// <summary>Lesbare Fehlerursache aus einem Fehler-Antwortkoerper (JSON-Felder oder Textvorschau).</summary>
+        private static string ErrorDetail(string body)
+        {
+            if (string.IsNullOrWhiteSpace(body)) return "<ohne Inhalt>";
+            try
+            {
+                JObject json = JObject.Parse(body);
+                if (json["error"] != null) return ErrorText(json);
+                if (json["detail"] != null) return json["detail"].ToString();
+                if (json["message"] != null) return json["message"].ToString();
+            }
+            catch (Newtonsoft.Json.JsonException)
+            {
+                // kein JSON — Textvorschau unten
+            }
+            return body.Length > 300 ? body.Substring(0, 300) + "…" : body;
         }
 
         /// <summary>Parst die API-Antwort; nicht-JSON (Proxy-/Fehlerseiten) wird lesbar gemeldet.</summary>

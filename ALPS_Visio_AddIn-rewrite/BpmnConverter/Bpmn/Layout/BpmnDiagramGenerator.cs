@@ -95,6 +95,24 @@ public class BpmnDiagramGenerator
             }
         }
 
+        // Abgetrennte Komponenten, in denen jeder Knoten eine eingehende Kante hat (z. B. eine
+        // unfertige Schleife), wurden nie geseedet und fehlten still im Diagramm. Nach jedem
+        // Durchlauf deshalb den naechsten noch nicht platzierten Knoten nachlegen.
+        while (true)
+        {
+            DrainLayoutQueue(stack, grid, _boundaryEvents);
+            IFlowNode? unplaced = flowElementsContainer.FlowElements.OfType<IFlowNode>()
+                .FirstOrDefault(flowNode => flowNode is not IBoundaryEvent && !grid.Contains(flowNode));
+            if (unplaced == null) break;
+            stack.Enqueue((unplaced, null));
+        }
+
+        return grid;
+    }
+
+    private void DrainLayoutQueue(Queue<(IFlowNode current, IFlowNode? previous)> stack, Grid grid,
+        Dictionary<IFlowNode, List<IBoundaryEvent>> _boundaryEvents)
+    {
         while (stack.TryDequeue(out var elements))
         {
             (IFlowNode current, IFlowNode? previous) = elements;
@@ -134,8 +152,6 @@ public class BpmnDiagramGenerator
                 stack.Enqueue((sequenceFlow.SourceRef, current));
             }
         }
-
-        return grid;
     }
 
     private IBpmnPlane GenerateDiagram(ICollaboration collaboration)

@@ -182,7 +182,9 @@ public class Converter
                 {
                     // TODO: improve error handling
                     if (participant.ProcessRef == null)
-                        throw new InvalidOperationException();
+                        throw new InvalidOperationException(
+                            "Subjekt \"" + fullySpecifiedSubject.getModelComponentID() + "\" hat ein Macro-/Guard-Verhalten (\""
+                            + subjectBehavior.getModelComponentID() + "\"), aber kein Basis-Verhalten — BPMN-Konvertierung nicht möglich.");
 
                     ISubProcess eventSubProcess = BpmnUtility.CreateSubProcess(name: PassUtility.GetElementName(subjectBehavior), triggeredByEvent: true);
                     participant.ProcessRef.FlowElements.Add(eventSubProcess);
@@ -631,7 +633,9 @@ public class Converter
 
             ICollection<IEdge> incomingEdges = GetIncomingEdges(node);
             if (incomingEdges.Count > 1)
-                throw new InvalidOperationException();
+                throw new InvalidOperationException(
+                    "Zwischenereignis \"" + intermediateCatchEvent.Id + "\" hat " + incomingEdges.Count
+                    + " eingehende Kanten — erwartet wird höchstens eine.");
 
             if (incomingEdges.Count == 0 || incomingEdges.First().Source.FlowNode is not ITask sourceTask)
                 continue;

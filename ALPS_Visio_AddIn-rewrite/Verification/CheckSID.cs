@@ -116,20 +116,21 @@ using alps.net.api.ALPS;
             Console.WriteLine(t.Item1.GetType());
             Console.WriteLine(t.Item2.GetType());
 
-            switch (t.Item1.GetType().ToString())
+            // Kommunikationsakte sind Send- bzw. Receive-Funktionen. Frueher wurde hier gegen den
+            // Typnamen "FullySpecifiedSubject" verglichen — das traf nie zu, die Pruefung war
+            // wirkungslos. Jetzt: eine Send-Funktion der Spezifikation muss als Send-Funktion
+            // implementiert sein, eine Receive-Funktion als Receive-Funktion.
+            bool specIsSend = t.Item1 is ISendFunction;
+            bool specIsReceive = t.Item1 is IReceiveFunction;
+            bool implIsSend = t.Item2 is ISendFunction;
+            bool implIsReceive = t.Item2 is IReceiveFunction;
+            if ((specIsSend && !implIsSend) || (specIsReceive && !implIsReceive))
             {
-                case "alps.net.api.StandardPASS.FullySpecifiedSubject":
-                    if (t.Item1.GetType() != t.Item2.GetType())
-                    {
-                        Console.WriteLine("Implementation not correct!");
-                        FullySpecified++;
-                    }
-                    break;
-
-                    //insert other subject forms here
+                Console.WriteLine("Implementation not correct: " + t.Item1.getModelComponentID()
+                    + " (" + (specIsSend ? "Send" : "Receive") + ") implemented by "
+                    + (t.Item2 as IPASSProcessModelElement)?.getModelComponentID() + " (" + t.Item2.GetType().Name + ")");
+                FullySpecified++;
             }
-
-
         }
         if (FullySpecified > 0)
         {

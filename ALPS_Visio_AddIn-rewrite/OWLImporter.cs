@@ -50,7 +50,7 @@ namespace ALPS_Visio_AddIn_rewrite
         /// Writes an embedded ontology resource to a temp file and returns its path, so the
         /// parser can load it by path independent of the current working directory.
         /// </summary>
-        private static string WriteOntologyToTempFile(string fileName, byte[] content)
+        internal static string WriteOntologyToTempFile(string fileName, byte[] content)
         {
             // Eigener Unterordner pro Prozess: laufen zwei Visio-Instanzen, sperrte die eine die
             // gemeinsame Temp-Datei der anderen — die IOException im statischen Konstruktor wurde
