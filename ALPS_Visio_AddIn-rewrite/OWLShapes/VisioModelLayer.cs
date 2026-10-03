@@ -126,26 +126,26 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
         /// </summary>
         private void ApplyHorizontalLayout(IList<ISubject> subjects, Visio.Page page)
         {
+            // Mit der tatsaechlichen Breite jedes Shapes rechnen: Gruppen/System-Interface-Subjekte
+            // sind deutlich breiter als ein Subjekt — mit fester Breite ueberlappten sie.
+            var shapes = subjects.OfType<IVisioImportableWithShape>().Select(s => s.GetShape()).Where(s => s != null).ToList();
+            var widths = shapes.Select(s => System.Math.Max(SIDSubjectWidthMM, s.CellsU[Constants.ShapeCells.Width].Result["mm"])).ToList();
+
             // Grow the page so the row of subjects (and the message boxes between them) fits.
-            double rowWidth = (subjects.Count - 1) * (SIDSubjectWidthMM + SIDSubjectSpacingMM);
-            double pageWidth = rowWidth + SIDSubjectWidthMM + 2 * SIDMarginMM;
+            double rowWidth = widths.Sum() + System.Math.Max(0, widths.Count - 1) * SIDSubjectSpacingMM;
+            double pageWidth = rowWidth + 2 * SIDMarginMM;
             pageWidth = System.Math.Max(pageWidth, page.PageSheet.CellsU["PageWidth"].Result["mm"]);
             VH.SetCellMM(page.PageSheet, "PageWidth", pageWidth);
 
             double pageHeightMM = page.PageSheet.CellsU["PageHeight"].Result["mm"];
             double y = pageHeightMM / 2.0;
-            double x = SIDMarginMM + SIDSubjectWidthMM / 2.0;
+            double left = SIDMarginMM;
 
-            foreach (ISubject subject in subjects)
+            for (int i = 0; i < shapes.Count; i++)
             {
-                if (!(subject is IVisioImportableWithShape importable)) continue;
-                Visio.Shape shape = importable.GetShape();
-                if (shape != null)
-                {
-                    VH.SetCellMM(shape, Constants.ShapeCells.PinX, x);
-                    VH.SetCellMM(shape, Constants.ShapeCells.PinY, y);
-                }
-                x += SIDSubjectWidthMM + SIDSubjectSpacingMM;
+                VH.SetCellMM(shapes[i], Constants.ShapeCells.PinX, left + widths[i] / 2.0);
+                VH.SetCellMM(shapes[i], Constants.ShapeCells.PinY, y);
+                left += widths[i] + SIDSubjectSpacingMM;
             }
         }
 

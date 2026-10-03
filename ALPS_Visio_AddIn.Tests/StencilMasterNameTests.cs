@@ -62,6 +62,7 @@ namespace ALPS_Visio_AddIn_rewrite.Tests
         [TestCase(Constants.SIDMasters.StandAloneMacro)]
         [TestCase(Constants.SIDMasters.ActorExtension)]
         [TestCase(Constants.SIDMasters.GuardExtension)]
+        [TestCase(Constants.SIDMasters.MacroExtension)]
         [TestCase(Constants.SIDMasters.SubjectGroup)]
         [TestCase(Constants.SIDMasters.AbstractCommunicationChannel)]
         [TestCase(Constants.SIDMasters.SystemInterfaceSubject)]

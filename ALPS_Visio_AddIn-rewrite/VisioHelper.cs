@@ -50,11 +50,18 @@ namespace ALPS_Visio_AddIn_rewrite
         /// </summary>
         public static void ReenableVBAListenersWhenIdle(Visio.Document document)
         {
+            // Nur einmal je Dokument einplanen: nach einem Import stellt Visio u. a. das
+            // DocumentCreated-Ereignis erst zu, wenn die VBA schon abgeschaltet ist — ThisAddIn
+            // plante dann ein zweites Wiedereinschalten ein (Willkommensmeldung erschien doppelt).
+            int documentId = document.ID;
+            if (!_pendingVBAReenable.Add(documentId)) return;
+
             Visio.Application app = Globals.ThisAddIn.Application;
             Visio.EApplication_VisioIsIdleEventHandler handler = null;
             handler = idleApp =>
             {
                 app.VisioIsIdle -= handler;
+                _pendingVBAReenable.Remove(documentId);
                 try
                 {
                     SetVBAListenersRunning(document, true);
@@ -75,6 +82,8 @@ namespace ALPS_Visio_AddIn_rewrite
             };
             app.VisioIsIdle += handler;
         }
+
+        private static readonly HashSet<int> _pendingVBAReenable = new HashSet<int>();
 
         private static void SetVBAListenersRunning(Visio.IVDocument myActiveDocument, Boolean newStatus)
         {
@@ -285,10 +294,26 @@ namespace ALPS_Visio_AddIn_rewrite
             // the SBD stencil and Place() throws "Objektname nicht gefunden" (e.g. drawing a guard
             // extension during import).
             Constants.SIDMasters.ActorExtension,
+            // Ohne diese beiden landete die Suche in der SBD-Schablone ("Objektname nicht
+            // gefunden") — vermutlich der Grund, weshalb Guard-/Macro-Extensions frueher als
+            // ActorExtension gezeichnet wurden.
+            Constants.SIDMasters.GuardExtension,
+            Constants.SIDMasters.MacroExtension,
             Constants.SIDMasters.SubjectGroup,
             Constants.SIDMasters.AbstractCommunicationChannel,
             Constants.SIDMasters.SystemInterfaceSubject,
         };
+
+        /// <summary>
+        /// Liefert <paramref name="preferred"/>, wenn die zustaendige Schablone diesen Master enthaelt,
+        /// sonst <paramref name="fallback"/> (aeltere Schablonen-Versionen ohne den Master).
+        /// </summary>
+        public static string MasterOrFallback(string preferred, string fallback)
+        {
+            if (_masterCache.ContainsKey(preferred)) return preferred;
+            Visio.Document stencil = openStencil(GetStencil(preferred));
+            return stencil != null && HasMaster(stencil, preferred) ? preferred : fallback;
+        }
 
         public static VisioStencils GetStencil(string shapeType)
         {
@@ -519,6 +544,29 @@ namespace ALPS_Visio_AddIn_rewrite
         // -------------------------------------------------------------------------
         // Model element helpers
         // -------------------------------------------------------------------------
+
+        /// <summary>
+        /// Verbindet einen SID-Verbinder (Kommunikationskanal/-restriktion) mit seinen zwei Subjekten.
+        /// Nur Subjekte, die gezeichnet wurden und auf derselben Seite liegen, koennen verbunden
+        /// werden; sonst bleibt das Ende frei und der Import meldet es.
+        /// </summary>
+        public static void GlueConnectorToSubjects(Visio.Shape connector, ISubject a, ISubject b, string elementId)
+        {
+            if (connector == null) return;
+            Visio.Shape shapeA = (a as OWLShapes.IVisioImportableWithShape)?.GetShape();
+            Visio.Shape shapeB = (b as OWLShapes.IVisioImportableWithShape)?.GetShape();
+            int pageId = connector.ContainingPage.ID;
+
+            if (shapeA == null || shapeB == null || shapeA.ContainingPage.ID != pageId || shapeB.ContainingPage.ID != pageId)
+            {
+                ImportDiagnostics.Report(elementId, new InvalidOperationException(
+                    "Verbinder nicht verbunden — beide Subjekte müssen angegeben und auf derselben Ebene gezeichnet sein."));
+                return;
+            }
+
+            connector.CellsU["BeginX"].GlueToPos(shapeA, 1, 0.5);
+            connector.CellsU["EndX"].GlueToPos(shapeB, 0, 0.5);
+        }
 
         /// <summary>
         /// Lesbarer Name eines Modellelements fuer Seitennamen: das englische Label, sonst das erste
