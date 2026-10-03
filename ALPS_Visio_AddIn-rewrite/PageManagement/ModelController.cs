@@ -151,7 +151,7 @@ namespace ALPS_Visio_AddIn_rewrite
 
         public void updateExtends(SIDPageController modifiedC, SIDPage modifiedP, string userInput)
         {
-            SIDPage extending = getSidPage(userInput);
+            SIDPage extending = getSidPage(userInput) ?? registerSidPageWithLayer(modifiedC.getPage().Document, userInput);
             SIDPage oldExtends = modifiedC.getExtends();
 
             if (extending != null || string.IsNullOrWhiteSpace(userInput))
@@ -171,6 +171,27 @@ namespace ALPS_Visio_AddIn_rewrite
                     "„" + userInput + "“ konnte nicht aufgelöst werden.",
                     "Ort der fehlerhaften Eingabe: „" + modifiedC.getNameU() + "“");
             }
+        }
+
+        /// <summary>
+        /// Sucht im Dokument eine noch nicht registrierte SID-Seite mit dem angegebenen pageLayer und
+        /// registriert sie nach (z. B. eine Seite, die die Schablone erst nachtraeglich zur SID-Seite
+        /// gemacht hat). Liefert die registrierte Seite oder null.
+        /// </summary>
+        private SIDPage registerSidPageWithLayer(Document document, string layerName)
+        {
+            if (document == null || string.IsNullOrWhiteSpace(layerName)) return null;
+            string wanted = layerName.Trim('\\', '"');
+            foreach (Page page in document.Pages)
+            {
+                if (!isSid(page)) continue;
+                string layer = page.PageSheet.CellsU["Prop." + Constants.Properties.PageLayer].ResultStr[""];
+                if (!wanted.Equals(layer)) continue;
+                stopWatching(page);
+                registerNewSidPage(page);
+                return getSidPage(layerName);
+            }
+            return null;
         }
 
         public SIDPage getSidPage(string layerName)
@@ -298,7 +319,15 @@ namespace ALPS_Visio_AddIn_rewrite
             foreach (var page in pages.Cast<Page>().Where(isSid))
                 registerNewSidPage(page);
             foreach (var page in pages.Cast<Page>().Where(isSbd))
-                registerNewSbdPage(page);
+            {
+                if (!registerNewSbdPage(page)) startWatching(page);
+            }
+            // Auch schon vorhandene, (noch) leere Seiten beobachten: die Schablonen-VBA wandelt z. B.
+            // die Startseite einer neuen Zeichnung nachtraeglich in eine SID-Seite um. Ohne Abo
+            // wurde diese nie registriert — extends-Verweise darauf liefen ins Leere ("SID_1
+            // konnte nicht aufgeloest werden") und das Snapping fiel aus.
+            foreach (var page in pages.Cast<Page>().Where(page => !isSid(page) && !isSbd(page)))
+                startWatching(page);
             foreach (var sidPageC in modelToSidController.SelectMany(pair => pair.Value))
                 sidPageC.updateExtends();
 
