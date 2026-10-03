@@ -13,9 +13,22 @@ namespace ALPS_Visio_AddIn_rewrite
 {
     public static class VisioHelper
     {
+        /// <summary>
+        /// Liefert die aktive Zeichnung und legt eine neue an, wenn keine aktiv ist. Ein reiner
+        /// Documents.Count-Check genuegt nicht: geoeffnete Schablonen zaehlen mit, und ist eine
+        /// Schablone aktiv, landeten Flag-Zelle und neue Seiten sonst in der Schablone.
+        /// </summary>
+        public static Visio.Document EnsureActiveDrawing()
+        {
+            Visio.Application app = Globals.ThisAddIn.Application;
+            Visio.Document active = app.ActiveDocument;
+            if (active != null && active.Type == Visio.VisDocumentTypes.visTypeDrawing) return active;
+            return app.Documents.Add("");
+        }
+
         public static void setVBAListenersRunning(Boolean newStatus)
         {
-            Visio.IVDocument myActiveDocument = Globals.ThisAddIn.Application.ActiveDocument;
+            Visio.IVDocument myActiveDocument = EnsureActiveDrawing();
 
             if (myActiveDocument.DocumentSheet.CellExistsU["Prop." + Constants.Properties.InteropWithVSTOShouldListenersRun, 0] == 0)
             {
@@ -318,11 +331,7 @@ namespace ALPS_Visio_AddIn_rewrite
         /// </summary>
         public static Visio.Page CreateSIDPage(string name, string nameU, string modelURI, string extends, string implements, string priority)
         {
-            Visio.Application addin = Globals.ThisAddIn.Application;
-            if (addin.Documents.Count < 1)
-                addin.Documents.Add("");
-
-            Visio.Page page = Globals.ThisAddIn.Application.ActiveDocument.Pages.Add();
+            Visio.Page page = EnsureActiveDrawing().Pages.Add();
 
             // Visio rejects duplicate page names — derive a unique variant before assigning.
             // NameU must mirror Name: a whitespace NameU is invalid and makes Visio fall back

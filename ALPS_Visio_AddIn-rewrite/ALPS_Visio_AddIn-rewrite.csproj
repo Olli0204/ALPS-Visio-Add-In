@@ -352,6 +352,7 @@
     <Compile Include="OWLShapes\BehaviorDescribing\Transitions\VisioTimeTransition.cs" />
     <Compile Include="OWLShapes\BehaviorDescribing\Transitions\VisioUserCancelTransition.cs" />
     <Compile Include="OWLShapes\ImportFunctionality\IShapeImport.cs" />
+    <Compile Include="OWLShapes\ImportFunctionality\ImportDiagnostics.cs" />
     <Compile Include="OWLShapes\ImportFunctionality\PASSProcessModelElementImport.cs" />
     <Compile Include="OWLShapes\ImportFunctionality\StateImport.cs" />
     <Compile Include="OWLShapes\ImportFunctionality\TransitionImport.cs" />

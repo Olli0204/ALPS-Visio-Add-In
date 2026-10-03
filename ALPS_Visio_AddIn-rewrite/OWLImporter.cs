@@ -52,8 +52,21 @@ namespace ALPS_Visio_AddIn_rewrite
         /// </summary>
         private static string WriteOntologyToTempFile(string fileName, byte[] content)
         {
-            string path = Path.Combine(Path.GetTempPath(), fileName);
-            File.WriteAllBytes(path, content);
+            // Eigener Unterordner pro Prozess: laufen zwei Visio-Instanzen, sperrte die eine die
+            // gemeinsame Temp-Datei der anderen — die IOException im statischen Konstruktor wurde
+            // zur TypeInitializationException und legte den Import bis zum Visio-Neustart lahm.
+            string dir = Path.Combine(Path.GetTempPath(), "ALPS_Visio_AddIn",
+                System.Diagnostics.Process.GetCurrentProcess().Id.ToString());
+            Directory.CreateDirectory(dir);
+            string path = Path.Combine(dir, fileName);
+            try
+            {
+                File.WriteAllBytes(path, content);
+            }
+            catch (IOException) when (File.Exists(path))
+            {
+                // Bereits vorhanden und gerade gesperrt — der Inhalt stammt aus derselben Ressource.
+            }
             return path;
         }
 
@@ -86,19 +99,21 @@ namespace ALPS_Visio_AddIn_rewrite
             // already exists (= 0) when the stencil's VBA initializes. Otherwise the stencil
             // runs its "Willkommen"-routine, which on close renames the freshly created SID
             // page back to the Visio default ("Zeichenblatt-2").
-            // Ohne offenes Dokument ist ActiveDocument null — dann eine neue Zeichnung anlegen.
-            if (Globals.ThisAddIn.Application.Documents.Count == 0)
-                Globals.ThisAddIn.Application.Documents.Add("");
+            // Ohne aktive Zeichnung (keine oder nur eine Schablone offen) eine neue anlegen.
+            Visio.Document drawing = VH.EnsureActiveDrawing();
             VH.setVBAListenersRunning(false);
 
-            // open stencils to reduce load time
-            VH.openStencil(VH.VisioStencils.SID_STENCIL);
+            // Beide Schablonen vorab oeffnen. Fehlt eine, hat openStencil das bereits gemeldet —
+            // dann abbrechen, statt pro Element erneut einen Fehlerdialog zu zeigen und am Ende
+            // leere Seiten als erfolgreichen Import zu hinterlassen.
+            if (VH.openStencil(VH.VisioStencils.SID_STENCIL) == null || VH.openStencil(VH.VisioStencils.SBD_STENCIL) == null)
+                return;
 
             // Die Verbinder-Master (Transitions, MessageConnector) zeichnen ihre
             // Pfeilspitzen ueber benutzerdefinierte Linienmuster; Visio uebertraegt
             // diese Muster beim programmatischen Drop nicht ins Zieldokument. Vor dem
             // Zeichnen kopieren, sonst erscheinen alle Verbinder ohne Pfeilspitzen.
-            VH.CopyPatternMasters(Globals.ThisAddIn.Application.ActiveDocument);
+            VH.CopyPatternMasters(drawing);
 
             // Waehrend des Zeichnens nur das Bildschirm-Rendering aussetzen. Bewusst NICHT
             // EventsEnabled/DeferRecalc: Die ALPS-Stencils sind SmartShapes — der Drop des
@@ -109,6 +124,7 @@ namespace ALPS_Visio_AddIn_rewrite
             Visio.Application app = Globals.ThisAddIn.Application;
             short prevScreenUpdating = app.ScreenUpdating;
             app.ScreenUpdating = 0;
+            ImportDiagnostics.Reset();
             try
             {
                 importable.ImportToVisio(null); // FEAT: import into current page
@@ -125,6 +141,15 @@ namespace ALPS_Visio_AddIn_rewrite
             finally
             {
                 app.ScreenUpdating = prevScreenUpdating;
+            }
+
+            // Einzelne Elemente werden beim Zeichnen abgefangen, damit der Rest importiert wird —
+            // die Ausfaelle hier einmal gesammelt melden statt sie nur ins Debug-Log zu schreiben.
+            if (ImportDiagnostics.Failures.Count > 0)
+            {
+                UI.ResultDialog.ShowWarning("Import unvollständig",
+                    ImportDiagnostics.Failures.Count + " Element(e) konnten nicht gezeichnet werden.",
+                    string.Join("\n", ImportDiagnostics.Failures));
             }
 
             // VBA listeners are intentionally NOT re-enabled here. The stencil's run-mode

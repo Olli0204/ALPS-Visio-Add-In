@@ -24,13 +24,18 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             // dann auf genau diese Seiten zeigen statt auf die des ersten Imports.
             var layerNames = new Dictionary<string, string>();
 
+            // Alle Layer-Seiten eines Modells tragen dieselbe Modell-URI. Frueher bekam jede Seite
+            // die URI ihres Layers ("base#layerId"): Layer Explorer und VisioPassModelBuilder sahen
+            // dann je Layer ein eigenes Modell, Verifikation/BPMN werteten nur einen Layer aus.
+            string modelUri = string.IsNullOrWhiteSpace(this.getBaseURI()) ? this.getUriModelComponentID() : this.getBaseURI();
+
             // First pass: one SID page per layer. The pageLayer cell gets the layer's model ID
             // (a stable, unique name) instead of the former " " placeholder — a blank pageLayer is
             // invalid and stopped SBD pages from registering. Then draw the layer onto its page.
             foreach (IModelLayer modelLayer in layers)
             {
                 string layerId = modelLayer.getModelComponentID();
-                Visio.Page sidPage = VH.CreateSIDPage(layerId, layerId, modelLayer.getUriModelComponentID(), "", "", "1");
+                Visio.Page sidPage = VH.CreateSIDPage(layerId, layerId, modelUri, "", "", "1");
                 layerPages[layerId] = sidPage;
                 layerNames[layerId] = sidPage.PageSheet.CellsU["Prop." + Constants.Properties.PageLayer].ResultStr[""];
 

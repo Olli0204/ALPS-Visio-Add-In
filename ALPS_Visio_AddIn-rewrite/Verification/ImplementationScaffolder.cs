@@ -187,11 +187,14 @@ namespace ALPS_Visio_AddIn_rewrite.Verification
             // das Umbenennen der SID-Seite durch die Willkommens-Routine), SID-Stencil
             // oeffnen (Master + EventDrop-Logik der Message-Box), nur ScreenUpdating aus
             // (bewusst NICHT EventsEnabled/DeferRecalc — siehe OWLImporter).
-            // Ohne offenes Dokument ist ActiveDocument null — dann eine neue Zeichnung anlegen.
-            if (app.Documents.Count == 0)
-                app.Documents.Add("");
+            // Ohne aktive Zeichnung (keine oder nur eine Schablone offen) eine neue anlegen.
+            Microsoft.Office.Interop.Visio.Document drawing = VH.EnsureActiveDrawing();
             VH.setVBAListenersRunning(false);
-            VH.openStencil(VH.VisioStencils.SID_STENCIL);
+            if (VH.openStencil(VH.VisioStencils.SID_STENCIL) == null || VH.openStencil(VH.VisioStencils.SBD_STENCIL) == null)
+                throw new System.InvalidOperationException(
+                    "Die ALPS-Schablonen konnten nicht geöffnet werden — die Implementierung wurde nicht gezeichnet.");
+            // Wie OWLImporter: Muster-Master kopieren, sonst fehlen den Verbindern die Pfeilspitzen.
+            VH.CopyPatternMasters(drawing);
 
             short prevScreenUpdating = app.ScreenUpdating;
             app.ScreenUpdating = 0;

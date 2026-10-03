@@ -28,7 +28,9 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             // hasPriorityNumber
             VH.SetProp(page.PageSheet, Constants.Properties.PriorityOrderNumber, this.priorityNumber.ToString());
 
-            bool anyHadCoordinates = false;
+            // Nur Subjekte zaehlen: auch States sind Layer-Elemente — hatte ein State Koordinaten,
+            // fiel frueher das Auto-Layout aus und Subjekte ohne Koordinaten stapelten sich bei (0,0).
+            var subjectsWithoutCoordinates = new HashSet<ISubject>();
             var importedSubjects = new List<ISubject>();
             var messageExchangeLists = new List<IVisioImportable>();
             var otherDrawables = new List<IVisioImportable>();
@@ -47,12 +49,14 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
                 {
                     try
                     {
-                        if (shapeImportable.PrepareDimensions()) anyHadCoordinates = true;
+                        if (!shapeImportable.PrepareDimensions() && modelElement is ISubject withoutCoordinates)
+                            subjectsWithoutCoordinates.Add(withoutCoordinates);
                     }
                     catch (System.Exception ex)
                     {
                         string id = modelElement.getModelComponentID();
                         System.Diagnostics.Debug.WriteLine("PrepareDimensions von \"" + id + "\" fehlgeschlagen: " + ex);
+                        if (modelElement is ISubject failed) subjectsWithoutCoordinates.Add(failed);
                     }
                 }
 
@@ -80,8 +84,11 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             // message box is centered on the connector while the subjects still sit at their
             // drop position; moving them afterwards drags the (glued) connector along but
             // leaves the box behind at (0,0).
-            if (!anyHadCoordinates && importedSubjects.Count > 0)
-                ApplyHorizontalLayout(importedSubjects, page);
+            // Subjekte mit Koordinaten bleiben, wo die Datei sie hinlegt; nur die uebrigen
+            // werden in einer Reihe angeordnet.
+            var subjectsToLayout = importedSubjects.Where(subjectsWithoutCoordinates.Contains).ToList();
+            if (subjectsToLayout.Count > 0)
+                ApplyHorizontalLayout(subjectsToLayout, page);
 
             // Second pass: now that subjects are placed, draw the message exchange lists
             // and the remaining SID-level drawables (their connectors glue to the subjects).
@@ -108,7 +115,7 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             catch (System.Exception ex)
             {
                 string id = importable is IPASSProcessModelElement element ? element.getModelComponentID() : importable.GetType().Name;
-                System.Diagnostics.Debug.WriteLine("Import des Elements \"" + id + "\" fehlgeschlagen: " + ex);
+                ImportDiagnostics.Report(id, ex);
                 return false;
             }
         }
