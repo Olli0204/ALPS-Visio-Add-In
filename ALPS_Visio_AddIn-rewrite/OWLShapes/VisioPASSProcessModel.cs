@@ -19,6 +19,10 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
         {
             var layers = this.getAllElements().Values.OfType<IModelLayer>().ToList();
             var layerPages = new Dictionary<string, Visio.Page>();
+            // Tatsaechlicher pageLayer je Layer-ID: bei einem Re-Import ins selbe Dokument
+            // vergibt CreateSIDPage eindeutige Namen ("<id>_2"), die extends-Verweise muessen
+            // dann auf genau diese Seiten zeigen statt auf die des ersten Imports.
+            var layerNames = new Dictionary<string, string>();
 
             // First pass: one SID page per layer. The pageLayer cell gets the layer's model ID
             // (a stable, unique name) instead of the former " " placeholder — a blank pageLayer is
@@ -28,6 +32,7 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
                 string layerId = modelLayer.getModelComponentID();
                 Visio.Page sidPage = VH.CreateSIDPage(layerId, layerId, modelLayer.getUriModelComponentID(), "", "", "1");
                 layerPages[layerId] = sidPage;
+                layerNames[layerId] = sidPage.PageSheet.CellsU["Prop." + Constants.Properties.PageLayer].ResultStr[""];
 
                 if (modelLayer is IVisioImportable importable) importable.ImportToVisio(sidPage);
             }
@@ -47,7 +52,9 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
                 // import or leave the document in a broken state.
                 try
                 {
-                    VH.SetProp(foregroundPage.PageSheet, Constants.Properties.Transition.Extends, extendedLayer.getModelComponentID());
+                    string extendedId = extendedLayer.getModelComponentID();
+                    string extendedName = layerNames.TryGetValue(extendedId, out string uniqueName) ? uniqueName : extendedId;
+                    VH.SetProp(foregroundPage.PageSheet, Constants.Properties.Transition.Extends, extendedName);
                 }
                 catch (System.Exception e)
                 {

@@ -633,13 +633,17 @@ public class Converter
             if (incomingEdges.Count > 1)
                 throw new InvalidOperationException();
 
-            if (incomingEdges.First().Source.FlowNode is not ITask sourceTask)
+            if (incomingEdges.Count == 0 || incomingEdges.First().Source.FlowNode is not ITask sourceTask)
                 continue;
 
+            // Nur Timer-, Conditional- und Error-Events werden zu Boundary-Events (Time-, User-Cancel-
+            // und Sending-Failed-Transitionen). Die fruehere Bedingung
+            // !(d is not Timer || d is not Conditional || d is not Error) war stets false und filterte
+            // nichts; heute folgen einem Task nur diese drei Typen, das Ergebnis bleibt also gleich.
             IEventDefinition? eventDefinition = intermediateCatchEvent.EventDefinitions.FirstOrDefault();
-            if (!(eventDefinition is not ITimerEventDefinition
-                || eventDefinition is not IConditionalEventDefinition
-                || eventDefinition is not IErrorEventDefinition))
+            if (!(eventDefinition is ITimerEventDefinition
+                || eventDefinition is IConditionalEventDefinition
+                || eventDefinition is IErrorEventDefinition))
                 continue;
 
             node.FlowNode = BpmnUtility.CreateBoundaryEvent(sourceTask, eventDefinition);

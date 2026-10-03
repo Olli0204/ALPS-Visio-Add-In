@@ -331,6 +331,12 @@ namespace ALPS_Visio_AddIn_rewrite
             page.Name = GetUniquePageName(page, name);
             page.NameU = page.Name;
 
+            // Wurde der Name eindeutig gemacht (Re-Import ins selbe Dokument), muss auch die
+            // Layer-Identitaet eindeutig sein — sonst haengt ModelController.registerNewSbdPage
+            // jede SBD an ALLE SID-Seiten mit gleichem Layer (doppelte Controller/Abos) und
+            // getSidPage(layer) wird mehrdeutig.
+            string pageLayer = page.Name.Equals(name) ? nameU : page.Name;
+
             page.PageSheet.AddSection((short)Visio.VisSectionIndices.visSectionProp);
 
             if (page.PageSheet.CellExistsU["Prop." + Constants.Properties.PageType, 0] == 0)
@@ -346,7 +352,7 @@ namespace ALPS_Visio_AddIn_rewrite
                 page.PageSheet.CellsU["Prop." + Constants.Properties.PageModelVersion].FormulaU = QuoteLiteral(" ");
 
                 page.PageSheet.AddNamedRow((short)Visio.VisSectionIndices.visSectionProp, Constants.Properties.PageLayer, 0);
-                page.PageSheet.CellsU["Prop." + Constants.Properties.PageLayer].FormulaU = QuoteLiteral(nameU);
+                page.PageSheet.CellsU["Prop." + Constants.Properties.PageLayer].FormulaU = QuoteLiteral(pageLayer);
 
                 page.PageSheet.AddNamedRow((short)Visio.VisSectionIndices.visSectionProp, Constants.Properties.Transition.Extends, 0);
                 page.PageSheet.CellsU["Prop." + Constants.Properties.Transition.Extends].FormulaU = QuoteLiteral(extends);
