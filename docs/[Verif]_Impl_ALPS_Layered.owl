@@ -14,7 +14,7 @@
     ============================================================
     Implementiert [Verif]_Spec_ALPS_Layered.owl. Zwei Ebenen:
       - Impl_Layer_Base : Impl_Worker, Impl_Customer (+ Nachricht Worker -> Customer "Invoice")
-      - Impl_Layer_Guard: Impl_Auditor (erweitert die Basis-Ebene)
+      - Impl_Layer_Audit: Impl_Auditor — Erweiterungsebene, die ein NEUES Subjekt hinzufuegt (keine Guard-Ebene: sie enthaelt keine Guard-Extension)
     Jedes Subjekt traegt abstract-pass-ont:implements auf sein Spezifikations-Subjekt.
     Customer und Auditor kommunizieren nicht -> die Restriktion der Spezifikation ist erfuellt.
 
@@ -43,7 +43,7 @@
         <standard-pass-ont:hasModelComponentID rdf:datatype="&xsd;string">Impl_Model</standard-pass-ont:hasModelComponentID>
         <standard-pass-ont:hasModelComponentLabel xml:lang="en">[Verif]_Impl_ALPS_Layered</standard-pass-ont:hasModelComponentLabel>
         <standard-pass-ont:contains rdf:resource="http://alps-visio-test.example/alps-layered-verif#Impl_Layer_Base"/>
-        <standard-pass-ont:contains rdf:resource="http://alps-visio-test.example/alps-layered-verif#Impl_Layer_Guard"/>
+        <standard-pass-ont:contains rdf:resource="http://alps-visio-test.example/alps-layered-verif#Impl_Layer_Audit"/>
     </owl:NamedIndividual>
 
     <!-- =====================================================================
@@ -146,12 +146,12 @@
     </owl:NamedIndividual>
 
     <!-- =====================================================================
-         Ebene 2: Auditor (erweitert die Basis-Ebene)
+         Ebene 2: Audit-Erweiterung — fuegt das neue Subjekt Auditor hinzu (keine Guard-Ebene)
          ===================================================================== -->
-    <owl:NamedIndividual rdf:about="http://alps-visio-test.example/alps-layered-verif#Impl_Layer_Guard">
+    <owl:NamedIndividual rdf:about="http://alps-visio-test.example/alps-layered-verif#Impl_Layer_Audit">
         <rdf:type rdf:resource="&abstract-pass-ont;ModelLayer"/>
-        <standard-pass-ont:hasModelComponentID rdf:datatype="&xsd;string">Impl_Layer_Guard</standard-pass-ont:hasModelComponentID>
-        <standard-pass-ont:hasModelComponentLabel xml:lang="en">Impl_Layer_Guard</standard-pass-ont:hasModelComponentLabel>
+        <standard-pass-ont:hasModelComponentID rdf:datatype="&xsd;string">Impl_Layer_Audit</standard-pass-ont:hasModelComponentID>
+        <standard-pass-ont:hasModelComponentLabel xml:lang="en">Impl_Layer_Audit</standard-pass-ont:hasModelComponentLabel>
         <standard-pass-ont:hasPriorityNumber rdf:datatype="&xsd;positiveInteger">2</standard-pass-ont:hasPriorityNumber>
         <abstract-pass-ont:extends rdf:resource="http://alps-visio-test.example/alps-layered-verif#Impl_Layer_Base"/>
         <standard-pass-ont:contains rdf:resource="http://alps-visio-test.example/alps-layered-verif#Impl_Auditor"/>

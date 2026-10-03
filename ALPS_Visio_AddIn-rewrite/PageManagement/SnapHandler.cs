@@ -55,7 +55,10 @@ namespace ALPS_Visio_AddIn_rewrite
             removeDeletedShapes();
             List<Shape> snappableActorShapes = getSnappableShapesOnBackgroundPage().ToList();
 
-            if (snappedShapes.ContainsKey(snappingShape) && !isLocatedClosely(snappingShape, snappedShapes[snappingShape]))
+            // Eine eingerastete Shape sitzt exakt auf ihrem Ziel (adjustSize kopiert dessen Pin).
+            // Jede echte Verschiebung loest daher sofort die Trenn-Rueckfrage aus — frueher erst
+            // ausserhalb des 20-mm-Fangbereichs, man musste die Shape also ein gutes Stueck wegziehen.
+            if (snappedShapes.ContainsKey(snappingShape) && hasLeftTarget(snappingShape, snappedShapes[snappingShape]))
             {
                 handleDistantSnappedShapes(snappingShape);
             }
@@ -202,6 +205,17 @@ namespace ALPS_Visio_AddIn_rewrite
             double height = backgroundReferenceShape.CellsU["Height"].Result[VisUnitCodes.visMillimeters] + 5;
             VisioHelper.SetCellMM(snappingShape, "Width", width);
             VisioHelper.SetCellMM(snappingShape, "Height", height);
+        }
+
+        /// <summary>Toleranz fuer "liegt noch auf dem Ziel" in mm (Rundung der Pin-Werte).</summary>
+        private const double SNAPPED_TOLERANCE_MM = 0.5;
+
+        /// <summary>True, sobald eine eingerastete Shape von der Pin-Position ihres Ziels abweicht.</summary>
+        private static bool hasLeftTarget(Shape shape, Shape snapToShape)
+        {
+            double dx = shape.CellsU["PinX"].Result[VisUnitCodes.visMillimeters] - snapToShape.CellsU["PinX"].Result[VisUnitCodes.visMillimeters];
+            double dy = shape.CellsU["PinY"].Result[VisUnitCodes.visMillimeters] - snapToShape.CellsU["PinY"].Result[VisUnitCodes.visMillimeters];
+            return Math.Abs(dx) > SNAPPED_TOLERANCE_MM || Math.Abs(dy) > SNAPPED_TOLERANCE_MM;
         }
 
         protected bool isLocatedClosely(Shape shape, Shape snapToShape)

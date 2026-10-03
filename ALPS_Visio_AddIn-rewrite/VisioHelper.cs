@@ -469,6 +469,18 @@ namespace ALPS_Visio_AddIn_rewrite
         // Model element helpers
         // -------------------------------------------------------------------------
 
+        /// <summary>
+        /// Lesbarer Name eines Modellelements fuer Seitennamen: das englische Label, sonst das erste
+        /// Label, sonst die Modell-ID.
+        /// </summary>
+        public static string DisplayName(IPASSProcessModelElement element)
+        {
+            var labels = element.getModelComponentLabels();
+            var label = labels.FirstOrDefault(l => (l.getExtra() ?? "").ToLowerInvariant().StartsWith("en")) ?? labels.FirstOrDefault();
+            string text = label?.getContent();
+            return string.IsNullOrWhiteSpace(text) ? element.getModelComponentID() : text.Trim();
+        }
+
         public static List<ISimple2DVisualizationPoint> GetBounds(PASSProcessModelElement element)
         {
             return new List<ISimple2DVisualizationPoint>(element.getElementsWithUnspecifiedRelation().Values.OfType<ISimple2DVisualizationPoint>());

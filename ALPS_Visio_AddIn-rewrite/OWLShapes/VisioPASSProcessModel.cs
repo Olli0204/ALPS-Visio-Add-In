@@ -38,7 +38,11 @@ namespace ALPS_Visio_AddIn_rewrite.OWLShapes
             foreach (IModelLayer modelLayer in layers)
             {
                 string layerId = modelLayer.getModelComponentID();
-                Visio.Page sidPage = VH.CreateSIDPage(layerId, layerId, modelUri, "", "", "1");
+                // Sichtbarer Name "SID: <Ebenen-Label>"; die Ebenen-ID bleibt der interne pageLayer.
+                // (Ebenen, die schon "SID…" heissen — z. B. "SID_1" vom Scaffolder — kein doppeltes Praefix.)
+                string layerName = VH.DisplayName(modelLayer);
+                string pageName = layerName.StartsWith("SID", System.StringComparison.OrdinalIgnoreCase) ? layerName : "SID: " + layerName;
+                Visio.Page sidPage = VH.CreateSIDPage(pageName, layerId, modelUri, "", "", "1");
                 layerPages[layerId] = sidPage;
                 layerNames[layerId] = sidPage.PageSheet.CellsU["Prop." + Constants.Properties.PageLayer].ResultStr[""];
 
