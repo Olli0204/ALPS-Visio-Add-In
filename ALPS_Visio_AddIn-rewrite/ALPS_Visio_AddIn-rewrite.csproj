@@ -397,6 +397,7 @@
     <Compile Include="PageManagement\SnapHandler.cs" />
     <Compile Include="UI\AnchorBarsUsage.cs" />
     <Compile Include="UI\ResultDialog.cs" />
+    <Compile Include="UI\VisioOwner.cs" />
     <Compile Include="UI\DirectoryTreeViewItem.cs" />
     <Compile Include="UI\IDialogCallback.cs" />
     <Compile Include="UI\WindowChangeLayerName.xaml.cs">

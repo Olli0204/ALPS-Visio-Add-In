@@ -54,7 +54,9 @@ namespace ALPS_Visio_AddIn_rewrite
 
             backgroundReferenceShapeName = backgroundReferenceShapeName.Trim('\\', '"');
 
-            if (snappedShapes.ContainsKey(snappingShape) && snappedShapes[snappingShape].Name.Equals(backgroundReferenceShapeName)) return;
+            // performSnap schreibt NameU in den Hyperlink, Nutzer/Altbestand ggf. den lokalen Namen
+            // — beide akzeptieren (sonst loeste der eigene Schreibvorgang einen erneuten Snap aus).
+            if (snappedShapes.ContainsKey(snappingShape) && hasName(snappedShapes[snappingShape], backgroundReferenceShapeName)) return;
 
             if (string.IsNullOrWhiteSpace(backgroundReferenceShapeName))
             {
@@ -64,11 +66,13 @@ namespace ALPS_Visio_AddIn_rewrite
 
             IEnumerable<Shape> snappableShapes = getSnappableShapesOnBackgroundPage();
 
-            foreach (Shape snappable in snappableShapes)
-            {
-                if (!snappable.Name.Equals(backgroundReferenceShapeName)) continue;
-                performSnap(snappingShape, snappable);
-            }
+            Shape target = snappableShapes.FirstOrDefault(snappable => hasName(snappable, backgroundReferenceShapeName));
+            if (target != null) performSnap(snappingShape, target);
+        }
+
+        private static bool hasName(Shape shape, string name)
+        {
+            return shape.Name.Equals(name) || shape.NameU.Equals(name);
         }
 
         /// <summary>
@@ -176,8 +180,7 @@ namespace ALPS_Visio_AddIn_rewrite
             }
 
             if (oldExtends == null) return;
-            SBDPageController oldExtendsC = modelController.getSbdPageController(oldExtends);
-            oldExtendsC.setNotExtended();
+            modelController.getSbdPageController(oldExtends)?.setNotExtended();
         }
 
         /// <summary>

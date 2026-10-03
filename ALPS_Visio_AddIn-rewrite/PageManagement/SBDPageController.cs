@@ -98,14 +98,18 @@ namespace ALPS_Visio_AddIn_rewrite
         private void handleCellChanged(Cell cell)
         {
             SBDPage extends = sbdPage.getExtends();
-            if (cell.Name == "Prop." + Constants.Properties.Transition.Extends + ".Value")
+            // Visio meldet die Wertzelle einer Prop-Zeile als "Prop.extends" (ohne ".Value") —
+            // der fruehere Vergleich nur mit "...Value" griff bei manueller Eingabe nie.
+            string cellName = cell.Name;
+            if (cellName == "Prop." + Constants.Properties.Transition.Extends
+                || cellName == "Prop." + Constants.Properties.Transition.Extends + ".Value")
             {
                 if (extends != null)
                 {
                     snapHandler.snap(cell.Shape, cell.Formula);
                 }
             }
-            else if (cell.Name == "PinX" || cell.Name == "PinY")
+            else if (cellName == "PinX" || cellName == "PinY")
             {
                 tryDeriveExtends();
                 if (sbdPage.getExtends() != null)
@@ -117,7 +121,7 @@ namespace ALPS_Visio_AddIn_rewrite
                     sidController.sbdBackgroundShapeMoved(cell.Shape, sbdPage.getForeground());
                 }
             }
-            else if (cell.Name == "PageWidth" || cell.Name == "PageHeight")
+            else if (cellName == "PageWidth" || cellName == "PageHeight")
             {
                 if (extends != null)
                 {
