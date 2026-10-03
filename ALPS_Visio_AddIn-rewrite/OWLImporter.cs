@@ -145,6 +145,12 @@ namespace ALPS_Visio_AddIn_rewrite
                 app.ScreenUpdating = prevScreenUpdating;
             }
 
+            // Seitenverwaltung einmal komplett neu aufbauen: erst jetzt sind alle Ebenen-Beziehungen
+            // verdrahtet, sodass SBD/GBD-Seiten ihren Hintergrund bekommen und State References
+            // auf ihre Basis-States einrasten — ohne dass der Nutzer erst etwas verschieben muss.
+            try { Globals.ThisAddIn.updateClicked(); }
+            catch (System.Exception e) { System.Diagnostics.Debug.WriteLine("[Import] controller refresh failed: " + e); }
+
             // Einzelne Elemente werden beim Zeichnen abgefangen, damit der Rest importiert wird —
             // die Ausfaelle hier einmal gesammelt melden statt sie nur ins Debug-Log zu schreiben.
             if (ImportDiagnostics.Failures.Count > 0)

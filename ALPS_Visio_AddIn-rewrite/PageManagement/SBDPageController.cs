@@ -209,7 +209,7 @@ namespace ALPS_Visio_AddIn_rewrite
         /// Idempotent and cheap: it is safe to call on every shape interaction and does nothing
         /// once an extends is set or while the relationship cannot be derived yet.
         /// </summary>
-        private void tryDeriveExtends()
+        internal void tryDeriveExtends()
         {
             if (derivingExtends || sbdPage.getExtends() != null) return;
 

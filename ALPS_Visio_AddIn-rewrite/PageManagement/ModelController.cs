@@ -301,6 +301,15 @@ namespace ALPS_Visio_AddIn_rewrite
                 registerNewSbdPage(page);
             foreach (var sidPageC in modelToSidController.SelectMany(pair => pair.Value))
                 sidPageC.updateExtends();
+
+            // Hintergrund der SBD/GBD-Seiten aus den (jetzt bekannten) SID-Ebenen ableiten.
+            // Frueher geschah das nur bei einer Shape-Aenderung auf der Seite — nach einem Import
+            // blieb die GBD ohne Hintergrund, bis der Nutzer etwas verschob.
+            foreach (SBDPageController sbdPageC in sidPageToSbdController.Values.SelectMany(set => set).ToList())
+            {
+                try { sbdPageC.tryDeriveExtends(); }
+                catch (System.Exception e) { Debug.WriteLine("[ModelController] deriving SBD background failed: " + e.Message); }
+            }
         }
 
         private void detachSbdControllers()

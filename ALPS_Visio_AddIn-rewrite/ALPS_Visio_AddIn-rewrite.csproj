@@ -342,8 +342,7 @@
     <Compile Include="OWLShapes\BehaviorDescribing\States\VisioDoState.cs" />
     <Compile Include="OWLShapes\BehaviorDescribing\States\VisioGenericReturnToOriginReference.cs" />
     <Compile Include="OWLShapes\BehaviorDescribing\States\VisioRecieveState.cs" />
-    <Compile Include="OWLShapes\BehaviorDescribing\States\VisioSendState.cs" />
-    <Compile Include="OWLShapes\BehaviorDescribing\Transitions\VisioDoTransition.cs" />
+    <Compile Include="OWLShapes\BehaviorDescribing\States\VisioSendState.cs" />    <Compile Include="OWLShapes\BehaviorDescribing\Transitions\VisioDoTransition.cs" />
     <Compile Include="OWLShapes\BehaviorDescribing\Transitions\VisioRecieveTransition.cs" />
     <Compile Include="OWLShapes\BehaviorDescribing\Transitions\VisioFlowRestrictor.cs" />
     <Compile Include="OWLShapes\BehaviorDescribing\Transitions\VisioSendingFailedTransition.cs" />
